@@ -183,4 +183,10 @@ cat << EOF >> config.h
 #include <config_uncmd_spl.h>
 EOF
 
+#
+# Create mach-type file
+#
+cd ${srctree}
+awk -f arch/arm/tools/gen-mach-types arch/arm/tools/mach-types > arch/arm/include/asm/mach-types.h
+
 exit 0

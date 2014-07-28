@@ -100,6 +100,12 @@ const uchar default_environment[] = {
 #ifdef	CONFIG_LOADADDR
 	"loadaddr="	__stringify(CONFIG_LOADADDR)	"\0"
 #endif
+#ifdef	CONFIG_RD_LOADADDR
+	"rd_loadaddr="	__stringify(CONFIG_RD_LOADADDR)	"\0"
+#endif
+#ifdef	CONFIG_DTB_LOADADDR
+	"dtb_loadaddr="	__stringify(CONFIG_DTB_LOADADDR)	"\0"
+#endif
 #ifdef	CONFIG_CLOCKS_IN_MHZ
 	"clocks_in_mhz=1\0"
 #endif

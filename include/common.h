@@ -1063,4 +1063,8 @@ static inline phys_addr_t map_to_sysmem(const void *ptr)
 # include <environment.h>
 #endif
 
+#ifdef CONFIG_RTX_EFM32
+# include "rtx/efm32.h"
+#endif
+
 #endif	/* __COMMON_H_ */

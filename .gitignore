@@ -27,6 +27,9 @@
 # Build tree
 /build-*
 
+# Output tree
+/out
+
 #
 # Top-level generic files
 #
