@@ -349,9 +349,43 @@ void env_relocate_spec(void)
 
 fini:
 	fini_mmc_for_env(mmc);
+#ifdef CONFIG_VERSION_STRING
+	{
+		char *versionstr = getenv("version");
+		if ( !versionstr )
+		{
+			ret = 1 ;
+		}
+		else
+		{
+			if (strcmp(versionstr, CONFIG_VERSION_STRING))
+			{
+				ret = 1 ;
+			}
+		}
+	}
+#endif
 err:
 	if (ret)
+	{
 		set_default_env(NULL);
+	#ifdef CONFIG_VERSION_STRING
+		{
+			char *versionstr = getenv("version");
+			if ( !versionstr )
+			{
+				setenv("version", CONFIG_VERSION_STRING);
+			}
+			else
+			{
+				if (strcmp(versionstr, CONFIG_VERSION_STRING))
+				{
+					setenv("version", CONFIG_VERSION_STRING);
+				}
+			}
+		}
+	#endif		
+	}
 #endif
 }
 #endif /* CONFIG_ENV_OFFSET_REDUND */

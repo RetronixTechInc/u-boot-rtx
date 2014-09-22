@@ -233,6 +233,13 @@ static int _do_env_set(int flag, int argc, char * const argv[])
 	name = argv[1];
 	value = argv[2];
 
+#ifdef CONFIG_VERSION_STRING
+	if ( !strcmp( name , "version") )
+	{
+		return 1;
+	}
+#endif
+
 	if (strchr(name, '=')) {
 		printf("## Error: illegal character '='"
 		       "in variable name \"%s\"\n", name);
