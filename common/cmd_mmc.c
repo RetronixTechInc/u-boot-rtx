@@ -676,4 +676,23 @@ U_BOOT_CMD(
 	"- display info of the current MMC device"
 );
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+int get_mmc_env_devno(void) ;
+
+static int do_get_dynamic_mmc(cmd_tbl_t *cmdtp, int flag, int argc,
+		       char * const argv[])
+{
+	printf("dynamic number:%d\n", get_mmc_env_devno());
+
+	return CMD_RET_SUCCESS;
+}
+
+/* get CONFIG_DYNAMIC_MMC_DEVNO information*/
+U_BOOT_CMD(
+	dynamic_mmc, 1, 0,	do_get_dynamic_mmc,
+	"get dynamic mmc",
+	""
+);
+#endif
+
 #endif /* !CONFIG_GENERIC_MMC */

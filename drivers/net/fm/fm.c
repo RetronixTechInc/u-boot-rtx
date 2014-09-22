@@ -20,6 +20,10 @@
 #include <mmc.h>
 #endif
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+int get_mmc_env_devno(void) ;
+#endif
+
 struct fm_muram muram[CONFIG_SYS_NUM_FMAN];
 
 u32 fm_muram_base(int fm_idx)
@@ -378,12 +382,19 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		spi_flash_free(ucode_flash);
 	}
 #elif defined(CONFIG_SYS_QE_FMAN_FW_IN_MMC)
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+	int dev = get_mmc_env_devno();
+#else
 	int dev = CONFIG_SYS_MMC_ENV_DEV;
+#endif
 	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
 	u32 cnt = CONFIG_SYS_QE_FMAN_FW_LENGTH / 512;
 	u32 blk = CONFIG_SYS_FMAN_FW_ADDR / 512;
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+	struct mmc *mmc = find_mmc_device(get_mmc_env_devno());
+#else
 	struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
-
+#endif
 	if (!mmc)
 		printf("\nMMC cannot find device for ucode\n");
 	else {

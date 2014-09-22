@@ -269,6 +269,17 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 }
 #endif
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+int get_mmc_env_devno(void)
+{
+	uint soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
+	int dev = (soc_sbmr & 0x00001800) >> 11 ;
+
+	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
+	return (dev-1);
+}
+#endif
+
 void boot_mode_apply(unsigned cfg_val)
 {
 	unsigned reg;

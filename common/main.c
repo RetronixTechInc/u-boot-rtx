@@ -53,6 +53,10 @@ static void run_preboot_environment_command(void)
 #endif /* CONFIG_PREBOOT */
 }
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+int get_mmc_env_devno(void) ;
+#endif
+
 /* We come here after U-Boot is initialised and ready to process commands */
 void main_loop(void)
 {
@@ -70,6 +74,28 @@ void main_loop(void)
 #ifdef CONFIG_VERSION_VARIABLE
 	setenv("ver", version_string);  /* set version variable */
 #endif /* CONFIG_VERSION_VARIABLE */
+
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+	switch( get_mmc_env_devno() )
+	{
+		case 0 :
+			setenv("storage", "mmc dev 0");
+			setenv("root_loc","root=/dev/mmcblk0p1");
+			break ;
+		case 1 :
+			setenv("storage", "mmc dev 1");
+			setenv("root_loc","root=/dev/mmcblk1p1");
+			break ;
+		case 2 :
+			setenv("storage", "mmc dev 2");
+			setenv("root_loc","root=/dev/mmcblk2p1");
+			break ;
+		default :
+			setenv("storage", "mmc dev 2");
+			setenv("root_loc","root=/dev/mmcblk2p1");			
+			break ;
+	}
+#endif
 
 	cli_init();
 

@@ -157,6 +157,7 @@ int cpu_mmc_init(bd_t *bis)
 {
 	return fsl_esdhc_mmc_init(bis);
 }
+
 #endif
 
 u32 get_ahb_clk(void)
