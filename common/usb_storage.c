@@ -266,7 +266,8 @@ int usb_stor_scan(int mode)
 	} /* for */
 
 	usb_disable_asynch(0); /* asynch transfer allowed */
-	printf("%d Storage Device(s) found\n", usb_max_devs);
+	if (mode == 1)
+		printf("%d Storage Device(s) found\n", usb_max_devs);
 	if (usb_max_devs > 0)
 		return 0;
 	return -1;

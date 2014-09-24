@@ -11,6 +11,9 @@
 #include <autoboot.h>
 #include <cli.h>
 #include <version.h>
+#ifdef CONFIG_CMD_USB
+#include <usb.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -57,6 +60,15 @@ static void run_preboot_environment_command(void)
 int get_mmc_env_devno(void) ;
 #endif
 
+#ifdef CONFIG_BOOT_SYSTEM
+void bootsel_init( void );
+int bootsel_checkstorage( void );
+#endif
+
+#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
+void bootsel_password( void );
+#endif
+
 /* We come here after U-Boot is initialised and ready to process commands */
 void main_loop(void)
 {
@@ -97,6 +109,15 @@ void main_loop(void)
 	}
 #endif
 
+#ifdef CONFIG_CMD_USB
+	usb_stop();
+	usb_init();
+#endif
+
+#ifdef CONFIG_BOOT_SYSTEM
+	bootsel_init() ;
+#endif
+
 	cli_init();
 
 	run_preboot_environment_command();
@@ -105,11 +126,22 @@ void main_loop(void)
 	update_tftp(0UL);
 #endif /* CONFIG_UPDATE_TFTP */
 
+#ifdef CONFIG_BOOT_SYSTEM
+	if (!tstc())
+	{
+		bootsel_checkstorage() ;
+	}
+#endif
+
 	s = bootdelay_process();
 	if (cli_process_fdt(&s))
 		cli_secure_boot_cmd(s);
 
 	autoboot_command(s);
+	
+#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
+	bootsel_password();
+#endif /*CONFIG_CHECK_PASSWORD*/
 
 	cli_loop();
 }

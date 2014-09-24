@@ -98,9 +98,9 @@
 
 #ifdef	CONFIG_VIDEO_SMI_LYNXEM
 
-#define VIDEO_FB_LITTLE_ENDIAN
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
+	#define VIDEO_FB_LITTLE_ENDIAN
+	#define VIDEO_HW_RECTFILL
+	#define VIDEO_HW_BITBLT
 #endif
 
 /*
@@ -108,9 +108,9 @@
  */
 #ifdef	CONFIG_VIDEO_CT69000
 
-#define VIDEO_FB_LITTLE_ENDIAN
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
+	#define VIDEO_FB_LITTLE_ENDIAN
+	#define VIDEO_HW_RECTFILL
+	#define VIDEO_HW_BITBLT
 #endif
 
 /*
@@ -118,11 +118,11 @@
  */
 #ifdef CONFIG_VIDEO_SED13806
 
-#ifndef CONFIG_TOTAL5200
-#define VIDEO_FB_LITTLE_ENDIAN
-#endif
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
+	#ifndef CONFIG_TOTAL5200
+		#define VIDEO_FB_LITTLE_ENDIAN
+	#endif
+	#define VIDEO_HW_RECTFILL
+	#define VIDEO_HW_BITBLT
 #endif
 
 /*
@@ -130,13 +130,13 @@
  */
 #ifdef CONFIG_VIDEO_SM501
 
-#ifdef CONFIG_HH405
-#define VIDEO_FB_LITTLE_ENDIAN
-#endif
+	#ifdef CONFIG_HH405
+		#define VIDEO_FB_LITTLE_ENDIAN
+	#endif
 #endif
 
 #ifdef CONFIG_VIDEO_MXS
-#define VIDEO_FB_16BPP_WORD_SWAP
+	#define VIDEO_FB_16BPP_WORD_SWAP
 #endif
 
 /*
@@ -144,20 +144,20 @@
  */
 #ifdef CONFIG_VIDEO_MB862xx
 
-#ifdef CONFIG_VIDEO_CORALP
-#define VIDEO_FB_LITTLE_ENDIAN
-#endif
-#ifdef CONFIG_VIDEO_MB862xx_ACCEL
-#define VIDEO_HW_RECTFILL
-#define VIDEO_HW_BITBLT
-#endif
+	#ifdef CONFIG_VIDEO_CORALP
+		#define VIDEO_FB_LITTLE_ENDIAN
+	#endif
+	#ifdef CONFIG_VIDEO_MB862xx_ACCEL
+		#define VIDEO_HW_RECTFILL
+		#define VIDEO_HW_BITBLT
+	#endif
 #endif
 
 /*
  * Defines for the i.MX31 driver (mx3fb.c)
  */
 #if defined(CONFIG_VIDEO_MX3) || defined(CONFIG_VIDEO_IPUV3)
-#define VIDEO_FB_16BPP_WORD_SWAP
+	#define VIDEO_FB_16BPP_WORD_SWAP
 #endif
 
 /*
@@ -182,11 +182,11 @@
  */
 
 #ifdef	CONFIG_I8042_KBD
-#include <i8042.h>
+	#include <i8042.h>
 
-#define VIDEO_KBD_INIT_FCT	i8042_kbd_init()
-#define VIDEO_TSTC_FCT		i8042_tstc
-#define VIDEO_GETC_FCT		i8042_getc
+	#define VIDEO_KBD_INIT_FCT	i8042_kbd_init()
+	#define VIDEO_TSTC_FCT		i8042_tstc
+	#define VIDEO_GETC_FCT		i8042_getc
 #endif
 
 /*
@@ -199,13 +199,13 @@
 #include <video_font.h>
 
 #if defined(CONFIG_CMD_DATE)
-#include <rtc.h>
+	#include <rtc.h>
 #endif
 
 #if defined(CONFIG_CMD_BMP) || defined(CONFIG_SPLASH_SCREEN)
-#include <watchdog.h>
-#include <bmp_layout.h>
-#include <splash.h>
+	#include <watchdog.h>
+	#include <bmp_layout.h>
+	#include <splash.h>
 #endif
 
 /*
@@ -225,72 +225,72 @@
 #if !defined(CONFIG_CONSOLE_CURSOR) && \
     !defined(CONFIG_VIDEO_SW_CURSOR) && \
     !defined(CONFIG_VIDEO_HW_CURSOR)
-/* no Cursor defined */
-#define CURSOR_ON
-#define CURSOR_OFF
-#define CURSOR_SET
+	/* no Cursor defined */
+	#define CURSOR_ON
+	#define CURSOR_OFF
+	#define CURSOR_SET
 #endif
 
 #if defined(CONFIG_CONSOLE_CURSOR) || defined(CONFIG_VIDEO_SW_CURSOR)
-#if defined(CURSOR_ON) || \
-	(defined(CONFIG_CONSOLE_CURSOR) && defined(CONFIG_VIDEO_SW_CURSOR))
-#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
-	or CONFIG_VIDEO_HW_CURSOR can be defined
-#endif
-void console_cursor(int state);
+	#if defined(CURSOR_ON) || \
+		(defined(CONFIG_CONSOLE_CURSOR) && defined(CONFIG_VIDEO_SW_CURSOR))
+		#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
+			or CONFIG_VIDEO_HW_CURSOR can be defined
+	#endif
+	void console_cursor(int state);
 
-#define CURSOR_ON  console_cursor(1)
-#define CURSOR_OFF console_cursor(0)
-#define CURSOR_SET video_set_cursor()
+	#define CURSOR_ON  console_cursor(1)
+	#define CURSOR_OFF console_cursor(0)
+	#define CURSOR_SET video_set_cursor()
 #endif /* CONFIG_CONSOLE_CURSOR || CONFIG_VIDEO_SW_CURSOR */
 
 #ifdef	CONFIG_CONSOLE_CURSOR
-#ifndef	CONFIG_CONSOLE_TIME
-#error	CONFIG_CONSOLE_CURSOR must be defined for CONFIG_CONSOLE_TIME
-#endif
-#ifndef CONFIG_I8042_KBD
-#warning Cursor drawing on/off needs timer function s.a. drivers/input/i8042.c
-#endif
+	#ifndef	CONFIG_CONSOLE_TIME
+		#error	CONFIG_CONSOLE_CURSOR must be defined for CONFIG_CONSOLE_TIME
+	#endif
+	#ifndef CONFIG_I8042_KBD
+		#warning Cursor drawing on/off needs timer function s.a. drivers/input/i8042.c
+	#endif
 #endif /* CONFIG_CONSOLE_CURSOR */
 
 
 #ifdef CONFIG_VIDEO_HW_CURSOR
-#ifdef	CURSOR_ON
-#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
-	or CONFIG_VIDEO_HW_CURSOR can be defined
-#endif
-#define CURSOR_ON
-#define CURSOR_OFF
-#define CURSOR_SET video_set_hw_cursor(console_col * VIDEO_FONT_WIDTH, \
-		  (console_row * VIDEO_FONT_HEIGHT) + video_logo_height)
+	#ifdef	CURSOR_ON
+		#error	only one of CONFIG_CONSOLE_CURSOR, CONFIG_VIDEO_SW_CURSOR, \
+			or CONFIG_VIDEO_HW_CURSOR can be defined
+	#endif
+	#define CURSOR_ON
+	#define CURSOR_OFF
+	#define CURSOR_SET video_set_hw_cursor(console_col * VIDEO_FONT_WIDTH, \
+			(console_row * VIDEO_FONT_HEIGHT) + video_logo_height)
 #endif /* CONFIG_VIDEO_HW_CURSOR */
 
 #ifdef	CONFIG_VIDEO_LOGO
-#ifdef	CONFIG_VIDEO_BMP_LOGO
-#include <bmp_logo.h>
-#include <bmp_logo_data.h>
-#define VIDEO_LOGO_WIDTH	BMP_LOGO_WIDTH
-#define VIDEO_LOGO_HEIGHT	BMP_LOGO_HEIGHT
-#define VIDEO_LOGO_LUT_OFFSET	BMP_LOGO_OFFSET
-#define VIDEO_LOGO_COLORS	BMP_LOGO_COLORS
+	#ifdef	CONFIG_VIDEO_BMP_LOGO
+		#include <bmp_logo.h>
+		#include <bmp_logo_data.h>
+		#define VIDEO_LOGO_WIDTH	BMP_LOGO_WIDTH
+		#define VIDEO_LOGO_HEIGHT	BMP_LOGO_HEIGHT
+		#define VIDEO_LOGO_LUT_OFFSET	BMP_LOGO_OFFSET
+		#define VIDEO_LOGO_COLORS	BMP_LOGO_COLORS
 
-#else  /* CONFIG_VIDEO_BMP_LOGO */
-#define LINUX_LOGO_WIDTH	80
-#define LINUX_LOGO_HEIGHT	80
-#define LINUX_LOGO_COLORS	214
-#define LINUX_LOGO_LUT_OFFSET	0x20
-#define __initdata
-#include <linux_logo.h>
-#define VIDEO_LOGO_WIDTH	LINUX_LOGO_WIDTH
-#define VIDEO_LOGO_HEIGHT	LINUX_LOGO_HEIGHT
-#define VIDEO_LOGO_LUT_OFFSET	LINUX_LOGO_LUT_OFFSET
-#define VIDEO_LOGO_COLORS	LINUX_LOGO_COLORS
-#endif /* CONFIG_VIDEO_BMP_LOGO */
-#define VIDEO_INFO_X		(VIDEO_LOGO_WIDTH)
-#define VIDEO_INFO_Y		(VIDEO_FONT_HEIGHT/2)
+	#else  /* CONFIG_VIDEO_BMP_LOGO */
+		#define LINUX_LOGO_WIDTH	80
+		#define LINUX_LOGO_HEIGHT	80
+		#define LINUX_LOGO_COLORS	214
+		#define LINUX_LOGO_LUT_OFFSET	0x20
+		#define __initdata
+		#include <linux_logo.h>
+		#define VIDEO_LOGO_WIDTH	LINUX_LOGO_WIDTH
+		#define VIDEO_LOGO_HEIGHT	LINUX_LOGO_HEIGHT
+		#define VIDEO_LOGO_LUT_OFFSET	LINUX_LOGO_LUT_OFFSET
+		#define VIDEO_LOGO_COLORS	LINUX_LOGO_COLORS
+	#endif /* CONFIG_VIDEO_BMP_LOGO */
+	#define VIDEO_INFO_X		(VIDEO_LOGO_WIDTH)
+	#define VIDEO_INFO_Y		(VIDEO_FONT_HEIGHT/2)
 #else  /* CONFIG_VIDEO_LOGO */
-#define VIDEO_LOGO_WIDTH	0
-#define VIDEO_LOGO_HEIGHT	0
+	#define VIDEO_LOGO_WIDTH	0
+	#define VIDEO_LOGO_HEIGHT	0
 #endif /* CONFIG_VIDEO_LOGO */
 
 #define VIDEO_COLS		VIDEO_VISIBLE_COLS
@@ -301,9 +301,9 @@ void console_cursor(int state);
 #define VIDEO_BURST_LEN		(VIDEO_COLS/8)
 
 #ifdef	CONFIG_VIDEO_LOGO
-#define CONSOLE_ROWS		((VIDEO_ROWS - video_logo_height) / VIDEO_FONT_HEIGHT)
+	#define CONSOLE_ROWS		((VIDEO_ROWS - video_logo_height) / VIDEO_FONT_HEIGHT)
 #else
-#define CONSOLE_ROWS		(VIDEO_ROWS / VIDEO_FONT_HEIGHT)
+	#define CONSOLE_ROWS		(VIDEO_ROWS / VIDEO_FONT_HEIGHT)
 #endif
 
 #define CONSOLE_COLS		(VIDEO_COLS / VIDEO_FONT_WIDTH)
@@ -316,27 +316,27 @@ void console_cursor(int state);
 
 /* Macros */
 #ifdef	VIDEO_FB_LITTLE_ENDIAN
-#define SWAP16(x)		((((x) & 0x00ff) << 8) | \
-				  ((x) >> 8) \
-				)
-#define SWAP32(x)		((((x) & 0x000000ff) << 24) | \
-				 (((x) & 0x0000ff00) <<  8) | \
-				 (((x) & 0x00ff0000) >>  8) | \
-				 (((x) & 0xff000000) >> 24)   \
-				)
-#define SHORTSWAP32(x)		((((x) & 0x000000ff) <<  8) | \
-				 (((x) & 0x0000ff00) >>  8) | \
-				 (((x) & 0x00ff0000) <<  8) | \
-				 (((x) & 0xff000000) >>  8)   \
-				)
+	#define SWAP16(x)		((((x) & 0x00ff) << 8) | \
+					  ((x) >> 8) \
+					)
+	#define SWAP32(x)		((((x) & 0x000000ff) << 24) | \
+					 (((x) & 0x0000ff00) <<  8) | \
+					 (((x) & 0x00ff0000) >>  8) | \
+					 (((x) & 0xff000000) >> 24)   \
+					)
+	#define SHORTSWAP32(x)		((((x) & 0x000000ff) <<  8) | \
+					 (((x) & 0x0000ff00) >>  8) | \
+					 (((x) & 0x00ff0000) <<  8) | \
+					 (((x) & 0xff000000) >>  8)   \
+					)
 #else
-#define SWAP16(x)		(x)
-#define SWAP32(x)		(x)
-#if defined(VIDEO_FB_16BPP_WORD_SWAP)
-#define SHORTSWAP32(x)		(((x) >> 16) | ((x) << 16))
-#else
-#define SHORTSWAP32(x)		(x)
-#endif
+	#define SWAP16(x)		(x)
+	#define SWAP32(x)		(x)
+	#if defined(VIDEO_FB_16BPP_WORD_SWAP)
+		#define SHORTSWAP32(x)		(((x) >> 16) | ((x) << 16))
+	#else
+		#define SHORTSWAP32(x)		(x)
+	#endif
 #endif
 
 #ifdef CONFIG_CONSOLE_EXTRA_INFO
@@ -2089,6 +2089,25 @@ static void *video_logo(void)
 }
 #endif
 
+#ifdef CONFIG_BOOT_VIDEO_BG_LOGO
+#ifdef CONFIG_BOOT_SYSTEM
+int bootsel_load_logo_data( void );
+#endif
+
+static void video_bg_logo( void )
+{
+	#ifdef CONFIG_CMD_BMP
+	if ( bootsel_load_logo_data() )
+	{
+		if ( !bmp_info(CONFIG_LOADADDR) )
+		{
+			video_display_bitmap( CONFIG_LOADADDR , 0 , 0 ) ;
+		}
+	}
+	#endif
+}
+#endif
+
 static int cfb_fb_is_in_dram(void)
 {
 	bd_t *bd = gd->bd;
@@ -2223,7 +2242,11 @@ static int video_init(void)
 	debug("Video: Drawing the logo ...\n");
 	video_console_address = video_logo();
 #else
+#ifdef CONFIG_BOOT_VIDEO_BG_LOGO
+	video_bg_logo( ) ;
+#endif
 	video_console_address = video_fb_address;
+
 #endif
 
 	/* Initialize the console */

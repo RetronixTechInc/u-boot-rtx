@@ -384,7 +384,8 @@ err:
 				}
 			}
 		}
-	#endif		
+	#endif
+		saveenv() ;
 	}
 #endif
 }

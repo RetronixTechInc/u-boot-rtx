@@ -141,10 +141,17 @@ static int abortboot_keyed(int bootdelay)
 static int menukey;
 #endif
 
+#ifdef CONFIG_BOOT_SYSTEM
+void bootsel_menu( int sel );
+#endif
+
 static int abortboot_normal(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
+#ifdef CONFIG_BOOT_SYSTEM
+	int bootsystemsel = 0 ;
+#endif
 
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
@@ -160,7 +167,11 @@ static int abortboot_normal(int bootdelay)
 	 */
 	if (bootdelay >= 0) {
 		if (tstc()) {	/* we got a key press	*/
-			(void) getc();  /* consume input	*/
+			#ifdef CONFIG_BOOT_SYSTEM
+				bootsystemsel = getc();
+			#else
+				(void) getc();  /* consume input	*/
+			#endif
 			puts("\b\b\b 0");
 			abort = 1;	/* don't auto boot	*/
 		}
@@ -175,11 +186,18 @@ static int abortboot_normal(int bootdelay)
 			if (tstc()) {	/* we got a key press	*/
 				abort  = 1;	/* don't auto boot	*/
 				bootdelay = 0;	/* no more delay	*/
-# ifdef CONFIG_MENUKEY
-				menukey = getc();
-# else
-				(void) getc();  /* consume input	*/
-# endif
+				#ifdef CONFIG_BOOT_SYSTEM
+					bootsystemsel = getc();
+					#ifdef CONFIG_MENUKEY
+						menukey = bootsystemsel ;
+					#endif
+				#else
+					#ifdef CONFIG_MENUKEY
+						menukey = getc();
+					#else
+						(void) getc();  /* consume input	*/
+					#endif
+				#endif
 				break;
 			}
 			udelay(10000);
@@ -189,6 +207,13 @@ static int abortboot_normal(int bootdelay)
 	}
 
 	putc('\n');
+
+#ifdef CONFIG_BOOT_SYSTEM		
+	if ( abort )
+	{
+		bootsel_menu( bootsystemsel ) ;
+	}
+#endif
 
 #ifdef CONFIG_SILENT_CONSOLE
 	if (abort)

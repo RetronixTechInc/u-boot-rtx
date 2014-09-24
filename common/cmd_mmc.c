@@ -683,7 +683,7 @@ static int do_get_dynamic_mmc(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	printf("dynamic number:%d\n", get_mmc_env_devno());
-
+	saveenv() ;
 	return CMD_RET_SUCCESS;
 }
 
