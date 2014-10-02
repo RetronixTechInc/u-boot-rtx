@@ -116,6 +116,20 @@ void set_chipselect_size(int const cs_size)
 	writel(reg, &iomuxc_regs->gpr1);
 }
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+int get_mmc_env_devno()
+{
+	uint soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
+	return (soc_sbmr & 0x00180000) ? 1 : 0;
+}
+#endif
+
+#ifdef CONFIG_MX51
+void boot_mode_apply(unsigned cfg_val)
+{
+}
+#endif
+
 #ifdef CONFIG_MX53
 void boot_mode_apply(unsigned cfg_val)
 {
