@@ -112,7 +112,7 @@
 //#define CONFIG_BOOTARGS         "console=ttymxc0,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=off fec_mac=fa:3a:65:c7:14:ea"
 //#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
 
-#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk1p1 init=/sbin/init rootwait rw video=off fec_mac=fa:3a:65:c7:14:ea"
+#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk1p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
 #define CONFIG_BOOTCOMMAND      "bootm 0x10800000 - 0x10F00000"
 
 
