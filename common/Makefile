@@ -153,7 +153,7 @@ obj-$(CONFIG_CMD_PART) += cmd_part.o
 ifdef CONFIG_PCI
 obj-$(CONFIG_CMD_PCI) += cmd_pci.o
 endif
-obj-y += cmd_pcmcia.o
+obj-$(CONFIG_CMD_PCMCIA) += cmd_pcmcia.o
 obj-$(CONFIG_CMD_PORTIO) += cmd_portio.o
 obj-$(CONFIG_CMD_PXE) += cmd_pxe.o
 obj-$(CONFIG_CMD_READ) += cmd_read.o
