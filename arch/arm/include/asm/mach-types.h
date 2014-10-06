@@ -1002,6 +1002,7 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_RTX_A53_MX53         5100
 #define MACH_TYPE_RTX_BISHOP_MX53      5101
 #define MACH_TYPE_RTX_Q7_MX6S          5200
+#define MACH_TYPE_RTX_VALOR111_MX6DL   5300
 
 #ifdef CONFIG_ARCH_EBSA110
 # ifdef machine_arch_type
@@ -12881,6 +12882,18 @@ extern unsigned int __machine_arch_type;
 # define machine_is_rtx_q7_mx6s()	(machine_arch_type == MACH_TYPE_RTX_Q7_MX6S)
 #else
 # define machine_is_rtx_q7_mx6s()	(0)
+#endif
+
+#ifdef CONFIG_MACH_RTX_VALOR111_MX6DL
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_RTX_VALOR111_MX6DL
+# endif
+# define machine_is_rtx_valor111_mx6dl()	(machine_arch_type == MACH_TYPE_RTX_VALOR111_MX6DL)
+#else
+# define machine_is_rtx_valor111_mx6dl()	(0)
 #endif
 
 /*

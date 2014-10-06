@@ -14,7 +14,9 @@ export CROSS_COMPILE=/opt/cross/gcc-linaro-arm-linux-gnueabihf-4.9-2014.06_linux
 #U_BOOT_DEFAULT_CONFIG=rtx-q7-mx6s_config
 #U_BOOT_DEFAULT_CONFIG=rtx-q7-mx6s_mfg_config
 #U_BOOT_DEFAULT_CONFIG=rtx-aeg200-mx51_mfg_config
-U_BOOT_DEFAULT_CONFIG=rtx-aeg200-mx51_config
+#U_BOOT_DEFAULT_CONFIG=rtx-aeg200-mx51_config
+#U_BOOT_DEFAULT_CONFIG=rtx-valor111-mx6dl_config
+U_BOOT_DEFAULT_CONFIG=rtx-valor111-mx6dl_mfg_config
 
 if [ ! -d out ] ; then
 	mkdir -p out
