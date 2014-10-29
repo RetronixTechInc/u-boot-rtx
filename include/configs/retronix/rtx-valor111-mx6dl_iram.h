@@ -12,8 +12,9 @@
 #define CONFIG_MX6
 #define CONFIG_MX6DL
 #define CONFIG_MACH_TYPE	MACH_TYPE_RTX_VALOR111_MX6DL
-//#define CONFIG_MACH_TYPE	MACH_TYPE_MX6Q_SMARC
-#define CONFIG_VERSION_STRING "rtx-valor111-mx6dl"
+#define CONFIG_SYS_L2CACHE_OFF
+#define CONFIG_SYS_DCACHE_OFF
+#define CONFIG_SYS_TEXT_BASE  0x00907000
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -37,15 +38,10 @@
 
 #include <linux/sizes.h>
 
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
-#define CONFIG_REVISION_TAG
-
 #define CONFIG_SYS_GENERIC_BOARD
 
 /* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		   (10 * SZ_1M)
+#define CONFIG_SYS_MALLOC_LEN		   (10 * 1024)
 
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
@@ -54,7 +50,7 @@
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE           UART4_BASE
 
-#define CONFIG_CMD_FUSE
+//#define CONFIG_CMD_FUSE
 #ifdef CONFIG_CMD_FUSE
 	#define CONFIG_MXC_OCOTP
 #endif
@@ -68,63 +64,31 @@
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
-#define CONFIG_BOUNCE_BUFFER
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_EXT4
-#define CONFIG_DOS_PARTITION
+//#define CONFIG_CMD_FAT
+//#define CONFIG_CMD_EXT2
+//#define CONFIG_CMD_EXT4
+//#define CONFIG_DOS_PARTITION
 
 #define CONFIG_CMD_FS_GENERIC
-
-//#define CONFIG_CMD_PING
-//#define CONFIG_CMD_DHCP
-//#define CONFIG_CMD_MII
-//#define CONFIG_CMD_NET
-//#define CONFIG_FEC_MXC
-//#define CONFIG_MII
-//#define IMX_FEC_BASE			        ENET_BASE_ADDR
-//#define CONFIG_FEC_XCV_TYPE		        RGMII
-//#define CONFIG_ETHPRIME			        "FEC"
-//#define CONFIG_FEC_MXC_PHYADDR		    1
-
-//#define CONFIG_PHYLIB
-//#define CONFIG_PHY_ATHEROS
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX               1
 #define CONFIG_BAUDRATE                 115200
 
-/* Command definition */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_BMODE
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_CMD_SETEXPR
-#undef  CONFIG_CMD_IMLS
-
-#define CONFIG_BOOTDELAY               1
 
 #define CONFIG_LOADADDR                0x10800000
-#define CONFIG_RD_LOADADDR             0x11000000
-#define CONFIG_DTB_LOADADDR            0x10F00000
-#define CONFIG_SYS_TEXT_BASE           0x27800000
+//#define CONFIG_RD_LOADADDR             0x11000000
+//#define CONFIG_DTB_LOADADDR            0x10F00000
 
-#define CONFIG_BOOTARGS         "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait rw video=off"
-#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000"
-
-//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=off"
-//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/sda1 init=/sbin/init rootwait rw video=off"
-//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000"
-
-
-#define CONFIG_ARP_TIMEOUT             200UL
+#define CONFIG_BOOTARGS         "console=ttymxc0,115200"
+#define CONFIG_BOOTCOMMAND      ""
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_PROMPT		       "RTX-VALOR111 MX6DL U-Boot > "
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_AUTO_COMPLETE
+//#define CONFIG_SYS_HUSH_PARSER
+//#define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE              512
 
 /* Print Buffer Size */
@@ -140,7 +104,7 @@
 
 #define CONFIG_CMDLINE_EDITING
 
-#define CONFIG_STACKSIZE               (128 * 1024)
+#define CONFIG_STACKSIZE               (6 * 1024)
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1
@@ -162,19 +126,5 @@
 
 #define CONFIG_ENV_OFFSET      (6 * 64 * 1024)
 #define CONFIG_ENV_SIZE        (8 * 1024)
-
-#define CONFIG_OF_LIBFDT
-
-/* I2C Configs */
-#define CONFIG_CMD_I2C
-#define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_MXC
-#define CONFIG_SYS_I2C_SPEED		  100000
-
-/* PMIC */
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_PFUZE100
-#define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
 
 #endif                         /* __RTX_VALOR_MX6DL_CONFIG_H */

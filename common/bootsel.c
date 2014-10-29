@@ -71,12 +71,15 @@ static char bootselconfirmpassword[32] ;
 static int  bootselconfirmpasswordlen ;
 
 enum __BOOTSEL_FUNC__{
-	DEF_BOOTSEL_FUNC_PASSWORD = 0x00000001 ,
-	DEF_BOOTSEL_FUNC_CHANG_PW = 0x00000002 ,
-	DEF_BOOTSEL_FUNC_UD_EXTSD = 0x00000004 ,
-	DEF_BOOTSEL_FUNC_UD_USB   = 0x00000008 ,
-	DEF_BOOTSEL_FUNC_MENU     = 0x00000010 ,
+	DEF_BOOTSEL_FUNC_PASSWORD    = 0x00000001 ,
+	DEF_BOOTSEL_FUNC_CHANG_PW    = 0x00000002 ,
+	DEF_BOOTSEL_FUNC_UD_EXTSD    = 0x00000004 ,
+	DEF_BOOTSEL_FUNC_UD_USB      = 0x00000008 ,
+	DEF_BOOTSEL_FUNC_MENU        = 0x00000010 ,
+	DEF_BOOTSEL_FUNC_CHG_STORAGE = 0x00000020 ,
 } ;
+
+#define DEF_BOOTSEL_FUNC_DEFAULT (DEF_BOOTSEL_FUNC_UD_USB|DEF_BOOTSEL_FUNC_PASSWORD)
 
 typedef struct __bootselfunc__ {
 	char *        name ;
@@ -84,14 +87,33 @@ typedef struct __bootselfunc__ {
 } BOOTSELFUNC ;
 
 static BOOTSELFUNC const bootselfuncarray[] = {
-	{ (char *)"password" , DEF_BOOTSEL_FUNC_PASSWORD } ,
-	{ (char *)"change"   , DEF_BOOTSEL_FUNC_CHANG_PW } ,
-	{ (char *)"extsd"    , DEF_BOOTSEL_FUNC_UD_EXTSD } ,
-	{ (char *)"usb"      , DEF_BOOTSEL_FUNC_UD_USB   } ,
-	{ (char *)"menu"     , DEF_BOOTSEL_FUNC_MENU     } ,
+	{ (char *)"password" , DEF_BOOTSEL_FUNC_PASSWORD    } ,
+	{ (char *)"change"   , DEF_BOOTSEL_FUNC_CHANG_PW    } ,
+	{ (char *)"extsd"    , DEF_BOOTSEL_FUNC_UD_EXTSD    } ,
+	{ (char *)"usb"      , DEF_BOOTSEL_FUNC_UD_USB      } ,
+	{ (char *)"menu"     , DEF_BOOTSEL_FUNC_MENU        } ,
+	{ (char *)"storage"  , DEF_BOOTSEL_FUNC_CHG_STORAGE } ,
 } ;
 
 void bootsel_adjust_bootargs( void ) ;
+
+int bootsel_changestorage( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_CHG_STORAGE )
+	{
+		return ( 0 ) ;
+	}
+	return ( 1 ) ;
+}
+
+int bootsel_usbstorage( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_UD_USB )
+	{
+		return ( 0 ) ;
+	}
+	return ( 1 ) ;	
+}
 
 static int bootsel_getmmcdevno( void )
 {
@@ -181,6 +203,7 @@ void bootsel_init( void )
 			memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 			memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 			bootselinfodata.ulPasswordLen = 8 ;
+			bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
 			bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 			bootsel_write_setting_data( ) ;
 		}
@@ -189,6 +212,7 @@ void bootsel_init( void )
 		memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 		memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 		bootselinfodata.ulPasswordLen = 8 ;
+		bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
 		bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 	#endif
 	bootselnewpasswordlen     = 0 ;
@@ -806,6 +830,7 @@ U_BOOT_CMD(
 	"    function extsd    <enable/disable>\n"
 	"    function usb      <enable/disable>\n"
 	"    function menu     <enable/disable>\n"
+	"    function storage  <enable/disable>\n"
 	/*
 	"** MAC class **\n"
 	"    mac 0 <00:00:00:00:00:00>\n"
