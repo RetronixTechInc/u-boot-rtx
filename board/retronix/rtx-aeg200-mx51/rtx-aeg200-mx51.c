@@ -47,6 +47,27 @@ u32 get_board_rev(void)
 	return rev;
 }
 
+#define	MX51_PAD_NANDF_WE_B__GPIO3_3        IOMUX_PAD(0x4e4, 0x108, 3, 0x0980, 0, MX51_GPIO_PAD_CTRL)
+#define MX51_PAD_NANDF_RE_B__GPIO3_4		IOMUX_PAD(0x4e8, 0x10c, 3, 0x0984, 0, MX51_GPIO_PAD_CTRL)
+#define MX51_PAD_NANDF_ALE__GPIO3_5			IOMUX_PAD(0x4ec, 0x110, 3, 0x0988, 0, MX51_GPIO_PAD_CTRL)
+#define MX51_PAD_NANDF_WP_B__GPIO3_7		IOMUX_PAD(0x4f4, 0x118, 3, 0x0990, 0, MX51_GPIO_PAD_CTRL)
+
+static void setup_iomux_led(void)
+{
+	static const iomux_v3_cfg_t led_pads[] = {
+		MX51_PAD_NANDF_WE_B__GPIO3_3,
+		MX51_PAD_NANDF_RE_B__GPIO3_4,
+		MX51_PAD_NANDF_ALE__GPIO3_5 ,
+		MX51_PAD_NANDF_WP_B__GPIO3_7,
+	};
+
+	imx_iomux_v3_setup_multiple_pads(led_pads, ARRAY_SIZE(led_pads));
+	gpio_direction_output(IMX_GPIO_NR(3, 3), 0);
+	gpio_direction_output(IMX_GPIO_NR(3, 4), 0);
+	gpio_direction_output(IMX_GPIO_NR(3, 5), 0);
+	gpio_direction_output(IMX_GPIO_NR(3, 7), 0);
+}
+
 #define UART_PAD_CTRL	(PAD_CTL_HYS | PAD_CTL_PUS_100K_DOWN | PAD_CTL_DSE_HIGH)
 
 static void setup_iomux_uart(void)
@@ -351,6 +372,7 @@ int board_mmc_init(bd_t *bis)
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
+	setup_iomux_led();
 	setup_iomux_fec();
 #ifdef CONFIG_USB_EHCI_MX5
 	setup_usb_h1();

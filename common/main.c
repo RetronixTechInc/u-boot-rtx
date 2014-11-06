@@ -17,6 +17,12 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+void __weak set_boot_storage(void)
+{
+}
+#endif
+
 /*
  * Board-specific Platform code can reimplement show_boot_progress () if needed
  */
@@ -63,6 +69,7 @@ int get_mmc_env_devno(void) ;
 #ifdef CONFIG_BOOT_SYSTEM
 void bootsel_init( void );
 int bootsel_checkstorage( void );
+int bootsel_usbstorage( void );
 #endif
 
 #ifdef CONFIG_BOOT_SYSTEM_PASSWORD
@@ -87,35 +94,20 @@ void main_loop(void)
 	setenv("ver", version_string);  /* set version variable */
 #endif /* CONFIG_VERSION_VARIABLE */
 
+#ifdef CONFIG_BOOT_SYSTEM
+	bootsel_init() ;
+#endif
+
 #ifdef CONFIG_DYNAMIC_MMC_DEVNO
-	switch( get_mmc_env_devno() )
-	{
-		case 0 :
-			setenv("storage", "mmc dev 0");
-			setenv("root_loc","root=/dev/mmcblk0p1");
-			break ;
-		case 1 :
-			setenv("storage", "mmc dev 1");
-			setenv("root_loc","root=/dev/mmcblk1p1");
-			break ;
-		case 2 :
-			setenv("storage", "mmc dev 2");
-			setenv("root_loc","root=/dev/mmcblk2p1");
-			break ;
-		default :
-			setenv("storage", "mmc dev 2");
-			setenv("root_loc","root=/dev/mmcblk2p1");			
-			break ;
-	}
+	set_boot_storage() ;
 #endif
 
 #ifdef CONFIG_CMD_USB
-	usb_stop();
-	usb_init();
-#endif
-
-#ifdef CONFIG_BOOT_SYSTEM
-	bootsel_init() ;
+	if ( bootsel_usbstorage() )
+	{
+		usb_stop();
+		usb_init();
+	}
 #endif
 
 	cli_init();

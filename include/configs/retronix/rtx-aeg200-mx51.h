@@ -162,7 +162,7 @@
 		"root_loc=root=/dev/mmcblk0p1\0" \
 		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
 		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk;bootm ${loadaddr} ${rd_loadaddr}\0" \
-		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel ; bootm\0"	\
+		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"	\
 		"bootcmd=run bootcmd_gen\0"	\
 		"version=" CONFIG_VERSION_STRING "\0"
 

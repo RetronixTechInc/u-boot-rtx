@@ -18,7 +18,7 @@
 #include <splash.h>
 #include <video.h>
 
-static int bmp_info (ulong addr);
+int bmp_info (ulong addr);
 
 /*
  * Allocate and decompress a BMP image using gunzip().
@@ -185,7 +185,7 @@ U_BOOT_CMD(
  * Return:      None
  *
  */
-static int bmp_info(ulong addr)
+int bmp_info(ulong addr)
 {
 	bmp_image_t *bmp=(bmp_image_t *)addr;
 	void *bmp_alloc_addr = NULL;
