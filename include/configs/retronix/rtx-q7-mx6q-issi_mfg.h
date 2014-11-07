@@ -6,14 +6,13 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __RTX_VALOR_MX6DL_CONFIG_H
-#define __RTX_VALOR_MX6DL_CONFIG_H
+#ifndef __RTX_Q7_MX6S_CONFIG_H
+#define __RTX_Q7_MX6S_CONFIG_H
 
 #define CONFIG_MX6
-#define CONFIG_MX6DL
-#define CONFIG_MACH_TYPE	MACH_TYPE_RTX_VALOR111_MX6DL
-//#define CONFIG_MACH_TYPE	MACH_TYPE_MX6Q_SMARC
-#define CONFIG_VERSION_STRING "rtx-valor111-mx6dl"
+#define CONFIG_MX6Q
+#define CONFIG_MACH_TYPE	MACH_TYPE_MX6Q_Q7
+
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -52,7 +51,7 @@
 #define CONFIG_MXC_GPIO
 
 #define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE           UART4_BASE
+#define CONFIG_MXC_UART_BASE           UART1_BASE
 
 #define CONFIG_CMD_FUSE
 #ifdef CONFIG_CMD_FUSE
@@ -76,19 +75,19 @@
 
 #define CONFIG_CMD_FS_GENERIC
 
-//#define CONFIG_CMD_PING
-//#define CONFIG_CMD_DHCP
-//#define CONFIG_CMD_MII
-//#define CONFIG_CMD_NET
-//#define CONFIG_FEC_MXC
-//#define CONFIG_MII
-//#define IMX_FEC_BASE			        ENET_BASE_ADDR
-//#define CONFIG_FEC_XCV_TYPE		        RGMII
-//#define CONFIG_ETHPRIME			        "FEC"
-//#define CONFIG_FEC_MXC_PHYADDR		    1
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_MII
+#define CONFIG_CMD_NET
+#define CONFIG_FEC_MXC
+#define CONFIG_MII
+#define IMX_FEC_BASE			        ENET_BASE_ADDR
+#define CONFIG_FEC_XCV_TYPE		        RGMII
+#define CONFIG_ETHPRIME			        "FEC"
+#define CONFIG_FEC_MXC_PHYADDR		    1
 
-//#define CONFIG_PHYLIB
-//#define CONFIG_PHY_ATHEROS
+#define CONFIG_PHYLIB
+#define CONFIG_PHY_ATHEROS
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -110,19 +109,18 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
-#define CONFIG_BOOTARGS         "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait rw video=off"
+#define CONFIG_BOOTARGS         "console=ttymxc0,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
 #define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
 
-//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=off"
-//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/sda1 init=/sbin/init rootwait rw video=off"
-//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000"
+//#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk1p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 - 0x10F00000"
 
 
 #define CONFIG_ARP_TIMEOUT             200UL
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		       "RTX-VALOR111 MX6DL U-Boot > "
+#define CONFIG_SYS_PROMPT		       "RTX-Q7 MX6D U-Boot > "
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE              512
@@ -145,7 +143,7 @@
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
-#define PHYS_SDRAM_SIZE		           (1u * 1024 * 1024 * 1024)
+#define PHYS_SDRAM_SIZE		           (512u * 1024 * 1024)
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR
@@ -177,4 +175,4 @@
 #define CONFIG_POWER_PFUZE100
 #define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
 
-#endif                         /* __RTX_VALOR_MX6DL_CONFIG_H */
+#endif                         /* __RTX_Q7_MX6S_CONFIG_H */
