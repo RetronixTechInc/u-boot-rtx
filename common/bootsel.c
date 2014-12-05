@@ -33,6 +33,10 @@
 int get_mmc_env_devno(void) ;
 #endif
 
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+#define CONFIG_RTX_MAGIC_PACKAGE "This file is RTX magic package for start up from extsdcard.\n"
+#endif
+
 static unsigned char const bootseldefaultmagiccode[16] = {
 	0x10 , 0x01 , 0xC0 , 0x34 , 0x00 , 0x00 , 0x71 , 0x00 ,
 	0x00 , 0xA0 , 0x00 , 0xdf , 0x00 , 0x17 , 0x00 , 0x00 
@@ -80,6 +84,7 @@ enum __BOOTSEL_FUNC__{
 } ;
 
 #define DEF_BOOTSEL_FUNC_DEFAULT (DEF_BOOTSEL_FUNC_UD_USB|DEF_BOOTSEL_FUNC_PASSWORD)
+//#define DEF_BOOTSEL_FUNC_DEFAULT 0
 
 typedef struct __bootselfunc__ {
 	char *        name ;
@@ -360,7 +365,6 @@ static int bootsel_load_system_from_emmc( int sdid )
 
 	sprintf( sdidstr , "%d" , sdid ) ;
 	extsd_dev = find_mmc_device( sdid ) ;
-
 	if ( !extsd_dev ) 
 	{
 		return 0 ;
@@ -371,6 +375,17 @@ static int bootsel_load_system_from_emmc( int sdid )
 		return 0 ;
 	}
 
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+	if ( extsd_dev->block_dev.block_read( (int)sdid , 0 , 1 , (ulong *)CONFIG_LOADADDR ) != 1 )
+	{
+		return 0 ;
+	}
+
+	if( !memcmp( (const char *)CONFIG_LOADADDR , CONFIG_RTX_MAGIC_PACKAGE , strlen( CONFIG_RTX_MAGIC_PACKAGE ) ))
+	{
+		goto run_old_command ;
+	}	
+#endif
 	if ( extsd_dev->block_dev.block_read( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , 1 , (void *)CONFIG_LOADADDR ) != 1 )
 	{
 		return 0 ;
@@ -419,6 +434,17 @@ static int bootsel_load_system_from_emmc( int sdid )
 	run_command( "run bootcmd_update" , 0 ) ;
 	goto run_boot_exit ;
 
+run_old_command:
+	setenv( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm ${loadaddr} 0x800 0x2000;mmc read ${rd_loadaddr} 0x3000 0x2000 " ) ;
+	
+	printf("boot from extsd card\n") ;
+	setenv( "rstorage" , "mmc" ) ;
+	setenv( "roption"  , "update" ) ;
+	setenv( "ext_args" , "setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init" ) ;
+
+	run_command( "run bootcmd_update" , 0 ) ;
+
+	goto run_boot_exit ;
 run_file_command :
 	setenv( "rstorage" , "mmc" ) ;
 	setenv( "roption"  , "update" ) ;
@@ -439,7 +465,7 @@ static int bootsel_load_system_from_usb( int usbid )
 	int needcheckcode = 0 ;
 	char usbidstr[8] ;
 	block_dev_desc_t *stor_dev = NULL;
-	
+
 	if ( usbid < 0 )
 	{
 		return 0 ;
@@ -451,7 +477,19 @@ static int bootsel_load_system_from_usb( int usbid )
 	{
 		return 0 ;
 	}
-	
+
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+	if ( stor_dev->block_read( usbid , 0 , 1 , (ulong *)CONFIG_LOADADDR ) != 1 )
+	{
+		return 0 ;
+	}
+
+	if( !memcmp( (const char *)CONFIG_LOADADDR , CONFIG_RTX_MAGIC_PACKAGE , strlen( CONFIG_RTX_MAGIC_PACKAGE ) ))
+	{
+		goto run_old_command ;
+	}
+//	printf("read: %s, sizeof: %d, strlen: %d,strlen2: %d\n ", CONFIG_LOADADDR , sizeof(CONFIG_LOADADDR), strlen(CONFIG_LOADADDR),strlen( CONFIG_RTX_MAGIC_PACKAGE ) ) ;
+#endif
 	if ( stor_dev->block_read( usbid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , 1 , (ulong *)CONFIG_LOADADDR ) != 1 )
 	{
 		return 0 ;
@@ -499,6 +537,16 @@ static int bootsel_load_system_from_usb( int usbid )
 	run_command( "run bootcmd_update" , 0 ) ;
 	goto run_boot_exit ;
 	
+run_old_command:
+	setenv( "bootcmd_update"  , "run bootargs_ramdisk;mmc dev 1;mmc read ${loadaddr} 0x800 0x2000;mmc read ${rd_loadaddr} 0x3000 0x2000;bootm ${loadaddr} ${rd_loadaddr}" ) ;
+	
+	printf("boot from extsd card\n") ;
+	setenv( "bootargs_ramdisk" , "setenv bootargs console=ttymxc3 root=/dev/ram0 rootwait rw rdinit=/sbin/init\0" ) ;
+
+	run_command( "run bootcmd_update" , 0 ) ;
+
+	goto run_boot_exit ;
+		
 run_file_command :
 	setenv( "rstorage" , "usb" ) ;
 	setenv( "roption"  , "update" ) ;
