@@ -63,7 +63,7 @@ obj-$(CONFIG_ENV_IS_IN_ONENAND) += env_onenand.o
 obj-$(CONFIG_ENV_IS_IN_SPI_FLASH) += env_sf.o
 obj-$(CONFIG_ENV_IS_IN_REMOTE) += env_remote.o
 obj-$(CONFIG_ENV_IS_IN_UBI) += env_ubi.o
-#obj-$(CONFIG_ENV_IS_NOWHERE) += env_nowhere.o
+obj-$(CONFIG_ENV_IS_NOWHERE) += env_nowhere.o
 
 # command
 obj-$(CONFIG_CMD_AES) += cmd_aes.o
