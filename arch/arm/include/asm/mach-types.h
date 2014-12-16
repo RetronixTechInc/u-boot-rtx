@@ -999,9 +999,18 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_EUKREA_CPUIMX28SD    4573
 #define MACH_TYPE_DOMOTAB              4574
 #define MACH_TYPE_PFLA03               4575
+#define MACH_TYPE_MX6Q_SABREAUTO       3529
+#define MACH_TYPE_MX6Q_SABRELITE       3769
+#define MACH_TYPE_MX6Q_SABRESD         3980
+#define MACH_TYPE_MX6Q_Q7              4480
+#define MACH_TYPE_MX6Q_A6              4481
+#define MACH_TYPE_MX6Q_SMARC           4482
+#define MACH_TYPE_MX6Q_AX_A3           4580
+#define MACH_TYPE_MX6S_AX_VALOR114     4581
 #define MACH_TYPE_RTX_A53_MX53         5100
 #define MACH_TYPE_RTX_BISHOP_MX53      5101
 #define MACH_TYPE_RTX_Q7_MX6S          5200
+#define MACH_TYPE_RTX_SMARC_MX6Q       5250
 #define MACH_TYPE_RTX_VALOR111_MX6DL   5300
 
 #ifdef CONFIG_ARCH_EBSA110
@@ -12848,6 +12857,102 @@ extern unsigned int __machine_arch_type;
 # define machine_is_pfla03()	(0)
 #endif
 
+#ifdef CONFIG_MACH_MX6Q_SABREAUTO
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_SABREAUTO
+# endif
+# define machine_is_mx6q_sabreauto()	(machine_arch_type == MACH_TYPE_MX6Q_SABREAUTO)
+#else
+# define machine_is_mx6q_sabreauto()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6Q_SABRELITE
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_SABRELITE
+# endif
+# define machine_is_mx6q_sabrelite()	(machine_arch_type == MACH_TYPE_MX6Q_SABRELITE)
+#else
+# define machine_is_mx6q_sabrelite()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6Q_SABRESD
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_SABRESD
+# endif
+# define machine_is_mx6q_sabresd()	(machine_arch_type == MACH_TYPE_MX6Q_SABRESD)
+#else
+# define machine_is_mx6q_sabresd()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6Q_Q7
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_Q7
+# endif
+# define machine_is_mx6q_q7()	(machine_arch_type == MACH_TYPE_MX6Q_Q7)
+#else
+# define machine_is_mx6q_q7()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6Q_A6
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_A6
+# endif
+# define machine_is_mx6q_a6()	(machine_arch_type == MACH_TYPE_MX6Q_A6)
+#else
+# define machine_is_mx6q_a6()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6Q_SMARC
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_SMARC
+# endif
+# define machine_is_mx6q_smarc()	(machine_arch_type == MACH_TYPE_MX6Q_SMARC)
+#else
+# define machine_is_mx6q_smarc()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6Q_AX_A3
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6Q_AX_A3
+# endif
+# define machine_is_mx6q_ax_a3()	(machine_arch_type == MACH_TYPE_MX6Q_AX_A3)
+#else
+# define machine_is_mx6q_ax_a3()	(0)
+#endif
+
+#ifdef CONFIG_MACH_MX6S_AX_VALOR114
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_MX6S_AX_VALOR114
+# endif
+# define machine_is_mx6s_ax_valor114()	(machine_arch_type == MACH_TYPE_MX6S_AX_VALOR114)
+#else
+# define machine_is_mx6s_ax_valor114()	(0)
+#endif
+
 #ifdef CONFIG_MACH_RTX_A53_MX53
 # ifdef machine_arch_type
 #  undef machine_arch_type
@@ -12882,6 +12987,18 @@ extern unsigned int __machine_arch_type;
 # define machine_is_rtx_q7_mx6s()	(machine_arch_type == MACH_TYPE_RTX_Q7_MX6S)
 #else
 # define machine_is_rtx_q7_mx6s()	(0)
+#endif
+
+#ifdef CONFIG_MACH_RTX_SMARC_MX6Q
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_RTX_SMARC_MX6Q
+# endif
+# define machine_is_rtx_smarc_mx6q()	(machine_arch_type == MACH_TYPE_RTX_SMARC_MX6Q)
+#else
+# define machine_is_rtx_smarc_mx6q()	(0)
 #endif
 
 #ifdef CONFIG_MACH_RTX_VALOR111_MX6DL

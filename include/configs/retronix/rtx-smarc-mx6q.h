@@ -10,7 +10,6 @@
 #define __RTX_Q7_MX6S_CONFIG_H
 
 #define CONFIG_MX6
-#define CONFIG_MX6QDL
 #define CONFIG_MX6Q
 #define CONFIG_MACH_TYPE	MACH_TYPE_RTX_SMARC_MX6Q
 #define CONFIG_VERSION_STRING "rtx-smarc-mx6q"
@@ -63,7 +62,7 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
-#define CONFIG_SYS_FSL_USDHC_NUM	   2
+#define CONFIG_SYS_FSL_USDHC_NUM	   3
 
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
@@ -115,7 +114,7 @@
 		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpu_memory=64M\0" \
 		"fecmac_val=fec_mac=fa:3a:65:c7:14:ea\0" \
 		"set_display=run hdmi\0" \
-		"bootargs_base=setenv bootargs console=ttymxc0,115200 ${fecmac_val}\0"\
+		"bootargs_base=setenv bootargs console=ttymxc4,115200 ${fecmac_val}\0"\
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
 		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
 		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
@@ -233,7 +232,7 @@
 #define CONFIG_BOOT_SYSTEM
 #ifdef CONFIG_BOOT_SYSTEM
 	#define CONFIG_BOOT_SYSTEM_PASSWORD
-	//#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
+	#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 	#define CONFIG_BOOT_CMD_RESET_ENV
 	#define CONFIG_BOOT_VIDEO_BG_LOGO
 	

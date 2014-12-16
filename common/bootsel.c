@@ -181,7 +181,7 @@ void bootsel_init( void )
 		u32 blksize ;
 		void *pbuf = (void *)CONFIG_LOADADDR ;
 		int ok = 0 ;
-		
+
 		extsd_dev = find_mmc_device( sdid ) ;
 		if ( extsd_dev ) 
 		{
@@ -946,6 +946,18 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 		}
 	}
 	printf( "\n" ) ;
+
+	for ( loop = 0 ; loop < sizeof(bootselfuncarray) / sizeof(BOOTSELFUNC) ; loop ++ )
+	{
+		if ( bootselinfodata.ulFunction & bootselfuncarray[loop].mask )
+		{
+			printf( "function %s : disable \n", bootselfuncarray[loop].name ) ;
+		}
+		else
+		{
+			printf( "function %s : enable \n", bootselfuncarray[loop].name ) ;
+		}
+	}
 	
 	return CMD_RET_SUCCESS;
 }
