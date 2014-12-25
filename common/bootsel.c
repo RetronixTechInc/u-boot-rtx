@@ -434,17 +434,17 @@ static int bootsel_load_system_from_emmc( int sdid )
 	run_command( "run bootcmd_update" , 0 ) ;
 	goto run_boot_exit ;
 
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
 run_old_command:
 	setenv( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm ${loadaddr} 0x800 0x2000;mmc read ${rd_loadaddr} 0x3000 0x2000 " ) ;
-	
 	printf("boot from extsd card\n") ;
 	setenv( "rstorage" , "mmc" ) ;
 	setenv( "roption"  , "update" ) ;
 	setenv( "ext_args" , "setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init" ) ;
-
 	run_command( "run bootcmd_update" , 0 ) ;
-
 	goto run_boot_exit ;
+#endif
+
 run_file_command :
 	setenv( "rstorage" , "mmc" ) ;
 	setenv( "roption"  , "update" ) ;
@@ -537,16 +537,15 @@ static int bootsel_load_system_from_usb( int usbid )
 	run_command( "run bootcmd_update" , 0 ) ;
 	goto run_boot_exit ;
 	
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
 run_old_command:
 	setenv( "bootcmd_update"  , "run bootargs_ramdisk;mmc dev 1;mmc read ${loadaddr} 0x800 0x2000;mmc read ${rd_loadaddr} 0x3000 0x2000;bootm ${loadaddr} ${rd_loadaddr}" ) ;
-	
 	printf("boot from extsd card\n") ;
 	setenv( "bootargs_ramdisk" , "setenv bootargs console=ttymxc3 root=/dev/ram0 rootwait rw rdinit=/sbin/init\0" ) ;
-
 	run_command( "run bootcmd_update" , 0 ) ;
-
 	goto run_boot_exit ;
-		
+#endif
+
 run_file_command :
 	setenv( "rstorage" , "usb" ) ;
 	setenv( "roption"  , "update" ) ;

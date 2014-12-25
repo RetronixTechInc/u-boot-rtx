@@ -12,6 +12,7 @@
 #define CONFIG_MX6
 #define CONFIG_MX6Q
 #define CONFIG_MACH_TYPE	MACH_TYPE_RTX_SMARC_MX6Q
+
 #define CONFIG_VERSION_STRING "rtx-smarc-mx6q"
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
@@ -62,7 +63,7 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
-#define CONFIG_SYS_FSL_USDHC_NUM	   3
+#define CONFIG_SYS_FSL_USDHC_NUM		2
 
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
@@ -118,12 +119,12 @@
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
 		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
 		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
-		"r_dtb=mmc read ${dtb_loadaddr} 0x9000 0x600\0" \
+		"r_dtb=mmc read ${dtb_loadaddr} 0xA000 0x600\0" \
 		"storage=mmc dev 2\0" \
 		"root_loc=root=/dev/mmcblk0p1\0" \
 		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
 		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk r_dtb ;bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
-		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"	\
+		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage ; run r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"	\
 		"bootcmd=run bootcmd_gen\0"	\
 		"version=" CONFIG_VERSION_STRING "\0"
 
@@ -175,8 +176,8 @@
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
 	#define CONFIG_ENV_OFFSET		   (12288 * 1024)
-	#define CONFIG_DYNAMIC_MMC_DEVNO
-	#define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC4 */
+//	#define CONFIG_DYNAMIC_MMC_DEVNO
+	#define CONFIG_SYS_MMC_ENV_DEV		2	/* SDHC4 */
 #endif
 
 #define CONFIG_OF_LIBFDT
@@ -232,7 +233,7 @@
 #define CONFIG_BOOT_SYSTEM
 #ifdef CONFIG_BOOT_SYSTEM
 	#define CONFIG_BOOT_SYSTEM_PASSWORD
-	#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
+	//#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 	#define CONFIG_BOOT_CMD_RESET_ENV
 	#define CONFIG_BOOT_VIDEO_BG_LOGO
 	
