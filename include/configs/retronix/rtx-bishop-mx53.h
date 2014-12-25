@@ -145,7 +145,7 @@
 
 /* FLASH and environment organization */
 #define CONFIG_SYS_NO_FLASH
-#define CONFIG_ENV_IS_NOWHERE
+//#define CONFIG_ENV_IS_NOWHERE
 
 #define CONFIG_ENV_SIZE        (8 * 1024)
 
