@@ -11,9 +11,8 @@
 
 #define CONFIG_MX6
 #define CONFIG_MX6Q
-#define CONFIG_MACH_TYPE	MACH_TYPE_RTX_SMARC_MX6Q
-
-#define CONFIG_VERSION_STRING "rtx-smarc-mx6q"
+#define CONFIG_MACH_TYPE	MACH_TYPE_MX6Q_Q7
+#define CONFIG_VERSION_STRING "rtx-q7-mx6q"
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -52,7 +51,7 @@
 #define CONFIG_MXC_GPIO
 
 #define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE           UART5_BASE
+#define CONFIG_MXC_UART_BASE           UART1_BASE
 
 #define CONFIG_CMD_FUSE
 #ifdef CONFIG_CMD_FUSE
@@ -63,7 +62,7 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
-#define CONFIG_SYS_FSL_USDHC_NUM		2
+#define CONFIG_SYS_FSL_USDHC_NUM	   3
 
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
@@ -108,14 +107,16 @@
 #define CONFIG_LOADADDR                0x10800000
 #define CONFIG_RD_LOADADDR             0x11000000
 #define CONFIG_DTB_LOADADDR            0x10F00000
-#define CONFIG_SYS_TEXT_BASE           0x17800000
+#define CONFIG_SYS_TEXT_BASE           0x27800000
 
+#if 1
 #define CONFIG_EXTRA_ENV_SETTINGS \
 		"hdmi=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1024x768M@60,if=RGB24,bpp=32\0" \
+		"lvds_dual=setenv bootargs ${bootargs} video=mxcfb0:dev=ldb,LDB-1024x600,if=RGB24,bpp=32 video=mxcfb1:dev=ldb,LDB-1024x600,if=RGB24,bpp=32 ldb=dul0\0" \
 		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpu_memory=64M\0" \
 		"fecmac_val=fec_mac=fa:3a:65:c7:14:ea\0" \
-		"set_display=run hdmi\0" \
-		"bootargs_base=setenv bootargs console=ttymxc4,115200 ${fecmac_val}\0"\
+		"set_display=run lvds_dual\0" \
+		"bootargs_base=setenv bootargs console=ttymxc0,115200 ${fecmac_val}\0"\
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
 		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
 		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
@@ -123,17 +124,21 @@
 		"storage=mmc dev 2\0" \
 		"root_loc=root=/dev/mmcblk0p1\0" \
 		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
-		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk r_dtb ;bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
+		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage; run r_kernel r_ramdisk r_dtb ;bootm ${dtb_loadaddr} ${loadaddr} ${rd_loadaddr} \0" \
 		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage ; run r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"	\
 		"bootcmd=run bootcmd_gen\0"	\
 		"version=" CONFIG_VERSION_STRING "\0"
 
+#else
+#define CONFIG_BOOTARGS         "console=ttymxc0,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=off fec_mac=fa:3a:65:c7:14:ea"
+#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
+#endif	
 
 #define CONFIG_ARP_TIMEOUT             200UL
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		       "RTX-SMARC MX6Q U-Boot > "
+#define CONFIG_SYS_PROMPT		       "RTX-Q7 MX6D U-Boot > "
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE              512
