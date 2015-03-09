@@ -109,11 +109,14 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
-#define CONFIG_BOOTARGS         "console=ttymxc0,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
-#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
+//#define CONFIG_BOOTARGS         "console=ttymxc0,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
 
-//#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk1p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
-//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 - 0x10F00000"
+#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 fec_mac=fa:3a:65:c7:14:ea"
+#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 - 0x10F00000"
+
+//#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 fec_mac=fa:3a:65:c7:14:ea"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000"
 
 
 #define CONFIG_ARP_TIMEOUT             200UL
@@ -143,7 +146,7 @@
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
-#define PHYS_SDRAM_SIZE		           (512u * 1024 * 1024)
+#define PHYS_SDRAM_SIZE		           (1024u * 1024 * 1024)
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR

@@ -109,31 +109,14 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
-//#define CONFIG_EXTRA_ENV_USE_DTB
+#define CONFIG_BOOTARGS         "console=ttymxc0,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=mxcfb0:dev=hdmi,if=RGB24,fbpix=RGB24 fec_mac=fa:3a:65:c7:14:ea"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
 
-#ifdef CONFIG_EXTRA_ENV_USE_DTB
-	#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"
-#else
-	#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel; bootm\0"
-#endif
+//#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 fec_mac=fa:3a:65:c7:14:ea"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 - 0x10F00000"
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
-		"hdmi=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
-		"set_mem=setenv bootargs ${bootargs} fbmem=28M,28M,28M gpu_nommu gpu_memory=256M\0" \
-		"fecmac_val=fec_mac=fa:3a:65:c7:14:eb\0" \
-		"set_display=run hdmi\0" \
-		"bootargs_base=setenv bootargs console=ttymxc0,115200 ${fecmac_val}\0"\
-		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
-		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
-		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
-		"r_dtb=mmc read ${dtb_loadaddr} 0x9800 0x600\0" \
-		"storage=mmc dev 2\0" \
-		"root_loc=root=/dev/mmcblk0p1\0" \
-		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
-		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk r_dtb ;bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
-		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
-		"bootcmd=run bootcmd_gen\0"	\
-		"version=" CONFIG_VERSION_STRING "\0"
+//#define CONFIG_BOOTARGS         "console=ttymxc0,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 fec_mac=fa:3a:65:c7:14:ea"
+#define CONFIG_BOOTCOMMAND      "bootm 0x10800000"
 
 
 #define CONFIG_ARP_TIMEOUT             200UL
@@ -176,41 +159,12 @@
 
 /* FLASH and environment organization */
 #define CONFIG_SYS_NO_FLASH
+#define CONFIG_ENV_IS_NOWHERE
 
-#define CONFIG_ENV_SIZE			       (8 * 1024)
-
-#define CONFIG_ENV_IS_IN_MMC
-
-#if defined(CONFIG_ENV_IS_IN_MMC)
-	#define CONFIG_ENV_OFFSET		   (12288 * 1024)
-	#define CONFIG_DYNAMIC_MMC_DEVNO
-	#define CONFIG_SYS_MMC_ENV_DEV		2	/* SDHC4 */
-#endif
+#define CONFIG_ENV_OFFSET      (6 * 64 * 1024)
+#define CONFIG_ENV_SIZE        (8 * 1024)
 
 #define CONFIG_OF_LIBFDT
-
-/* Framebuffer */
-#define CONFIG_VIDEO
-#define CONFIG_VIDEO_IPUV3
-#define CONFIG_CFB_CONSOLE
-#define CONFIG_VGA_AS_SINGLE_DEVICE
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-#define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
-#define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
-#define CONFIG_CMD_BMP
-/* allow decompressing max. 4MB */
-#define CONFIG_VIDEO_BMP_GZIP
-/* this is not only used by cfb_console.c for the logo, but also in cmd_bmp.c */
-#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (4*1024*1024)
-#define CONFIG_BMP_16BPP
-#define CONFIG_BMP_32BPP
-//#define CONFIG_VIDEO_LOGO
-//#define CONFIG_VIDEO_BMP_LOGO
-#define CONFIG_IPUV3_CLK 260000000
-#define CONFIG_IMX_HDMI
-#define CONFIG_IMX_VIDEO_SKIP
 
 /* I2C Configs */
 #define CONFIG_CMD_I2C
@@ -223,40 +177,5 @@
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_PFUZE100
 #define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
-
-/* USB Configs */
-#define CONFIG_CMD_USB
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_EHCI_MX6
-#define CONFIG_USB_STORAGE
-#define CONFIG_USB_HOST_ETHER
-#define CONFIG_USB_ETHER_ASIX
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 2
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET	/* For OTG port */
-#define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CONFIG_MXC_USB_FLAGS	0
-
-
-#define CONFIG_BOOT_SYSTEM
-#ifdef CONFIG_BOOT_SYSTEM
-	#define CONFIG_BOOT_SYSTEM_PASSWORD
-	//#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
-	#define CONFIG_BOOT_CMD_RESET_ENV
-	#define CONFIG_BOOT_VIDEO_BG_LOGO
-	
-	#define CONFIG_BOOT_SYSTEM_MAX_EXTSD                  4
-	
-	#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET     0x800
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       0x2800
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 0x2F00
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   0x100
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         0x3000
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           0x3000
-	
-	#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                0xA000
-	#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  0x3000
-
-#endif
 
 #endif                         /* __RTX_Q7_MX6S_CONFIG_H */

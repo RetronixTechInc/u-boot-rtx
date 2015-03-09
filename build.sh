@@ -24,6 +24,7 @@ export CROSS_COMPILE=/opt/freescale/usr/local/gcc-4.6.2-glibc-2.13-linaro-multil
 #U_BOOT_DEFAULT_CONFIG=rtx-smarc-mx6q_config
 #U_BOOT_DEFAULT_CONFIG=rtx-smarc-mx6q_mfg_config
 U_BOOT_DEFAULT_CONFIG=rtx-a6-mx6q-issi_config
+#U_BOOT_DEFAULT_CONFIG=rtx-a6-mx6q-issi_mfg_config
 
 if [ ! -d out ] ; then
 	mkdir -p out

@@ -15,6 +15,7 @@
 #define CONFIG_VERSION_STRING "rtx-q7-mx6d"
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
+//#define CONFIG_KERNEL_USE_DTB
 
 #include <asm/arch/imx-regs.h>
 #include <asm/imx-common/gpio.h>
@@ -109,9 +110,23 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
+#ifdef CONFIG_KERNEL_USE_DTB
+		#define CONFIG_EXTRA_ENV_BOOTCMD_RAMDISK \
+			"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk r_dtb ;bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
+
+		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN \
+			"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"
+#else
+		#define CONFIG_EXTRA_ENV_BOOTCMD_RAMDISK \
+			"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk ;bootm ${loadaddr} ${rd_loadaddr}\0" \
+
+		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN \
+			"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel ; bootm ${loadaddr}\0"
+#endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
-		"hdmi=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1024x768M@60,if=RGB24,bpp=32\0" \
-		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpu_memory=64M\0" \
+		"hdmi=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
+		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpu_memory=256M\0" \
 		"fecmac_val=fec_mac=fa:3a:65:c7:14:ea\0" \
 		"set_display=run hdmi\0" \
 		"bootargs_base=setenv bootargs console=ttymxc0,115200 ${fecmac_val}\0"\
@@ -122,8 +137,8 @@
 		"storage=mmc dev 2\0" \
 		"root_loc=root=/dev/mmcblk0p1\0" \
 		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
-		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk r_dtb ;bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
-		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"	\
+		CONFIG_EXTRA_ENV_BOOTCMD_RAMDISK \
+		CONFIG_EXTRA_ENV_BOOTCMD_GEN \
 		"bootcmd=run bootcmd_gen\0"	\
 		"version=" CONFIG_VERSION_STRING "\0"
 
@@ -155,7 +170,7 @@
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
-#define PHYS_SDRAM_SIZE		           (512u * 1024 * 1024)
+#define PHYS_SDRAM_SIZE		           (1u * 1024 * 1024 * 1024)
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR

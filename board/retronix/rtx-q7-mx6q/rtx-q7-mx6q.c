@@ -532,3 +532,38 @@ int checkboard(void)
 	puts("Board: MX6-SabreSD\n");
 	return 0;
 }
+
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+int get_mmc_env_devno(void) ;
+#ifdef CONFIG_BOOT_SYSTEM
+	int bootsel_changestorage( void ) ;
+#endif
+
+void set_boot_storage(void)
+{
+	#ifdef CONFIG_BOOT_SYSTEM
+	if ( bootsel_changestorage() )
+	{
+		switch( get_mmc_env_devno() )
+		{
+			case 0 :
+				setenv("storage", "mmc dev 0");
+				setenv("root_loc","root=/dev/mmcblk1p1");
+				break ;
+			case 1 :
+				setenv("storage", "mmc dev 1");
+				setenv("root_loc","root=/dev/mmcblk1p1");
+				break ;
+			case 2 :
+				setenv("storage", "mmc dev 2");
+				setenv("root_loc","root=/dev/mmcblk0p1");
+				break ;
+			default :
+				setenv("storage", "mmc dev 2");
+				setenv("root_loc","root=/dev/mmcblk0p1");			
+				break ;
+		}
+	}
+	#endif
+}
+#endif

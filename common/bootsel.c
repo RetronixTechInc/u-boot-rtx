@@ -65,7 +65,8 @@ typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulFunction ;
 	unsigned long ulCmd ;
 	unsigned long ulStatus ;
-	unsigned char ubRecv[188] ;
+	unsigned long ulDataExistInfo ;
+	unsigned char ubRecv[184] ;
 } bootselinfo ;
 
 static bootselinfo bootselinfodata ;
