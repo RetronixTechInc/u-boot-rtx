@@ -276,7 +276,7 @@ int get_mmc_env_devno(void)
 	int dev = (soc_sbmr & 0x00001800) >> 11 ;
 
 	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	return (dev-1);
+	return dev;//(dev-1);
 }
 #endif
 
