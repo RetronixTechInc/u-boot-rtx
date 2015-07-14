@@ -242,7 +242,7 @@ int board_mmc_init(bd_t *bis)
 			break;
 		case 2:
 			imx_iomux_v3_setup_multiple_pads(
-				usdhc2_pads, ARRAY_SIZE(usdhc3_pads));
+				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
 			gpio_direction_input(USDHC3_CD_GPIO);
 			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 			break;
@@ -359,8 +359,9 @@ static int pfuze_init(void)
 #ifdef CONFIG_CMD_BMODE
 static const struct boot_mode board_boot_modes[] = {
 	/* 4 bit bus width */
-	{"sd1",	 MAKE_CFGVAL(0x40, 0x28, 0x00, 0x00)},
-	{"sd2",	 MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
+	{"sd1",	 MAKE_CFGVAL(0x40, 0x20, 0x00, 0x00)},
+	{"sd2",	 MAKE_CFGVAL(0x40, 0x28, 0x00, 0x00)},
+	{"sd3",	 MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
 	/* 8 bit bus width */
 	{"emmc", MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},
 	{NULL,	 0},
