@@ -99,7 +99,7 @@
 		"no_video=setenv bootargs ${bootargs} video=off\0" \
 		"lcd_800=setenv bootargs ${bootargs} video=mxcfb0:dev=lcd,CLAA-WVGA,if=RGB24,bpp=32\0"\
 		"hdmi_1080p=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
-		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpumem=16M\0" \
+		"set_mem=setenv bootargs ${bootargs} fbmem=28M,28M,28M vmalloc=400M gpu_nommu gpumem=16M\0" \
 		"set_display=run lcd_800\0" \
 		"bootargs_base=setenv bootargs console=ttymxc3,115200\0"\
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\

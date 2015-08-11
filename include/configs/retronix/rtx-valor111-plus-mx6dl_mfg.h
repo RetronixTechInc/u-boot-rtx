@@ -110,12 +110,8 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
-#define CONFIG_BOOTARGS \
-		"lcd_800=setenv bootargs ${bootargs} video=mxcfb0:dev=lcd,CLAA-WVGA,if=RGB24,bpp=32\0"\
-		"hdmi_1080p=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
-		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpumem=16M\0" \
-		"set_display=run lcd_800\0" \
-        "console=ttymxc3,115200 set_display set_mem rootfs=/dev/ram0 rdinit=/init rootwait rw\0" \
+#define CONFIG_BOOTARGS "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait rw fbmem=28M vmalloc=400M video=mxcfb0:dev=lcd,CLAA-WVGA,if=RGB24,bpp=32"
+//#define CONFIG_BOOTARGS "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait rw fbmem=28M vmalloc=400M video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32"
 
 #define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000"
 
