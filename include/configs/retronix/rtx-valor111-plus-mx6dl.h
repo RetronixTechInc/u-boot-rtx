@@ -101,7 +101,7 @@
 		"hdmi_1080p=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
 		"set_mem=setenv bootargs ${bootargs} fbmem=28M,28M,28M vmalloc=400M gpu_nommu gpumem=16M\0" \
 		"set_display=run lcd_800\0" \
-		"bootargs_base=setenv bootargs console=ttymxc3,115200\0"\
+		"bootargs_base=setenv bootargs console=ttymxc3,115200 consoleblank=0\0"\
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
 		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
 		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
