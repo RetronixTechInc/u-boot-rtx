@@ -12,7 +12,8 @@
 #define CONFIG_MX6
 #define CONFIG_MX6DL
 #define CONFIG_MACH_TYPE	MACH_TYPE_RTX_VALOR111_MX6DL
-#define CONFIG_VERSION_STRING "TRIPAS-mx6dl"
+//#define CONFIG_MACH_TYPE	MACH_TYPE_MX6Q_SMARC
+#define CONFIG_VERSION_STRING "rtx-valor111-mx6dl"
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -75,6 +76,20 @@
 
 #define CONFIG_CMD_FS_GENERIC
 
+//#define CONFIG_CMD_PING
+//#define CONFIG_CMD_DHCP
+//#define CONFIG_CMD_MII
+//#define CONFIG_CMD_NET
+//#define CONFIG_FEC_MXC
+//#define CONFIG_MII
+//#define IMX_FEC_BASE			        ENET_BASE_ADDR
+//#define CONFIG_FEC_XCV_TYPE		        RGMII
+//#define CONFIG_ETHPRIME			        "FEC"
+//#define CONFIG_FEC_MXC_PHYADDR		    1
+
+//#define CONFIG_PHYLIB
+//#define CONFIG_PHY_ATHEROS
+
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX               1
@@ -95,28 +110,25 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
-		"no_video=setenv bootargs ${bootargs} video=off\0" \
+#define CONFIG_BOOTARGS \
+		"lcd_800=setenv bootargs ${bootargs} video=mxcfb0:dev=lcd,CLAA-WVGA,if=RGB24,bpp=32\0"\
+		"hdmi_1080p=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
 		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpumem=16M\0" \
-		"set_display=run no_video\0" \
-		"bootargs_base=setenv bootargs console=ttymxc3,115200\0"\
-		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
-		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
-		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
-		"r_dtb=mmc read ${dtb_loadaddr} 0x9000 0x600\0" \
-		"storage=mmc dev 3\0" \
-		"root_loc=root=/dev/mmcblk0p1\0" \
-		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
-		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk;bootm ${loadaddr} ${rd_loadaddr}\0" \
-		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel; bootm ${loadaddr}\0"	\
-		"bootcmd=run bootcmd_gen\0"	\
-		"version=" CONFIG_VERSION_STRING "\0"
+		"set_display=run lcd_800\0" \
+        "console=set_display set_mem ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait rw video=off\0" \
+
+#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000"
+
+//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=off"
+//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/sda1 init=/sbin/init rootwait rw video=off"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x10800000"
+
 
 #define CONFIG_ARP_TIMEOUT             200UL
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		       "TRIPAS MX6DL U-Boot > "
+#define CONFIG_SYS_PROMPT		       "RTX-VALOR111 MX6DL U-Boot > "
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE              512
@@ -152,16 +164,10 @@
 
 /* FLASH and environment organization */
 #define CONFIG_SYS_NO_FLASH
+#define CONFIG_ENV_IS_NOWHERE
 
-#define CONFIG_ENV_SIZE			       (8 * 1024)
-
-#define CONFIG_ENV_IS_IN_MMC
-
-#if defined(CONFIG_ENV_IS_IN_MMC)
-	#define CONFIG_ENV_OFFSET		   (12288 * 1024)
-	#define CONFIG_DYNAMIC_MMC_DEVNO
-	#define CONFIG_SYS_MMC_ENV_DEV		3	/* SDHC4 */
-#endif
+#define CONFIG_ENV_OFFSET      (6 * 64 * 1024)
+#define CONFIG_ENV_SIZE        (8 * 1024)
 
 #define CONFIG_OF_LIBFDT
 
@@ -176,40 +182,5 @@
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_PFUZE100
 #define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
-
-/* USB Configs */
-#define CONFIG_CMD_USB
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_EHCI_MX6
-#define CONFIG_USB_STORAGE
-#define CONFIG_USB_HOST_ETHER
-#define CONFIG_USB_ETHER_ASIX
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 2
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET	/* For OTG port */
-#define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CONFIG_MXC_USB_FLAGS	0
-
-
-#define CONFIG_BOOT_SYSTEM
-#ifdef CONFIG_BOOT_SYSTEM
-	#define CONFIG_BOOT_SYSTEM_PASSWORD
-	//#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
-	#define CONFIG_BOOT_CMD_RESET_ENV
-	#define CONFIG_BOOT_VIDEO_BG_LOGO
-	
-	#define CONFIG_BOOT_SYSTEM_MAX_EXTSD                  4
-	
-	#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET     0x800
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       0x2800
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 0x2F00
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   0x100
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         0x3000
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           0x3000
-	
-	#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                0xA000
-	#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  0x3000
-
-#endif
 
 #endif                         /* __RTX_VALOR_MX6DL_CONFIG_H */

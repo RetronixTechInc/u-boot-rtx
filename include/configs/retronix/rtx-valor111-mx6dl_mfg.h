@@ -63,7 +63,7 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
-#define CONFIG_SYS_FSL_USDHC_NUM	   3
+#define CONFIG_SYS_FSL_USDHC_NUM	   4//3
 
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
@@ -111,7 +111,7 @@
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
 #define CONFIG_BOOTARGS         "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait rw video=off"
-#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000 0x10F00000"
+#define CONFIG_BOOTCOMMAND      "bootm 0x10800000 0x11000000"
 
 //#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=off"
 //#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/sda1 init=/sbin/init rootwait rw video=off"
