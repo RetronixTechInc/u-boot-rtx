@@ -105,13 +105,14 @@
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
 		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
 		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
-		"r_dtb=mmc read ${dtb_loadaddr} 0x9000 0x600\0" \
+		"r_dtb=mmc read ${dtb_loadaddr} 0xA000 0x600\0" \
 		"storage=mmc dev 3\0" \
 		"root_loc=root=/dev/mmcblk0p1\0" \
 		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
 		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk;bootm ${loadaddr} ${rd_loadaddr}\0" \
 		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel; bootm ${loadaddr}\0"	\
-		"bootcmd=run bootcmd_gen\0"	\
+		"bootcmd_dtb=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"	\
+		"bootcmd=run bootcmd_dtb\0"	\
 		"version=" CONFIG_VERSION_STRING "\0"
 
 #define CONFIG_ARP_TIMEOUT             200UL

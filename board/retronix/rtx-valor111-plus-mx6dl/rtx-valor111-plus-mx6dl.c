@@ -402,7 +402,7 @@ void set_boot_storage(void)
 		{
 			case 0 :
 				setenv("storage", "mmc dev 0");
-				setenv("root_loc","root=/dev/mmcblk1p1");
+				setenv("root_loc","root=/dev/mmcblk0p1");
 				printf("---Boot from SD1---\n");
 				break ;
 			case 1 :
@@ -412,12 +412,12 @@ void set_boot_storage(void)
 				break ;
 			case 2 :
 				setenv("storage", "mmc dev 2");
-				setenv("root_loc","root=/dev/mmcblk1p1");
+				setenv("root_loc","root=/dev/mmcblk2p1");
 				printf("---Boot from mSD---\n");
 				break ;
 			case 3 :
 				setenv("storage", "mmc dev 3");
-				setenv("root_loc","root=/dev/mmcblk0p1");
+				setenv("root_loc","root=/dev/mmcblk3p1");
 				printf("---Boot from eMMC---\n");
 				break ;
 			default :
