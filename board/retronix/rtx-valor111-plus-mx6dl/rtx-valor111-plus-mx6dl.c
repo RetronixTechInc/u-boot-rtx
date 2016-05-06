@@ -319,7 +319,7 @@ static int pfuze_init(void)
 	/* Increase VGEN3 from 2.5 to 2.8V */
 	pmic_reg_read(p, PFUZE100_VGEN3VOL, &reg);
 	reg &= ~0xf;
-	reg |= 0xa;
+	reg |= 0x9;//artietest 0x09(2.7V)0xa;
 	pmic_reg_write(p, PFUZE100_VGEN3VOL, reg);
 
 	/* Increase VGEN5 from 2.8 to 3V */
@@ -403,18 +403,22 @@ void set_boot_storage(void)
 			case 0 :
 				setenv("storage", "mmc dev 0");
 				setenv("root_loc","root=/dev/mmcblk1p1");
+				printf("---Boot from SD1---\n");
 				break ;
 			case 1 :
 				setenv("storage", "mmc dev 1");
 				setenv("root_loc","root=/dev/mmcblk1p1");
+				printf("---Boot from SD2---\n");
 				break ;
 			case 2 :
 				setenv("storage", "mmc dev 2");
 				setenv("root_loc","root=/dev/mmcblk1p1");
+				printf("---Boot from mSD---\n");
 				break ;
 			case 3 :
 				setenv("storage", "mmc dev 3");
 				setenv("root_loc","root=/dev/mmcblk0p1");
+				printf("---Boot from eMMC---\n");
 				break ;
 			default :
 				setenv("storage", "mmc dev 3");
