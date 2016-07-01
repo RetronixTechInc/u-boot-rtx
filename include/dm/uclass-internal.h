@@ -44,6 +44,17 @@ int uclass_bind_device(struct udevice *dev);
 int uclass_unbind_device(struct udevice *dev);
 
 /**
+ * uclass_pre_probe_child() - Deal with a child that is about to be probed
+ *
+ * Perform any pre-processing that is needed by the uclass before it can be
+ * probed.
+ *
+ * @dev:	Pointer to the device
+ * #return 0 on success, -ve on error
+ */
+int uclass_pre_probe_child(struct udevice *dev);
+
+/**
  * uclass_post_probe_device() - Deal with a device that has just been probed
  *
  * Perform any post-processing of a probed device that is needed by the
@@ -81,5 +92,28 @@ struct uclass *uclass_find(enum uclass_id key);
  * @return 0 on success, -ve on error
  */
 int uclass_destroy(struct uclass *uc);
+
+/**
+ * uclass_find_device_by_seq() - Find uclass device based on ID and sequence
+ *
+ * This searches for a device with the given seq or req_seq.
+ *
+ * For seq, if an active device has this sequence it will be returned.
+ * If there is no such device then this will return -ENODEV.
+ *
+ * For req_seq, if a device (whether activated or not) has this req_seq
+ * value, that device will be returned. This is a strong indication that
+ * the device will receive that sequence when activated.
+ *
+ * The device is NOT probed, it is merely returned.
+ *
+ * @id: ID to look up
+ * @seq_or_req_seq: Sequence number to find (0=first)
+ * @find_req_seq: true to find req_seq, false to find seq
+ * @devp: Returns pointer to device (there is only one per for each seq)
+ * @return 0 if OK, -ve on error
+ */
+int uclass_find_device_by_seq(enum uclass_id id, int seq_or_req_seq,
+			      bool find_req_seq, struct udevice **devp);
 
 #endif

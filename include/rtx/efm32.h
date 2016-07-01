@@ -6,7 +6,7 @@
 #ifndef _EFM32_H_
 #define _EFM32_H_
 
-#ifdef CONFIG_RTX_SET_TIMEOUT
+#ifdef CONFIG_RTX_EFM32
 void vEFM32_SetTimeout( void ) ;
 #endif
 

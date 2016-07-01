@@ -78,7 +78,6 @@
 
 /* SPI */
 #define CONFIG_ATMEL_SPI
-#define CONFIG_SYS_SPI_WRITE_TOUT	(5 * CONFIG_SYS_HZ)
 #define AT91_SPI_CLK			15000000
 
 /* Serial port */
@@ -154,7 +153,6 @@
 
 /* JFFS2 */
 #ifdef CONFIG_CMD_JFFS2
-#define CONFIG_MTD_NAND_ECC_JFFS2
 #define CONFIG_JFFS2_CMDLINE
 #define CONFIG_JFFS2_NAND
 #endif

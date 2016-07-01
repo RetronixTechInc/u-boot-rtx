@@ -141,9 +141,9 @@ struct dwmci_host {
 	int dev_index;
 	int dev_id;
 	int buswidth;
-	u32 clksel_val;
 	u32 fifoth_val;
 	struct mmc *mmc;
+	void *priv;
 
 	void (*clksel)(struct dwmci_host *host);
 	void (*board_init)(struct dwmci_host *host);
@@ -157,7 +157,7 @@ struct dwmci_idmac {
 	u32 cnt;
 	u32 addr;
 	u32 next_addr;
-};
+} __aligned(ARCH_DMA_MINALIGN);
 
 static inline void dwmci_writel(struct dwmci_host *host, int reg, u32 val)
 {

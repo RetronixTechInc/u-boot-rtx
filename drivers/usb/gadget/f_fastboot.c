@@ -10,6 +10,7 @@
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
+#include <config.h>
 #include <common.h>
 #include <errno.h>
 #include <malloc.h>
@@ -19,6 +20,9 @@
 #include <linux/compiler.h>
 #include <version.h>
 #include <g_dnl.h>
+#ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
+#include <fb_mmc.h>
+#endif
 
 #define FASTBOOT_VERSION		"0.4"
 
@@ -38,7 +42,7 @@
 struct f_fastboot {
 	struct usb_function usb_function;
 
-	/* IN/OUT EP's and correspoinding requests */
+	/* IN/OUT EP's and corresponding requests */
 	struct usb_ep *in_ep, *out_ep;
 	struct usb_request *in_req, *out_req;
 };
@@ -51,6 +55,7 @@ static inline struct f_fastboot *func_to_fastboot(struct usb_function *f)
 static struct f_fastboot *fastboot_func;
 static unsigned int download_size;
 static unsigned int download_bytes;
+static bool is_high_speed;
 
 static struct usb_endpoint_descriptor fs_ep_in = {
 	.bLength            = USB_DT_ENDPOINT_SIZE,
@@ -132,6 +137,7 @@ static int fastboot_bind(struct usb_configuration *c, struct usb_function *f)
 	int id;
 	struct usb_gadget *gadget = c->cdev->gadget;
 	struct f_fastboot *f_fb = func_to_fastboot(f);
+	const char *s;
 
 	/* DYNAMIC interface numbers assignments */
 	id = usb_interface_id(c, f);
@@ -156,6 +162,10 @@ static int fastboot_bind(struct usb_configuration *c, struct usb_function *f)
 	f_fb->out_ep->driver_data = c->cdev;
 
 	hs_ep_out.bEndpointAddress = fs_ep_out.bEndpointAddress;
+
+	s = getenv("serial#");
+	if (s)
+		g_dnl_set_serialnumber((char *)s);
 
 	return 0;
 }
@@ -215,10 +225,13 @@ static int fastboot_set_alt(struct usb_function *f,
 	      __func__, f->name, interface, alt);
 
 	/* make sure we don't enable the ep twice */
-	if (gadget->speed == USB_SPEED_HIGH)
+	if (gadget->speed == USB_SPEED_HIGH) {
 		ret = usb_ep_enable(f_fb->out_ep, &hs_ep_out);
-	else
+		is_high_speed = true;
+	} else {
 		ret = usb_ep_enable(f_fb->out_ep, &fs_ep_out);
+		is_high_speed = false;
+	}
 	if (ret) {
 		puts("failed to enable out ep\n");
 		return ret;
@@ -290,7 +303,7 @@ static int fastboot_add(struct usb_configuration *c)
 }
 DECLARE_GADGET_BIND_CALLBACK(usb_dnl_fastboot, fastboot_add);
 
-int fastboot_tx_write(const char *buffer, unsigned int buffer_size)
+static int fastboot_tx_write(const char *buffer, unsigned int buffer_size)
 {
 	struct usb_request *in_req = fastboot_func->in_req;
 	int ret;
@@ -338,6 +351,7 @@ static void cb_getvar(struct usb_ep *ep, struct usb_request *req)
 
 	strsep(&cmd, ":");
 	if (!cmd) {
+		error("missing variable\n");
 		fastboot_tx_write_str("FAILmissing var");
 		return;
 	}
@@ -346,10 +360,11 @@ static void cb_getvar(struct usb_ep *ep, struct usb_request *req)
 		strncat(response, FASTBOOT_VERSION, chars_left);
 	} else if (!strcmp_l1("bootloader-version", cmd)) {
 		strncat(response, U_BOOT_VERSION, chars_left);
-	} else if (!strcmp_l1("downloadsize", cmd)) {
+	} else if (!strcmp_l1("downloadsize", cmd) ||
+		!strcmp_l1("max-download-size", cmd)) {
 		char str_num[12];
 
-		sprintf(str_num, "%08x", CONFIG_USB_FASTBOOT_BUF_SIZE);
+		sprintf(str_num, "0x%08x", CONFIG_USB_FASTBOOT_BUF_SIZE);
 		strncat(response, str_num, chars_left);
 	} else if (!strcmp_l1("serialno", cmd)) {
 		s = getenv("serial#");
@@ -358,18 +373,26 @@ static void cb_getvar(struct usb_ep *ep, struct usb_request *req)
 		else
 			strcpy(response, "FAILValue not set");
 	} else {
+		error("unknown variable: %s\n", cmd);
 		strcpy(response, "FAILVariable not implemented");
 	}
 	fastboot_tx_write_str(response);
 }
 
-static unsigned int rx_bytes_expected(void)
+static unsigned int rx_bytes_expected(unsigned int maxpacket)
 {
 	int rx_remain = download_size - download_bytes;
+	int rem = 0;
 	if (rx_remain < 0)
 		return 0;
 	if (rx_remain > EP_BUFFER_SIZE)
 		return EP_BUFFER_SIZE;
+	if (rx_remain < maxpacket) {
+		rx_remain = maxpacket;
+	} else if (rx_remain % maxpacket != 0) {
+		rem = rx_remain % maxpacket;
+		rx_remain = rx_remain + (maxpacket - rem);
+	}
 	return rx_remain;
 }
 
@@ -380,6 +403,8 @@ static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
 	unsigned int transfer_size = download_size - download_bytes;
 	const unsigned char *buffer = req->buf;
 	unsigned int buffer_size = req->actual;
+	unsigned int pre_dot_num, now_dot_num;
+	unsigned int max;
 
 	if (req->status != 0) {
 		printf("Bad status: %d\n", req->status);
@@ -392,7 +417,15 @@ static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
 	memcpy((void *)CONFIG_USB_FASTBOOT_BUF_ADDR + download_bytes,
 	       buffer, transfer_size);
 
+	pre_dot_num = download_bytes / BYTES_PER_DOT;
 	download_bytes += transfer_size;
+	now_dot_num = download_bytes / BYTES_PER_DOT;
+
+	if (pre_dot_num != now_dot_num) {
+		putc('.');
+		if (!(now_dot_num % 74))
+			putc('\n');
+	}
 
 	/* Check if transfer is done */
 	if (download_bytes >= download_size) {
@@ -409,16 +442,13 @@ static void rx_handler_dl_image(struct usb_ep *ep, struct usb_request *req)
 
 		printf("\ndownloading of %d bytes finished\n", download_bytes);
 	} else {
-		req->length = rx_bytes_expected();
+		max = is_high_speed ? hs_ep_out.wMaxPacketSize :
+				fs_ep_out.wMaxPacketSize;
+		req->length = rx_bytes_expected(max);
 		if (req->length < ep->maxpacket)
 			req->length = ep->maxpacket;
 	}
 
-	if (download_bytes && !(download_bytes % BYTES_PER_DOT)) {
-		putc('.');
-		if (!(download_bytes % (74 * BYTES_PER_DOT)))
-			putc('\n');
-	}
 	req->actual = 0;
 	usb_ep_queue(ep, req, 0);
 }
@@ -427,6 +457,7 @@ static void cb_download(struct usb_ep *ep, struct usb_request *req)
 {
 	char *cmd = req->buf;
 	char response[RESPONSE_LEN];
+	unsigned int max;
 
 	strsep(&cmd, ":");
 	download_size = simple_strtoul(cmd, NULL, 16);
@@ -442,7 +473,9 @@ static void cb_download(struct usb_ep *ep, struct usb_request *req)
 	} else {
 		sprintf(response, "DATA%08x", download_size);
 		req->complete = rx_handler_dl_image;
-		req->length = rx_bytes_expected();
+		max = is_high_speed ? hs_ep_out.wMaxPacketSize :
+			fs_ep_out.wMaxPacketSize;
+		req->length = rx_bytes_expected(max);
 		if (req->length < ep->maxpacket)
 			req->length = ep->maxpacket;
 	}
@@ -469,6 +502,83 @@ static void cb_boot(struct usb_ep *ep, struct usb_request *req)
 	fastboot_tx_write_str("OKAY");
 }
 
+static void do_exit_on_complete(struct usb_ep *ep, struct usb_request *req)
+{
+	g_dnl_trigger_detach();
+}
+
+static void cb_continue(struct usb_ep *ep, struct usb_request *req)
+{
+	fastboot_func->in_req->complete = do_exit_on_complete;
+	fastboot_tx_write_str("OKAY");
+}
+
+#ifdef CONFIG_FASTBOOT_FLASH
+static void cb_flash(struct usb_ep *ep, struct usb_request *req)
+{
+	char *cmd = req->buf;
+	char response[RESPONSE_LEN];
+
+	strsep(&cmd, ":");
+	if (!cmd) {
+		error("missing partition name\n");
+		fastboot_tx_write_str("FAILmissing partition name");
+		return;
+	}
+
+	strcpy(response, "FAILno flash device defined");
+#ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
+	fb_mmc_flash_write(cmd, (void *)CONFIG_USB_FASTBOOT_BUF_ADDR,
+			   download_bytes, response);
+#endif
+	fastboot_tx_write_str(response);
+}
+#endif
+
+static void cb_oem(struct usb_ep *ep, struct usb_request *req)
+{
+	char *cmd = req->buf;
+#ifdef CONFIG_FASTBOOT_FLASH
+	if (strncmp("format", cmd + 4, 6) == 0) {
+		char cmdbuf[32];
+                sprintf(cmdbuf, "gpt write mmc %x $partitions",
+			CONFIG_FASTBOOT_FLASH_MMC_DEV);
+                if (run_command(cmdbuf, 0))
+			fastboot_tx_write_str("FAIL");
+                else
+			fastboot_tx_write_str("OKAY");
+	} else
+#endif
+	if (strncmp("unlock", cmd + 4, 8) == 0) {
+		fastboot_tx_write_str("FAILnot implemented");
+	}
+	else {
+		fastboot_tx_write_str("FAILunknown oem command");
+	}
+}
+
+#ifdef CONFIG_FASTBOOT_FLASH
+static void cb_erase(struct usb_ep *ep, struct usb_request *req)
+{
+	char *cmd = req->buf;
+	char response[RESPONSE_LEN];
+
+	strsep(&cmd, ":");
+	if (!cmd) {
+		error("missing partition name");
+		fastboot_tx_write_str("FAILmissing partition name");
+		return;
+	}
+
+	strcpy(response, "FAILno flash device defined");
+
+#ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
+	fb_mmc_erase(cmd, response);
+#endif
+	fastboot_tx_write_str(response);
+}
+#endif
+
 struct cmd_dispatch_info {
 	char *cmd;
 	void (*cb)(struct usb_ep *ep, struct usb_request *req);
@@ -487,6 +597,22 @@ static const struct cmd_dispatch_info cmd_dispatch_info[] = {
 	}, {
 		.cmd = "boot",
 		.cb = cb_boot,
+	}, {
+		.cmd = "continue",
+		.cb = cb_continue,
+	},
+#ifdef CONFIG_FASTBOOT_FLASH
+	{
+		.cmd = "flash",
+		.cb = cb_flash,
+	}, {
+		.cmd = "erase",
+		.cb = cb_erase,
+	},
+#endif
+	{
+		.cmd = "oem",
+		.cb = cb_oem,
 	},
 };
 
@@ -503,10 +629,19 @@ static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
 		}
 	}
 
-	if (!func_cb)
+	if (!func_cb) {
+		error("unknown command: %s\n", cmdbuf);
 		fastboot_tx_write_str("FAILunknown command");
-	else
-		func_cb(ep, req);
+	} else {
+		if (req->actual < req->length) {
+			u8 *buf = (u8 *)req->buf;
+			buf[req->actual] = 0;
+			func_cb(ep, req);
+		} else {
+			error("buffer overflow\n");
+			fastboot_tx_write_str("FAILbuffer overflow");
+		}
+	}
 
 	if (req->status == 0) {
 		*cmdbuf = '\0';

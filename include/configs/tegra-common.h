@@ -14,13 +14,9 @@
  * High Level Configuration Options
  */
 #define CONFIG_ARMCORTEXA9		/* This is an ARM V7 CPU core */
-#define CONFIG_TEGRA			/* which is a Tegra generic machine */
 #define CONFIG_SYS_L2CACHE_OFF		/* No L2 cache */
 
 #include <asm/arch/tegra.h>		/* get chip and board defs */
-
-#define CONFIG_DM
-#define CONFIG_CMD_DM
 
 #define CONFIG_SYS_TIMER_RATE		1000000
 #define CONFIG_SYS_TIMER_COUNTER	NV_PA_TMRUS_BASE
@@ -40,15 +36,20 @@
 /*
  * Size of malloc() pool
  */
+#ifdef CONFIG_DFU_MMC
+#define CONFIG_SYS_MALLOC_LEN		((4 << 20) + \
+					CONFIG_SYS_DFU_DATA_BUF_SIZE)
+#else
 #define CONFIG_SYS_MALLOC_LEN		(4 << 20)	/* 4MB  */
+#endif
+
+#define CONFIG_SYS_NONCACHED_MEMORY	(1 << 20)       /* 1 MiB */
 
 /*
  * NS16550 Configuration
  */
+#define CONFIG_TEGRA_SERIAL
 #define CONFIG_SYS_NS16550
-#define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
 
 /*
  * Common HW configuration.
@@ -108,6 +109,10 @@
 #define CONFIG_SYS_MEMTEST_START	(NV_PA_SDRC_CS0 + 0x600000)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x100000)
 
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_USE_ARCH_MEMCPY
+#endif
+
 /*-----------------------------------------------------------------------
  * Physical Memory Map
  */
@@ -131,7 +136,6 @@
 #define CONFIG_CMD_ENTERRCM
 
 /* Defines for SPL */
-#define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_RAM_DEVICE
 #define CONFIG_SPL_BOARD_INIT
@@ -145,11 +149,9 @@
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
 
-#ifdef CONFIG_SPL_BUILD
-# define CONFIG_USE_PRIVATE_LIBGCC
-#endif
-
 #define CONFIG_SYS_GENERIC_BOARD
+#define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_LATE_INIT
 
 /* Misc utility code */
 #define CONFIG_BOUNCE_BUFFER

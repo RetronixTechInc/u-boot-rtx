@@ -12,13 +12,19 @@
 #include <asm/io.h>
 #include <fdt_support.h>
 #include <libfdt.h>
-#include <fsl_mc.h>
+#include <fsl-mc/fsl_mc.h>
+#include <environment.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 int board_init(void)
 {
 	init_final_memctl_regs();
+
+#ifdef CONFIG_ENV_IS_NOWHERE
+	gd->env_addr = (ulong)&default_environment[0];
+#endif
+
 	return 0;
 }
 
@@ -29,9 +35,20 @@ int board_early_init_f(void)
 	return 0;
 }
 
+void detail_board_ddr_info(void)
+{
+	puts("\nDDR    ");
+	print_size(gd->bd->bi_dram[0].size + gd->bd->bi_dram[1].size, "");
+	print_ddr_info(0);
+	if (gd->bd->bi_dram[2].size) {
+		puts("\nDP-DDR ");
+		print_size(gd->bd->bi_dram[2].size, "");
+		print_ddr_info(CONFIG_DP_DDR_CTRL);
+	}
+}
+
 int dram_init(void)
 {
-	printf("DRAM:  ");
 	gd->ram_size = initdram(0);
 
 	return 0;
@@ -42,8 +59,15 @@ int timer_init(void)
 	u32 __iomem *cntcr = (u32 *)CONFIG_SYS_FSL_TIMER_ADDR;
 	u32 __iomem *cltbenr = (u32 *)CONFIG_SYS_FSL_PMU_CLTBENR;
 
-	out_le32(cltbenr, 0x1);		/* enable cluster0 timebase */
-	out_le32(cntcr, 0x1);		/* enable clock for timer */
+	/* Enable timebase for all clusters.
+	 * It is safe to do so even some clusters are not enabled.
+	 */
+	out_le32(cltbenr, 0xf);
+
+	/* Enable clock for timer
+	 * This is a global setting.
+	 */
+	out_le32(cntcr, 0x1);
 
 	return 0;
 }
@@ -74,7 +98,21 @@ void fdt_fixup_board_enet(void *fdt)
 {
 	int offset;
 
-	offset = fdt_path_offset(fdt, "/fsl,dprc@0");
+	offset = fdt_path_offset(fdt, "/fsl-mc");
+
+	/*
+	 * TODO: Remove this when backward compatibility
+	 * with old DT node (fsl,dprc@0) is no longer needed.
+	 */
+	if (offset < 0)
+		offset = fdt_path_offset(fdt, "/fsl,dprc@0");
+
+	if (offset < 0) {
+		printf("%s: ERROR: fsl-mc node not found in device tree (error %d)\n",
+		       __func__, offset);
+		return;
+	}
+
 	if (get_mc_boot_status() == 0)
 		fdt_status_okay(fdt, offset);
 	else
@@ -83,10 +121,12 @@ void fdt_fixup_board_enet(void *fdt)
 #endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
+
+	ft_cpu_setup(blob, bd);
 
 	/* limit the memory size to bank 1 until Linux can handle 40-bit PA */
 	base = getenv_bootm_low();
@@ -96,5 +136,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 #ifdef CONFIG_FSL_MC_ENET
 	fdt_fixup_board_enet(blob);
 #endif
+
+	return 0;
 }
 #endif

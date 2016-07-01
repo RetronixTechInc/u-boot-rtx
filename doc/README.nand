@@ -89,17 +89,15 @@ Commands:
 
 Configuration Options:
 
+   CONFIG_SYS_NAND_U_BOOT_OFFS
+	NAND Offset from where SPL will read u-boot image. This is the starting
+	address of u-boot MTD partition in NAND.
+
    CONFIG_CMD_NAND
       Enables NAND support and commmands.
 
    CONFIG_CMD_NAND_TORTURE
       Enables the torture command (see description of this command below).
-
-   CONFIG_MTD_NAND_ECC_JFFS2
-      Define this if you want the Error Correction Code information in
-      the out-of-band data to be formatted to match the JFFS2 file system.
-      CONFIG_MTD_NAND_ECC_YAFFS would be another useful choice for
-      someone to implement.
 
    CONFIG_SYS_MAX_NAND_DEVICE
       The maximum number of NAND devices you want to support.
@@ -226,6 +224,14 @@ Platform specific options
 	detection. However ECC calculation on such plaforms would still be
 	done by GPMC controller.
 
+   CONFIG_SPL_NAND_AM33XX_BCH
+	Enables SPL-NAND driver (am335x_spl_bch.c) which supports ELM based
+        hardware ECC correction. This is useful for platforms which have ELM
+	hardware engine and use NAND boot mode.
+	Some legacy platforms like OMAP3xx do not have in-built ELM h/w engine,
+	so those platforms should use CONFIG_SPL_NAND_SIMPLE for enabling
+        SPL-NAND driver with software ECC correction support.
+
    CONFIG_NAND_OMAP_ECCSCHEME
 	On OMAP platforms, this CONFIG specifies NAND ECC scheme.
 	It can take following values:
@@ -292,14 +298,13 @@ Platform specific options
 		Thus BCH16 can be supported on 4K page NAND.
 
 
+    CONFIG_NAND_OMAP_GPMC_PREFETCH
+	On OMAP platforms that use the GPMC controller
+	(CONFIG_NAND_OMAP_GPMC_PREFETCH), this options enables the code that
+	uses the prefetch mode to speed up read operations.
+
 NOTE:
 =====
-
-The current NAND implementation is based on what is in recent
-Linux kernels.  The old legacy implementation has been removed.
-
-If you have board code which used CONFIG_NAND_LEGACY, you'll need
-to convert to the current NAND interface for it to continue to work.
 
 The Disk On Chip driver is currently broken and has been for some time.
 There is a driver in drivers/mtd/nand, taken from Linux, that works with

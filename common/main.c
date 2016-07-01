@@ -14,20 +14,17 @@
 #ifdef CONFIG_CMD_USB
 #include <usb.h>
 #endif
+#ifdef is_boot_from_usb
+#include <environment.h>
+#endif
+
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#ifdef CONFIG_DYNAMIC_MMC_DEVNO
-void __weak set_boot_storage(void)
-{
-}
-#endif
 
 /*
  * Board-specific Platform code can reimplement show_boot_progress () if needed
  */
-void inline __show_boot_progress (int val) {}
-void show_boot_progress (int val) __attribute__((weak, alias("__show_boot_progress")));
+__weak void show_boot_progress(int val) {}
 
 static void modem_init(void)
 {
@@ -62,18 +59,18 @@ static void run_preboot_environment_command(void)
 #endif /* CONFIG_PREBOOT */
 }
 
-#ifdef CONFIG_DYNAMIC_MMC_DEVNO
-int get_mmc_env_devno(void) ;
-#endif
-
 #ifdef CONFIG_BOOT_SYSTEM
 void bootsel_init( void );
 int bootsel_checkstorage( void );
 int bootsel_usbstorage( void );
+
+	#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
+		void bootsel_password( void );
+	#endif
 #endif
 
-#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
-void bootsel_password( void );
+#ifdef CONFIG_FSL_ESDHC
+	void set_boot_storage(void);
 #endif
 
 /* We come here after U-Boot is initialised and ready to process commands */
@@ -96,18 +93,18 @@ void main_loop(void)
 
 #ifdef CONFIG_BOOT_SYSTEM
 	bootsel_init() ;
-#endif
 
-#ifdef CONFIG_DYNAMIC_MMC_DEVNO
-	set_boot_storage() ;
-#endif
+	#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+		set_boot_storage() ;
+	#endif
 
-#ifdef CONFIG_CMD_USB
-	if ( bootsel_usbstorage() )
-	{
-		usb_stop();
-		usb_init();
-	}
+	#ifdef CONFIG_CMD_USB
+		if ( bootsel_usbstorage() )
+		{
+			usb_stop();
+			usb_init();
+		}
+	#endif
 #endif
 
 	cli_init();
@@ -130,10 +127,12 @@ void main_loop(void)
 		cli_secure_boot_cmd(s);
 
 	autoboot_command(s);
-	
-#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
-	bootsel_password();
-#endif /*CONFIG_CHECK_PASSWORD*/
+
+#ifdef CONFIG_BOOT_SYSTEM
+	#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
+		bootsel_password();
+	#endif /*CONFIG_CHECK_PASSWORD*/
+#endif
 
 	cli_loop();
 }

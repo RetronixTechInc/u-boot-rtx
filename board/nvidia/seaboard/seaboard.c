@@ -8,6 +8,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/tegra.h>
+#include <asm/arch-tegra/board.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/funcmux.h>
 #include <asm/arch/gpio.h>
@@ -19,9 +20,7 @@
 void gpio_early_init_uart(void)
 {
 	/* Enable UART via GPIO_PI3 (port 8, bit 3) so serial console works */
-#ifndef CONFIG_SPL_BUILD
-	gpio_request(GPIO_PI3, NULL);
-#endif
+	gpio_request(GPIO_PI3, "uart_en");
 	gpio_direction_output(GPIO_PI3, 0);
 }
 #endif

@@ -8,6 +8,8 @@
 #ifndef _CONFIG_LSXL_H
 #define _CONFIG_LSXL_H
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /*
  * Version number information
  */
@@ -29,7 +31,6 @@
  * General configuration options
  */
 #define CONFIG_FEROCEON_88FR131		/* CPU Core subversion */
-#define CONFIG_KIRKWOOD			/* SOC Family Name */
 #define CONFIG_KW88F6281		/* SOC Name */
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
@@ -55,6 +56,7 @@
  * Commands configuration
  */
 #include <config_cmd_default.h>
+#define CONFIG_CMD_BOOTZ
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_ENV
@@ -76,6 +78,9 @@
  * to enable certain macros
  */
 #include "mv-common.h"
+
+/* loading initramfs images without uimage header */
+#define CONFIG_SUPPORT_RAW_INITRD
 
 /* ST M25P40 */
 #undef CONFIG_SPI_FLASH_MACRONIX
@@ -124,27 +129,31 @@
 	"hdpart=0:1\0"							\
 	"kernel_addr=0x00800000\0"					\
 	"ramdisk_addr=0x01000000\0"					\
-	"fdt_addr=0x01ff0000\0"						\
+	"fdt_addr=0x00ff0000\0"						\
 	"bootcmd_legacy=ide reset "					\
-		"&& load ide ${hdpart} 0x00100000 /uImage.buffalo "	\
-		"&& load ide ${hdpart} 0x00800000 /initrd.buffalo "	\
-		"&& bootm 0x00100000 0x00800000\0"			\
-	"bootcmd_net=bootp ${kernel_addr} uImage "			\
-		"&& tftpboot ${ramdisk_addr} uInitrd "			\
+		"&& load ide ${hdpart} ${kernel_addr} /uImage.buffalo "	\
+		"&& load ide ${hdpart} ${ramdisk_addr} /initrd.buffalo "\
+		"&& bootm ${kernel_addr} ${ramdisk_addr}\0"		\
+	"bootcmd_net=bootp ${kernel_addr} vmlinuz "			\
+		"&& tftpboot ${ramdisk_addr} initrd.img "		\
+		"&& setenv ramdisk_len ${filesize} "			\
 		"&& tftpboot ${fdt_addr} " CONFIG_FDTFILE " "		\
-		"&& bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
+		"&& bootz ${kernel_addr} "				\
+			"${ramdisk_addr}:${ramdisk_len} ${fdt_addr}\0"	\
 	"bootcmd_hdd=ide reset "					\
-		"&& load ide ${hdpart} ${kernel_addr} /uImage "		\
-		"&& load ide ${hdpart} ${ramdisk_addr} /uInitrd "	\
-		"&& load ide ${hdpart} ${fdt_addr} "			\
-			"/" CONFIG_FDTFILE " "				\
-		"&& bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
+		"&& load ide ${hdpart} ${kernel_addr} /vmlinuz "	\
+		"&& load ide ${hdpart} ${ramdisk_addr} /initrd.img "	\
+		"&& setenv ramdisk_len ${filesize} "			\
+		"&& load ide ${hdpart} ${fdt_addr} /dtb "		\
+		"&& bootz ${kernel_addr} "				\
+			"${ramdisk_addr}:${ramdisk_len} ${fdt_addr}\0"	\
 	"bootcmd_usb=usb start "					\
-		"&& load usb 0:1 ${kernel_addr} /uImage "		\
-		"&& load usb 0:1 ${ramdisk_addr} /uInitrd "		\
-		"&& load usb 0:1 ${fdt_addr} "				\
-			"/" CONFIG_FDTFILE " "				\
-		"&& bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
+		"&& load usb 0:1 ${kernel_addr} /vmlinuz "		\
+		"&& load usb 0:1 ${ramdisk_addr} /initrd.img "		\
+		"&& setenv ramdisk_len ${filesize} "			\
+		"&& load usb 0:1 ${fdt_addr} " CONFIG_FDTFILE " "	\
+		"&& bootz ${kernel_addr} "				\
+			"${ramdisk_addr}:${ramdisk_len} ${fdt_addr}\0"	\
 	"bootcmd_rescue=run config_nc_dhcp; run nc\0"			\
 	"eraseenv=sf probe 0 "						\
 		"&& sf erase " __stringify(CONFIG_ENV_OFFSET)		\
@@ -158,7 +167,7 @@
 	"standard_env=setenv ipaddr; setenv netmask; setenv serverip; "	\
 		"setenv ncip; setenv gatewayip; setenv ethact; "	\
 		"setenv bootfile; setenv dnsip; "			\
-		"setenv bootsource hdd; run ser\0"			\
+		"setenv bootsource legacy; run ser\0"			\
 	"restore_env=run standard_env; saveenv; reset\0"		\
 	"ser=setenv stdin serial; setenv stdout serial; "		\
 		"setenv stderr serial\0"				\

@@ -112,6 +112,33 @@ static void fit_get_debug(const void *fit, int noffset,
 	      fdt_strerror(err));
 }
 
+/**
+ * fit_get_subimage_count - get component (sub-image) count
+ * @fit: pointer to the FIT format image header
+ * @images_noffset: offset of images node
+ *
+ * returns:
+ *     number of image components
+ */
+int fit_get_subimage_count(const void *fit, int images_noffset)
+{
+	int noffset;
+	int ndepth;
+	int count = 0;
+
+	/* Process its subnodes, print out component images details */
+	for (ndepth = 0, count = 0,
+		noffset = fdt_next_node(fit, images_noffset, &ndepth);
+	     (noffset >= 0) && (ndepth > 0);
+	     noffset = fdt_next_node(fit, noffset, &ndepth)) {
+		if (ndepth == 1) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
 #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_FIT_SPL_PRINT)
 /**
  * fit_print_contents - prints out the contents of the FIT format image
@@ -423,7 +450,8 @@ void fit_image_print(const void *fit, int image_noffset, const char *p)
 		}
 	}
 }
-#endif
+
+#endif /* !defined(CONFIG_SPL_BUILD) || defined(CONFIG_FIT_SPL_PRINT) */
 
 /**
  * fit_get_desc - get node description property
@@ -982,9 +1010,7 @@ int fit_image_verify(const void *fit, int image_noffset)
 	}
 
 	/* Process all hash subnodes of the component image node */
-	for (noffset = fdt_first_subnode(fit, image_noffset);
-	     noffset >= 0;
-	     noffset = fdt_next_subnode(fit, noffset)) {
+	fdt_for_each_subnode(fit, noffset, image_noffset) {
 		const char *name = fit_get_name(fit, noffset, NULL);
 
 		/*
@@ -1114,7 +1140,8 @@ int fit_image_check_arch(const void *fit, int noffset, uint8_t arch)
 
 	if (fit_image_get_arch(fit, noffset, &image_arch))
 		return 0;
-	return (arch == image_arch);
+	return (arch == image_arch) ||
+		(arch == IH_ARCH_I386 && image_arch == IH_ARCH_X86_64);
 }
 
 /**
@@ -1434,7 +1461,7 @@ void fit_conf_print(const void *fit, int noffset, const char *p)
 		printf("%s  FDT:          %s\n", p, uname);
 }
 
-int fit_image_select(const void *fit, int rd_noffset, int verify)
+static int fit_image_select(const void *fit, int rd_noffset, int verify)
 {
 	fit_image_print(fit, rd_noffset, "   ");
 
@@ -1497,6 +1524,8 @@ static const char *fit_get_image_type_property(int type)
 		return FIT_KERNEL_PROP;
 	case IH_TYPE_RAMDISK:
 		return FIT_RAMDISK_PROP;
+	case IH_TYPE_X86_SETUP:
+		return FIT_SETUP_PROP;
 	}
 
 	return "unknown";
@@ -1515,6 +1544,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	size_t size;
 	int type_ok, os_ok;
 	ulong load, data, len;
+	uint8_t os;
 	const char *prop_name;
 	int ret;
 
@@ -1591,7 +1621,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	}
 
 	bootstage_mark(bootstage_id + BOOTSTAGE_SUB_CHECK_ARCH);
-#ifndef USE_HOSTCC
+#if !defined(USE_HOSTCC) && !defined(CONFIG_SANDBOX)
 	if (!fit_image_check_target_arch(fit, noffset)) {
 		puts("Unsupported Architecture\n");
 		bootstage_error(bootstage_id + BOOTSTAGE_SUB_CHECK_ARCH);
@@ -1609,10 +1639,15 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 		(image_type == IH_TYPE_KERNEL &&
 			fit_image_check_type(fit, noffset,
 					     IH_TYPE_KERNEL_NOLOAD));
+
 	os_ok = image_type == IH_TYPE_FLATDT ||
-		fit_image_check_os(fit, noffset, IH_OS_LINUX);
+		fit_image_check_os(fit, noffset, IH_OS_LINUX) ||
+		fit_image_check_os(fit, noffset, IH_OS_OPENRTOS);
 	if (!type_ok || !os_ok) {
-		printf("No Linux %s %s Image\n", genimg_get_arch_name(arch),
+		fit_image_get_os(fit, noffset, &os);
+		printf("No %s %s %s Image\n",
+		       genimg_get_os_name(os),
+		       genimg_get_arch_name(arch),
 		       genimg_get_type_name(image_type));
 		bootstage_error(bootstage_id + BOOTSTAGE_SUB_CHECK_ALL);
 		return -EIO;
@@ -1656,7 +1691,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 			bootstage_error(bootstage_id + BOOTSTAGE_SUB_LOAD);
 			return -EBADF;
 		}
-	} else {
+	} else if (load_op != FIT_LOAD_OPTIONAL_NON_ZERO || load) {
 		ulong image_start, image_end;
 		ulong load_end;
 		void *dst;
@@ -1692,4 +1727,24 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 		*fit_uname_configp = (char *)fit_uname_config;
 
 	return noffset;
+}
+
+int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
+			ulong *setup_start, ulong *setup_len)
+{
+	int noffset;
+	ulong addr;
+	ulong len;
+	int ret;
+
+	addr = map_to_sysmem(images->fit_hdr_os);
+	noffset = fit_get_node_from_config(images, FIT_SETUP_PROP, addr);
+	if (noffset < 0)
+		return noffset;
+
+	ret = fit_image_load(images, addr, NULL, NULL, arch,
+			     IH_TYPE_X86_SETUP, BOOTSTAGE_ID_FIT_SETUP_START,
+			     FIT_LOAD_REQUIRED, setup_start, &len);
+
+	return ret;
 }

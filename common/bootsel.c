@@ -121,10 +121,13 @@ int bootsel_usbstorage( void )
 	return ( 1 ) ;	
 }
 
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+	extern int mmc_get_env_devno(void) ;
+#endif
 static int bootsel_getmmcdevno( void )
 {
 	#ifdef CONFIG_DYNAMIC_MMC_DEVNO
-		return ( get_mmc_env_devno() ) ;
+		return ( mmc_get_env_devno() ) ;
 	#else
 		return (CONFIG_SYS_MMC_ENV_DEV) ;
 	#endif
@@ -229,7 +232,7 @@ void bootsel_init( void )
 static int bootsel_load( int fstype , const char *ifname , const char *dev_part_str , const char *filename , int pos , int size , unsigned long addr )
 {
 	int len_read;
-
+	loff_t actread;
 	if ( !file_exists(ifname,dev_part_str,filename,fstype) )
 	{
 		return 0 ;
@@ -240,7 +243,7 @@ static int bootsel_load( int fstype , const char *ifname , const char *dev_part_
 		return 0 ;
 	}
 
-	len_read = fs_read( filename , addr , pos , size ) ;
+	len_read = fs_read( filename , addr , pos , size , &actread ) ;
 
 	if (len_read <= 0)
 	{
@@ -821,10 +824,34 @@ void bootsel_adjust_bootargs( void )
 	bootsel_set_fec_mac( ) ;
 }
 
+int bootsel_hex_string_to_binary_dec( int ch )
+{
+	if ( ch >= 'a' && ch <= 'f' )
+	{
+		ch = ch - 'a' + 10 ;
+	}
+	else if ( ch >= 'A' && ch <= 'F' )
+	{
+		ch = ch - 'A' + 10 ;
+	}
+	else if ( ch >= '0' && ch <= '9' )
+	{
+		ch = ch - '0' ;
+	}
+	else
+	{
+		return ( -1 ) ;
+	}
+	return ( ch ) ;
+}
+
 static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	int loop ;
+	int value ;
+	int ch ;
+	unsigned char * pMac ;
 	
 	if ( argc < 3 )
 	{
@@ -857,10 +884,41 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 	
 	if ( strcmp( argv[1] , "mac" ) == 0 )
 	{
+		pMac = 0 ;
 		if ( argc < 4 )
 		{
 			return CMD_RET_USAGE ;
 		}
+		
+		switch( argv[2][0] )
+		{
+			case '0' : pMac = &bootselinfodata.ubMAC01[0] ; break ;
+			case '1' : pMac = &bootselinfodata.ubMAC02[0] ; break ;
+			case '2' : pMac = &bootselinfodata.ubMAC03[0] ; break ;
+			case '3' : pMac = &bootselinfodata.ubMAC04[0] ; break ;
+			default :
+				return CMD_RET_USAGE ;
+		}
+		
+		for ( loop = 0 ; loop <  6 ; loop ++ )
+		{
+			value = 0 ;
+			ch = bootsel_hex_string_to_binary_dec( argv[3][loop*3] ) ;
+			if ( ch == -1 )
+			{
+				return CMD_RET_USAGE ;
+			}
+			value = value + ch * 16 ;
+			ch = bootsel_hex_string_to_binary_dec( argv[3][loop*3+1] ) ;
+			if ( ch == -1 )
+			{
+				return CMD_RET_USAGE ;
+			}
+			value = value + ch ;
+			pMac[loop] = value ;
+		}
+		pMac[6] = 1 ;
+		bootsel_write_setting_data( ) ;
 	}
 	
 	return CMD_RET_USAGE;
@@ -879,13 +937,11 @@ U_BOOT_CMD(
 	"    function usb      <enable/disable>\n"
 	"    function menu     <enable/disable>\n"
 	"    function storage  <enable/disable>\n"
-	/*
 	"** MAC class **\n"
 	"    mac 0 <00:00:00:00:00:00>\n"
 	"    mac 1 <00:00:00:00:00:00>\n"
 	"    mac 2 <00:00:00:00:00:00>\n"
 	"    mac 3 <00:00:00:00:00:00>\n"
-	*/
 );
 
 #ifdef CONFIG_BOOT_CMD_RESET_ENV
@@ -899,6 +955,29 @@ static int do_reset_env(cmd_tbl_t *cmdtp, int flag, int argc,
 U_BOOT_CMD(
 	env_reset, 1, 0,	do_reset_env,
 	"reset environment to default",
+	""
+);
+#endif
+
+#ifdef CONFIG_BOOT_CMD_RESET_SETTING
+static int do_reset_setting(cmd_tbl_t *cmdtp, int flag, int argc,
+		       char * const argv[])
+{
+	memset( (void *)&bootselinfodata , 0 , sizeof(bootselinfo) ) ;
+
+	memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
+	memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
+	bootselinfodata.ulPasswordLen = 8 ;
+	bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
+	bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
+	bootsel_write_setting_data( ) ;
+	
+	return CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(
+	setting_reset, 1, 0,	do_reset_setting,
+	"reset setting to default",
 	""
 );
 #endif
@@ -924,7 +1003,7 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	printf( "\n" ) ;
 	
-	for ( loop1 = 0 ; loop1 < 8 ; loop1 ++ )
+	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
 	{
 		printf( "ubMAC0%d:" , loop1 ) ;
 		for ( loop = 0 ; loop < 8 ; loop ++ )

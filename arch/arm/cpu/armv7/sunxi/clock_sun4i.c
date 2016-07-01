@@ -35,11 +35,14 @@ void clock_init_safe(void)
 	       APB0_DIV_1 << APB0_DIV_SHIFT |
 	       CPU_CLK_SRC_PLL1 << CPU_CLK_SRC_SHIFT,
 	       &ccm->cpu_ahb_apb0_cfg);
-#ifdef CONFIG_SUN7I
-	writel(0x1 << AHB_GATE_OFFSET_DMA | readl(&ccm->ahb_gate0),
-	       &ccm->ahb_gate0);
+#ifdef CONFIG_MACH_SUN7I
+	setbits_le32(&ccm->ahb_gate0, 0x1 << AHB_GATE_OFFSET_DMA);
 #endif
 	writel(PLL6_CFG_DEFAULT, &ccm->pll6_cfg);
+#ifdef CONFIG_SUNXI_AHCI
+	setbits_le32(&ccm->ahb_gate0, 0x1 << AHB_GATE_OFFSET_SATA);
+	setbits_le32(&ccm->pll6_cfg, 0x1 << CCM_PLL6_CTRL_SATA_EN_SHIFT);
+#endif
 }
 #endif
 
@@ -97,22 +100,23 @@ static struct {
 	unsigned int freq;
 } pll1_para[] = {
 	/* This array must be ordered by frequency. */
-	{ PLL1_CFG(16, 0, 0, 0), 384000000 },
-	{ PLL1_CFG(16, 1, 0, 0), 768000000 },
-	{ PLL1_CFG(20, 1, 0, 0), 960000000 },
-	{ PLL1_CFG(21, 1, 0, 0), 1008000000},
-	{ PLL1_CFG(22, 1, 0, 0), 1056000000},
-	{ PLL1_CFG(23, 1, 0, 0), 1104000000},
-	{ PLL1_CFG(24, 1, 0, 0), 1152000000},
-	{ PLL1_CFG(25, 1, 0, 0), 1200000000},
-	{ PLL1_CFG(26, 1, 0, 0), 1248000000},
-	{ PLL1_CFG(27, 1, 0, 0), 1296000000},
-	{ PLL1_CFG(28, 1, 0, 0), 1344000000},
-	{ PLL1_CFG(29, 1, 0, 0), 1392000000},
-	{ PLL1_CFG(30, 1, 0, 0), 1440000000},
 	{ PLL1_CFG(31, 1, 0, 0), 1488000000},
-	/* Final catchall entry */
-	{ PLL1_CFG(31, 1, 0, 0), ~0},
+	{ PLL1_CFG(30, 1, 0, 0), 1440000000},
+	{ PLL1_CFG(29, 1, 0, 0), 1392000000},
+	{ PLL1_CFG(28, 1, 0, 0), 1344000000},
+	{ PLL1_CFG(27, 1, 0, 0), 1296000000},
+	{ PLL1_CFG(26, 1, 0, 0), 1248000000},
+	{ PLL1_CFG(25, 1, 0, 0), 1200000000},
+	{ PLL1_CFG(24, 1, 0, 0), 1152000000},
+	{ PLL1_CFG(23, 1, 0, 0), 1104000000},
+	{ PLL1_CFG(22, 1, 0, 0), 1056000000},
+	{ PLL1_CFG(21, 1, 0, 0), 1008000000},
+	{ PLL1_CFG(20, 1, 0, 0), 960000000 },
+	{ PLL1_CFG(19, 1, 0, 0), 912000000 },
+	{ PLL1_CFG(16, 1, 0, 0), 768000000 },
+	/* Final catchall entry 384MHz*/
+	{ PLL1_CFG(16, 0, 0, 0), 0 },
+
 };
 
 void clock_set_pll1(unsigned int hz)
@@ -123,10 +127,12 @@ void clock_set_pll1(unsigned int hz)
 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
 
 	/* Find target frequency */
-	while (pll1_para[i].freq < hz)
+	while (pll1_para[i].freq > hz)
 		i++;
 
 	hz = pll1_para[i].freq;
+	if (! hz)
+		hz = 384000000;
 
 	/* Calculate system clock divisors */
 	axi = DIV_ROUND_UP(hz, 432000000);	/* Max 450MHz */
@@ -177,6 +183,32 @@ void clock_set_pll1(unsigned int hz)
 }
 #endif
 
+void clock_set_pll3(unsigned int clk)
+{
+	struct sunxi_ccm_reg * const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+
+	if (clk == 0) {
+		clrbits_le32(&ccm->pll3_cfg, CCM_PLL3_CTRL_EN);
+		return;
+	}
+
+	/* PLL3 rate = 3000000 * m */
+	writel(CCM_PLL3_CTRL_EN | CCM_PLL3_CTRL_INTEGER_MODE |
+	       CCM_PLL3_CTRL_M(clk / 3000000), &ccm->pll3_cfg);
+}
+
+unsigned int clock_get_pll5p(void)
+{
+	struct sunxi_ccm_reg *const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	uint32_t rval = readl(&ccm->pll5_cfg);
+	int n = ((rval & CCM_PLL5_CTRL_N_MASK) >> CCM_PLL5_CTRL_N_SHIFT);
+	int k = ((rval & CCM_PLL5_CTRL_K_MASK) >> CCM_PLL5_CTRL_K_SHIFT) + 1;
+	int p = ((rval & CCM_PLL5_CTRL_P_MASK) >> CCM_PLL5_CTRL_P_SHIFT);
+	return (24000000 * n * k) >> p;
+}
+
 unsigned int clock_get_pll6(void)
 {
 	struct sunxi_ccm_reg *const ccm =
@@ -185,4 +217,16 @@ unsigned int clock_get_pll6(void)
 	int n = ((rval & CCM_PLL6_CTRL_N_MASK) >> CCM_PLL6_CTRL_N_SHIFT);
 	int k = ((rval & CCM_PLL6_CTRL_K_MASK) >> CCM_PLL6_CTRL_K_SHIFT) + 1;
 	return 24000000 * n * k / 2;
+}
+
+void clock_set_de_mod_clock(u32 *clk_cfg, unsigned int hz)
+{
+	int pll = clock_get_pll5p();
+	int div = 1;
+
+	while ((pll / div) > hz)
+		div++;
+
+	writel(CCM_DE_CTRL_GATE | CCM_DE_CTRL_RST | CCM_DE_CTRL_PLL5P |
+	       CCM_DE_CTRL_M(div), clk_cfg);
 }

@@ -10,14 +10,12 @@
 #ifndef __CONFIG_TRATS_H
 #define __CONFIG_TRATS_H
 
-#include <configs/exynos4-dt.h>
+#include <configs/exynos4-common.h>
 
 #define CONFIG_SYS_PROMPT	"Trats # "	/* Monitor Command Prompt */
 
 #define CONFIG_TRATS
 
-#undef CONFIG_DEFAULT_DEVICE_TREE
-#define CONFIG_DEFAULT_DEVICE_TREE	exynos4210-trats
 
 #define CONFIG_TIZEN			/* TIZEN lib */
 
@@ -41,10 +39,6 @@
 
 #define CONFIG_SYS_TEXT_BASE		0x63300000
 
-#include <linux/sizes.h>
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (80 * SZ_1M))
-
 /* select serial console configuration */
 #define CONFIG_SERIAL2
 #define CONFIG_BAUDRATE			115200
@@ -57,8 +51,10 @@
 #define MACH_TYPE_TRATS			3928
 #define CONFIG_MACH_TYPE		MACH_TYPE_TRATS
 
+#define CONFIG_FIT
+#define CONFIG_FIT_VERBOSE
 #define CONFIG_BOOTARGS			"Please use defined boot"
-#define CONFIG_BOOTCOMMAND		"run mmcboot"
+#define CONFIG_BOOTCOMMAND		"run autoboot"
 #define CONFIG_DEFAULT_CONSOLE		"console=ttySAC2,115200n8\0"
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR \
@@ -102,9 +98,9 @@
 
 #define CONFIG_DFU_ALT \
 	"u-boot raw 0x80 0x400;" \
-	"uImage ext4 0 2;" \
-	"modem.bin ext4 0 2;" \
-	"exynos4210-trats.dtb ext4 0 2;" \
+	"/uImage ext4 0 2;" \
+	"/modem.bin ext4 0 2;" \
+	"/exynos4210-trats.dtb ext4 0 2;" \
 	""PARTS_CSA" part 0 1;" \
 	""PARTS_BOOT" part 0 2;" \
 	""PARTS_QBOOT" part 0 3;" \
@@ -112,7 +108,8 @@
 	""PARTS_ROOT" part 0 5;" \
 	""PARTS_DATA" part 0 6;" \
 	""PARTS_UMS" part 0 7;" \
-	"params.bin raw 0x38 0x8\0"
+	"params.bin raw 0x38 0x8;" \
+	"/Image.itb ext4 0 2\0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"bootk=" \
@@ -178,6 +175,7 @@
 		   "setenv spl_imgsize;" \
 		   "setenv spl_imgaddr;" \
 		   "setenv spl_addr_tmp;\0" \
+	CONFIG_EXTRA_ENV_ITB \
 	"fdtaddr=40800000\0" \
 
 /* Falcon mode definitions */
@@ -260,8 +258,5 @@
 #define CONFIG_EXYNOS_MIPI_DSIM
 #define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE  ((500 * 160 * 4) + 54)
-
-#define LCD_XRES	720
-#define LCD_YRES	1280
 
 #endif	/* __CONFIG_H */

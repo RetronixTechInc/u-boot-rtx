@@ -10,12 +10,10 @@
 
 #include <linux/sizes.h>
 
-#include "tegra124-common.h"
+/* enable PMIC */
+#define CONFIG_AS3722_POWER
 
-/* Enable fdt support for Jetson TK1. Flash the image in u-boot-dtb.bin */
-#define CONFIG_DEFAULT_DEVICE_TREE	tegra124-jetson-tk1
-#define CONFIG_OF_CONTROL
-#define CONFIG_OF_SEPARATE
+#include "tegra124-common.h"
 
 /* High-level configuration options */
 #define V_PROMPT			"Tegra124 (Jetson TK1) # "
@@ -26,16 +24,9 @@
 #define CONFIG_TEGRA_ENABLE_UARTD
 #define CONFIG_SYS_NS16550_COM1		NV_PA_APB_UARTD_BASE
 
-#define CONFIG_BOARD_EARLY_INIT_F
-
 /* I2C */
 #define CONFIG_SYS_I2C_TEGRA
-#define CONFIG_SYS_I2C_INIT_BOARD
-#define CONFIG_I2C_MULTI_BUS
-#define CONFIG_SYS_MAX_I2C_BUS		TEGRA_I2C_NUM_CONTROLLERS
-#define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_CMD_I2C
-#define CONFIG_SYS_I2C
 
 /* SD/MMC */
 #define CONFIG_MMC
@@ -71,11 +62,21 @@
 #define CONFIG_USB_HOST_ETHER
 #define CONFIG_USB_ETHER_ASIX
 
+/* PCI host support */
+#define CONFIG_PCI
+#define CONFIG_PCI_TEGRA
+#define CONFIG_PCI_PNP
+#define CONFIG_CMD_PCI
+#define CONFIG_CMD_PCI_ENUM
+
+/* PCI networking support */
+#define CONFIG_RTL8169
+
 /* General networking support */
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 
-#include "tegra-common-ums.h"
+#include "tegra-common-usb-gadget.h"
 #include "tegra-common-post.h"
 
 #endif /* __CONFIG_H */

@@ -9,7 +9,9 @@
  */
 
 #include <common.h>
+#include <dm.h>
 #include <errno.h>
+#include <ns16550.h>
 #include <spl.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/hardware.h>
@@ -36,6 +38,63 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_DM_GPIO
+static const struct omap_gpio_platdata am33xx_gpio[] = {
+	{ 0, AM33XX_GPIO0_BASE, METHOD_GPIO_24XX },
+	{ 1, AM33XX_GPIO1_BASE, METHOD_GPIO_24XX },
+	{ 2, AM33XX_GPIO2_BASE, METHOD_GPIO_24XX },
+	{ 3, AM33XX_GPIO3_BASE, METHOD_GPIO_24XX },
+#ifdef CONFIG_AM43XX
+	{ 4, AM33XX_GPIO4_BASE, METHOD_GPIO_24XX },
+	{ 5, AM33XX_GPIO5_BASE, METHOD_GPIO_24XX },
+#endif
+};
+
+U_BOOT_DEVICES(am33xx_gpios) = {
+	{ "gpio_omap", &am33xx_gpio[0] },
+	{ "gpio_omap", &am33xx_gpio[1] },
+	{ "gpio_omap", &am33xx_gpio[2] },
+	{ "gpio_omap", &am33xx_gpio[3] },
+#ifdef CONFIG_AM43XX
+	{ "gpio_omap", &am33xx_gpio[4] },
+	{ "gpio_omap", &am33xx_gpio[5] },
+#endif
+};
+
+# ifndef CONFIG_OF_CONTROL
+/*
+ * TODO(sjg@chromium.org): When we can move SPL serial to DM, we can remove
+ * the CONFIGs. At the same time, we should move this to the board files.
+ */
+static const struct ns16550_platdata am33xx_serial[] = {
+	{ CONFIG_SYS_NS16550_COM1, 2, CONFIG_SYS_NS16550_CLK },
+#  ifdef CONFIG_SYS_NS16550_COM2
+	{ CONFIG_SYS_NS16550_COM2, 2, CONFIG_SYS_NS16550_CLK },
+#   ifdef CONFIG_SYS_NS16550_COM3
+	{ CONFIG_SYS_NS16550_COM3, 2, CONFIG_SYS_NS16550_CLK },
+	{ CONFIG_SYS_NS16550_COM4, 2, CONFIG_SYS_NS16550_CLK },
+	{ CONFIG_SYS_NS16550_COM5, 2, CONFIG_SYS_NS16550_CLK },
+	{ CONFIG_SYS_NS16550_COM6, 2, CONFIG_SYS_NS16550_CLK },
+#   endif
+#  endif
+};
+
+U_BOOT_DEVICES(am33xx_uarts) = {
+	{ "serial_omap", &am33xx_serial[0] },
+#  ifdef CONFIG_SYS_NS16550_COM2
+	{ "serial_omap", &am33xx_serial[1] },
+#   ifdef CONFIG_SYS_NS16550_COM3
+	{ "serial_omap", &am33xx_serial[2] },
+	{ "serial_omap", &am33xx_serial[3] },
+	{ "serial_omap", &am33xx_serial[4] },
+	{ "serial_omap", &am33xx_serial[5] },
+#   endif
+#  endif
+};
+# endif
+
+#else
+
 static const struct gpio_bank gpio_bank_am33xx[] = {
 	{ (void *)AM33XX_GPIO0_BASE, METHOD_GPIO_24XX },
 	{ (void *)AM33XX_GPIO1_BASE, METHOD_GPIO_24XX },
@@ -48,6 +107,8 @@ static const struct gpio_bank gpio_bank_am33xx[] = {
 };
 
 const struct gpio_bank *const omap_gpio_bank = gpio_bank_am33xx;
+
+#endif
 
 #if defined(CONFIG_OMAP_HSMMC) && !defined(CONFIG_SPL_BUILD)
 int cpu_mmc_init(bd_t *bis)
@@ -214,6 +275,14 @@ static void watchdog_disable(void)
 		;
 }
 
+#ifdef CONFIG_SPL_BUILD
+void board_init_f(ulong dummy)
+{
+	board_early_init_f();
+	sdram_init();
+}
+#endif
+
 void s_init(void)
 {
 	/*
@@ -224,34 +293,19 @@ void s_init(void)
 #ifdef CONFIG_NOR_BOOT
 	enable_norboot_pin_mux();
 #endif
-	/*
-	 * Save the boot parameters passed from romcode.
-	 * We cannot delay the saving further than this,
-	 * to prevent overwrites.
-	 */
-#ifdef CONFIG_SPL_BUILD
-	save_omap_boot_params();
-#endif
 	watchdog_disable();
-	timer_init();
 	set_uart_mux_conf();
 	setup_clocks_for_console();
 	uart_soft_reset();
 #if defined(CONFIG_NOR_BOOT) || defined(CONFIG_QSPI_BOOT)
+	/* TODO: This does not work, gd is not available yet */
 	gd->baudrate = CONFIG_BAUDRATE;
 	serial_init();
 	gd->have_console = 1;
-#elif defined(CONFIG_SPL_BUILD)
-	gd = &gdata;
-	preloader_console_init();
 #endif
 #if defined(CONFIG_SPL_AM33XX_ENABLE_RTC32K_OSC)
 	/* Enable RTC32K clock */
 	rtc32k_enable();
-#endif
-#ifdef CONFIG_SPL_BUILD
-	board_early_init_f();
-	sdram_init();
 #endif
 }
 #endif

@@ -11,6 +11,7 @@
 #define _DM_UCLASS_H
 
 #include <dm/uclass-id.h>
+#include <linker_lists.h>
 #include <linux/list.h>
 
 /**
@@ -39,6 +40,9 @@ struct uclass {
 
 struct udevice;
 
+/* Members of this uclass sequence themselves with aliases */
+#define DM_UC_FLAG_SEQ_ALIAS			(1 << 0)
+
 /**
  * struct uclass_driver - Driver for the uclass
  *
@@ -51,6 +55,7 @@ struct udevice;
  * @pre_unbind: Called before a device is unbound from this uclass
  * @post_probe: Called after a new device is probed
  * @pre_remove: Called before a device is removed
+ * @child_post_bind: Called after a child is bound to a device in this uclass
  * @init: Called to set up the uclass
  * @destroy: Called to destroy the uclass
  * @priv_auto_alloc_size: If non-zero this is the size of the private data
@@ -59,8 +64,16 @@ struct udevice;
  * @per_device_auto_alloc_size: Each device can hold private data owned
  * by the uclass. If required this will be automatically allocated if this
  * value is non-zero.
+ * @per_child_auto_alloc_size: Each child device (of a parent in this
+ * uclass) can hold parent data for the device/uclass. This value is only
+ * used as a falback if this member is 0 in the driver.
+ * @per_child_platdata_auto_alloc_size: A bus likes to store information about
+ * its children. If non-zero this is the size of this data, to be allocated
+ * in the child device's parent_platdata pointer. This value is only used as
+ * a falback if this member is 0 in the driver.
  * @ops: Uclass operations, providing the consistent interface to devices
  * within the uclass.
+ * @flags: Flags for this uclass (DM_UC_...)
  */
 struct uclass_driver {
 	const char *name;
@@ -69,11 +82,16 @@ struct uclass_driver {
 	int (*pre_unbind)(struct udevice *dev);
 	int (*post_probe)(struct udevice *dev);
 	int (*pre_remove)(struct udevice *dev);
+	int (*child_post_bind)(struct udevice *dev);
+	int (*child_pre_probe)(struct udevice *dev);
 	int (*init)(struct uclass *class);
 	int (*destroy)(struct uclass *class);
 	int priv_auto_alloc_size;
 	int per_device_auto_alloc_size;
+	int per_child_auto_alloc_size;
+	int per_child_platdata_auto_alloc_size;
 	const void *ops;
+	uint32_t flags;
 };
 
 /* Declare a new uclass_driver */
@@ -98,7 +116,7 @@ int uclass_get(enum uclass_id key, struct uclass **ucp);
  *
  * The device is probed to activate it ready for use.
  *
- * id: ID to look up
+ * @id: ID to look up
  * @index: Device number within that uclass (0=first)
  * @devp: Returns pointer to device (there is only one per for each ID)
  * @return 0 if OK, -ve on error
@@ -106,7 +124,41 @@ int uclass_get(enum uclass_id key, struct uclass **ucp);
 int uclass_get_device(enum uclass_id id, int index, struct udevice **devp);
 
 /**
+ * uclass_get_device_by_seq() - Get a uclass device based on an ID and sequence
+ *
+ * If an active device has this sequence it will be returned. If there is no
+ * such device then this will check for a device that is requesting this
+ * sequence.
+ *
+ * The device is probed to activate it ready for use.
+ *
+ * @id: ID to look up
+ * @seq: Sequence number to find (0=first)
+ * @devp: Returns pointer to device (there is only one for each seq)
+ * @return 0 if OK, -ve on error
+ */
+int uclass_get_device_by_seq(enum uclass_id id, int seq, struct udevice **devp);
+
+/**
+ * uclass_get_device_by_of_offset() - Get a uclass device by device tree node
+ *
+ * This searches the devices in the uclass for one attached to the given
+ * device tree node.
+ *
+ * The device is probed to activate it ready for use.
+ *
+ * @id: ID to look up
+ * @node: Device tree offset to search for (if -ve then -ENODEV is returned)
+ * @devp: Returns pointer to device (there is only one for each node)
+ * @return 0 if OK, -ve on error
+ */
+int uclass_get_device_by_of_offset(enum uclass_id id, int node,
+				   struct udevice **devp);
+
+/**
  * uclass_first_device() - Get the first device in a uclass
+ *
+ * The device returned is probed if necessary, and ready for use
  *
  * @id: Uclass ID to look up
  * @devp: Returns pointer to the first device in that uclass, or NULL if none
@@ -117,11 +169,28 @@ int uclass_first_device(enum uclass_id id, struct udevice **devp);
 /**
  * uclass_next_device() - Get the next device in a uclass
  *
+ * The device returned is probed if necessary, and ready for use
+ *
  * @devp: On entry, pointer to device to lookup. On exit, returns pointer
  * to the next device in the same uclass, or NULL if none
  * @return 0 if OK (found or not found), -1 on error
  */
 int uclass_next_device(struct udevice **devp);
+
+/**
+ * uclass_resolve_seq() - Resolve a device's sequence number
+ *
+ * On entry dev->seq is -1, and dev->req_seq may be -1 (to allocate a
+ * sequence number automatically, or >= 0 to select a particular number.
+ * If the requested sequence number is in use, then this device will
+ * be allocated another one.
+ *
+ * Note that the device's seq value is not changed by this function.
+ *
+ * @dev: Device for which to allocate sequence number
+ * @return sequence number allocated, or -ve on error
+ */
+int uclass_resolve_seq(struct udevice *dev);
 
 /**
  * uclass_foreach_dev() - Helper function to iteration through devices

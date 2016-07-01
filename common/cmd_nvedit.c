@@ -5,7 +5,7 @@
  * (C) Copyright 2001 Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Andreas Heppel <aheppel@sysgo.de>
  *
- * Copyright 2011 Freescale Semiconductor, Inc.
+ * Copyright 2011-2014 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -49,9 +49,10 @@ DECLARE_GLOBAL_DATA_PTR;
 	!defined(CONFIG_ENV_IS_IN_SPI_FLASH)	&& \
 	!defined(CONFIG_ENV_IS_IN_REMOTE)	&& \
 	!defined(CONFIG_ENV_IS_IN_UBI)		&& \
+	!defined(CONFIG_ENV_IS_IN_SATA)		&& \
 	!defined(CONFIG_ENV_IS_NOWHERE)
 # error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|DATAFLASH|ONENAND|\
-SPI_FLASH|NVRAM|MMC|FAT|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
+SPI_FLASH|NVRAM|MMC|FAT|REMOTE|UBI|SATA} or CONFIG_ENV_IS_NOWHERE
 #endif
 
 /*
@@ -232,13 +233,6 @@ static int _do_env_set(int flag, int argc, char * const argv[])
 	debug("Final value for argc=%d\n", argc);
 	name = argv[1];
 	value = argv[2];
-
-#ifdef CONFIG_VERSION_STRING
-	if ( !strcmp( name , "version") )
-	{
-		return 1;
-	}
-#endif
 
 	if (strchr(name, '=')) {
 		printf("## Error: illegal character '='"
@@ -957,11 +951,15 @@ sep_err:
 
 #ifdef CONFIG_CMD_IMPORTENV
 /*
- * env import [-d] [-t | -b | -c] addr [size]
+ * env import [-d] [-t [-r] | -b | -c] addr [size]
  *	-d:	delete existing environment before importing;
  *		otherwise overwrite / append to existion definitions
  *	-t:	assume text format; either "size" must be given or the
  *		text data must be '\0' terminated
+ *	-r:	handle CRLF like LF, that means exported variables with
+ *		a content which ends with \r won't get imported. Used
+ *		to import text files created with editors which are using CRLF
+ *		for line endings. Only effective in addition to -t.
  *	-b:	assume binary format ('\0' separated, "\0\0" terminated)
  *	-c:	assume checksum protected environment format
  *	addr:	memory address to read from
@@ -977,6 +975,7 @@ static int do_env_import(cmd_tbl_t *cmdtp, int flag,
 	int	chk = 0;
 	int	fmt = 0;
 	int	del = 0;
+	int	crlf_is_lf = 0;
 	size_t	size;
 
 	cmd = *argv;
@@ -1001,6 +1000,9 @@ static int do_env_import(cmd_tbl_t *cmdtp, int flag,
 					goto sep_err;
 				sep = '\n';
 				break;
+			case 'r':		/* handle CRLF like LF */
+				crlf_is_lf = 1;
+				break;
 			case 'd':
 				del = 1;
 				break;
@@ -1015,6 +1017,9 @@ static int do_env_import(cmd_tbl_t *cmdtp, int flag,
 
 	if (!fmt)
 		printf("## Warning: defaulting to text format\n");
+
+	if (sep != '\n' && crlf_is_lf )
+		crlf_is_lf = 0;
 
 	addr = simple_strtoul(argv[0], NULL, 16);
 	ptr = map_sysmem(addr, 0);
@@ -1057,8 +1062,8 @@ static int do_env_import(cmd_tbl_t *cmdtp, int flag,
 		ptr = (char *)ep->data;
 	}
 
-	if (himport_r(&env_htab, ptr, size, sep, del ? 0 : H_NOCLEAR, 0,
-		      NULL) == 0) {
+	if (himport_r(&env_htab, ptr, size, sep, del ? 0 : H_NOCLEAR,
+			crlf_is_lf, 0, NULL) == 0) {
 		error("Environment import failed: errno = %d\n", errno);
 		return 1;
 	}
@@ -1187,7 +1192,7 @@ static char env_help_text[] =
 #endif
 #endif
 #if defined(CONFIG_CMD_IMPORTENV)
-	"env import [-d] [-t | -b | -c] addr [size] - import environment\n"
+	"env import [-d] [-t [-r] | -b | -c] addr [size] - import environment\n"
 #endif
 	"env print [-a | name ...] - print environment\n"
 #if defined(CONFIG_CMD_RUN)

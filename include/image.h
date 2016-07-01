@@ -119,6 +119,12 @@ struct lmb;
 # define IMAGE_OF_BOARD_SETUP		0
 #endif
 
+#ifdef CONFIG_OF_SYSTEM_SETUP
+# define IMAGE_OF_SYSTEM_SETUP	1
+#else
+# define IMAGE_OF_SYSTEM_SETUP	0
+#endif
+
 /*
  * Operating System Codes
  */
@@ -146,6 +152,7 @@ struct lmb;
 #define IH_OS_INTEGRITY		21	/* INTEGRITY	*/
 #define IH_OS_OSE		22	/* OSE		*/
 #define IH_OS_PLAN9		23	/* Plan 9	*/
+#define IH_OS_OPENRTOS		24	/* OpenRTOS	*/
 
 /*
  * CPU Architecture Codes (supported by Linux)
@@ -173,6 +180,7 @@ struct lmb;
 #define IH_ARCH_OPENRISC        21	/* OpenRISC 1000  */
 #define IH_ARCH_ARM64		22	/* ARM64	*/
 #define IH_ARCH_ARC		23	/* Synopsys DesignWare ARC */
+#define IH_ARCH_X86_64		24	/* AMD x86_64, Intel and Via */
 
 /*
  * Image Types
@@ -232,6 +240,9 @@ struct lmb;
 #define IH_TYPE_MXSIMAGE	16	/* Freescale MXSBoot Image	*/
 #define IH_TYPE_GPIMAGE		17	/* TI Keystone GPHeader Image	*/
 #define IH_TYPE_ATMELIMAGE	18	/* ATMEL ROM bootable Image	*/
+#define IH_TYPE_SOCFPGAIMAGE	19	/* Altera SOCFPGA Preloader	*/
+#define IH_TYPE_X86_SETUP	20	/* x86 setup.bin Image		*/
+#define IH_TYPE_LPC32XXIMAGE	21	/* x86 setup.bin Image		*/
 
 /*
  * Compression Types
@@ -272,6 +283,7 @@ typedef struct image_info {
 	ulong		image_start, image_len; /* start of image within blob, len of image */
 	ulong		load;			/* load addr for the image */
 	uint8_t		comp, type, os;		/* compression, type of image, os type */
+	uint8_t		arch;			/* CPU architecture */
 } image_info_t;
 
 /*
@@ -302,6 +314,10 @@ typedef struct bootm_headers {
 	void		*fit_hdr_fdt;	/* FDT blob FIT image header */
 	const char	*fit_uname_fdt;	/* FDT blob subimage node unit name */
 	int		fit_noffset_fdt;/* FDT blob subimage node offset */
+
+	void		*fit_hdr_setup;	/* x86 setup FIT image header */
+	const char	*fit_uname_setup; /* x86 setup subimage node name */
+	int		fit_noffset_setup;/* x86 setup subimage node offset */
 #endif
 
 #ifndef USE_HOSTCC
@@ -412,8 +428,12 @@ void genimg_print_time(time_t timestamp);
 enum fit_load_op {
 	FIT_LOAD_IGNORED,	/* Ignore load address */
 	FIT_LOAD_OPTIONAL,	/* Can be provided, but optional */
+	FIT_LOAD_OPTIONAL_NON_ZERO,	/* Optional, a value of 0 is ignored */
 	FIT_LOAD_REQUIRED,	/* Must be provided */
 };
+
+int boot_get_setup(bootm_headers_t *images, uint8_t arch, ulong *setup_start,
+		   ulong *setup_len);
 
 #ifndef USE_HOSTCC
 /* Image format types, returned by _get_format() routine */
@@ -424,6 +444,10 @@ enum fit_load_op {
 #define IMAGE_FORMAT_FIT	0x02	/* new, libfdt based format */
 #define IMAGE_FORMAT_ANDROID	0x03	/* Android boot image */
 
+ulong genimg_get_kernel_addr_fit(char * const img_addr,
+			         const char **fit_uname_config,
+			         const char **fit_uname_kernel);
+ulong genimg_get_kernel_addr(char * const img_addr);
 int genimg_get_format(const void *img_addr);
 int genimg_has_config(bootm_headers_t *images);
 ulong genimg_get_image(ulong img_addr);
@@ -431,6 +455,9 @@ ulong genimg_get_image(ulong img_addr);
 int boot_get_ramdisk(int argc, char * const argv[], bootm_headers_t *images,
 		uint8_t arch, ulong *rd_start, ulong *rd_end);
 #endif
+
+int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
+		       ulong *setup_start, ulong *setup_len);
 
 /**
  * fit_image_load() - load an image from a FIT
@@ -715,6 +742,7 @@ int bootz_setup(ulong image, ulong *start, ulong *end);
 #define FIT_RAMDISK_PROP	"ramdisk"
 #define FIT_FDT_PROP		"fdt"
 #define FIT_DEFAULT_PROP	"default"
+#define FIT_SETUP_PROP		"setup"
 
 #define FIT_MAX_HASH_LEN	HASH_MAX_DIGEST_SIZE
 
@@ -724,6 +752,7 @@ int fit_parse_conf(const char *spec, ulong addr_curr,
 int fit_parse_subimage(const char *spec, ulong addr_curr,
 		ulong *addr, const char **image_name);
 
+int fit_get_subimage_count(const void *fit, int images_noffset);
 void fit_print_contents(const void *fit);
 void fit_image_print(const void *fit, int noffset, const char *p);
 
@@ -900,8 +929,9 @@ struct checksum_algo {
 #if IMAGE_ENABLE_SIGN
 	const EVP_MD *(*calculate_sign)(void);
 #endif
-	void (*calculate)(const struct image_region region[],
-			  int region_count, uint8_t *checksum);
+	int (*calculate)(const char *name,
+			 const struct image_region region[],
+			 int region_count, uint8_t *checksum);
 	const uint8_t *rsa_padding;
 };
 

@@ -35,6 +35,7 @@ endif
 obj-$(CONFIG_SEMIHOSTING) += semihosting.o
 
 obj-y	+= sections.o
+obj-y	+= stack.o
 ifdef CONFIG_ARM64
 obj-y	+= gic_64.o
 obj-y	+= interrupts_64.o
@@ -47,6 +48,8 @@ obj-y	+= cache.o
 ifndef CONFIG_ARM64
 obj-y	+= cache-cp15.o
 endif
+
+obj-$(CONFIG_DEBUG_LL)	+= debug.o
 
 # For EABI conformant tool chains, provide eabi_compat()
 ifneq (,$(findstring -mabi=aapcs-linux,$(PLATFORM_CPPFLAGS)))

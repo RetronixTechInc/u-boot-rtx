@@ -34,9 +34,14 @@ void get_sys_info(sys_info_t *sys_info)
 #ifdef CONFIG_FSL_CORENET
 	volatile ccsr_clk_t *clk = (void *)(CONFIG_SYS_FSL_CORENET_CLK_ADDR);
 	unsigned int cpu;
+#ifdef CONFIG_HETROGENOUS_CLUSTERS
+	unsigned int dsp_cpu;
+	uint rcw_tmp1, rcw_tmp2;
+#endif
 #ifdef CONFIG_SYS_FSL_QORIQ_CHASSIS2
 	int cc_group[12] = CONFIG_SYS_FSL_CLUSTER_CLOCKS;
 #endif
+	__maybe_unused u32 svr;
 
 	const u8 core_cplx_PLL[16] = {
 		[ 0] = 0,	/* CC1 PPL / 1 */
@@ -122,11 +127,27 @@ void get_sys_info(sys_info_t *sys_info)
 	/* T4240/T4160 Rev2.0 MEM_PLL_RAT uses a value which is half of
 	 * T4240/T4160 Rev1.0. eg. It's 12 in Rev1.0, however, for Rev2.0
 	 * it uses 6.
+	 * T2080 rev 1.1 and later also use half mem_pll comparing with rev 1.0
 	 */
 #if defined(CONFIG_PPC_T4240) || defined(CONFIG_PPC_T4160) || \
-	defined(CONFIG_PPC_T4080)
-	if (SVR_MAJ(get_svr()) >= 2)
-		mem_pll_rat *= 2;
+	defined(CONFIG_PPC_T4080) || defined(CONFIG_PPC_T2080)
+	svr = get_svr();
+	switch (SVR_SOC_VER(svr)) {
+	case SVR_T4240:
+	case SVR_T4160:
+	case SVR_T4120:
+	case SVR_T4080:
+		if (SVR_MAJ(svr) >= 2)
+			mem_pll_rat *= 2;
+		break;
+	case SVR_T2080:
+	case SVR_T2081:
+		if ((SVR_MAJ(svr) > 1) || (SVR_MIN(svr) >= 1))
+			mem_pll_rat *= 2;
+		break;
+	default:
+		break;
+	}
 #endif
 	if (mem_pll_rat > 2)
 		sys_info->freq_ddrbus *= mem_pll_rat;
@@ -140,6 +161,7 @@ void get_sys_info(sys_info_t *sys_info)
 		else
 			freq_c_pll[i] = sys_info->freq_systembus * ratio[i];
 	}
+
 #ifdef CONFIG_SYS_FSL_QORIQ_CHASSIS2
 	/*
 	 * As per CHASSIS2 architeture total 12 clusters are posible and
@@ -164,10 +186,27 @@ void get_sys_info(sys_info_t *sys_info)
 		sys_info->freq_processor[cpu] =
 			 freq_c_pll[cplx_pll] / core_cplx_pll_div[c_pll_sel];
 	}
+
+#ifdef CONFIG_HETROGENOUS_CLUSTERS
+	for_each_cpu(i, dsp_cpu, cpu_num_dspcores(), cpu_dsp_mask()) {
+		int dsp_cluster = fsl_qoriq_dsp_core_to_cluster(dsp_cpu);
+		u32 c_pll_sel = (in_be32
+				(&clk->clkcsr[dsp_cluster].clkcncsr) >> 27)
+				& 0xf;
+		u32 cplx_pll = core_cplx_PLL[c_pll_sel];
+		cplx_pll += cc_group[dsp_cluster] - 1;
+		sys_info->freq_processor_dsp[dsp_cpu] =
+			 freq_c_pll[cplx_pll] / core_cplx_pll_div[c_pll_sel];
+	}
+#endif
+
 #if defined(CONFIG_PPC_B4860) || defined(CONFIG_PPC_B4420) || \
 	defined(CONFIG_PPC_T2080) || defined(CONFIG_PPC_T2081)
 #define FM1_CLK_SEL	0xe0000000
 #define FM1_CLK_SHIFT	29
+#elif defined(CONFIG_PPC_T1024) || defined(CONFIG_PPC_T1023)
+#define FM1_CLK_SEL	0x00000007
+#define FM1_CLK_SHIFT	0
 #else
 #define PME_CLK_SEL	0xe0000000
 #define PME_CLK_SHIFT	29
@@ -175,7 +214,11 @@ void get_sys_info(sys_info_t *sys_info)
 #define FM1_CLK_SHIFT	26
 #endif
 #if !defined(CONFIG_FM_PLAT_CLK_DIV) || !defined(CONFIG_PME_PLAT_CLK_DIV)
+#if defined(CONFIG_PPC_T1024) || defined(CONFIG_PPC_T1023)
+	rcw_tmp = in_be32(&gur->rcwsr[15]) - 4;
+#else
 	rcw_tmp = in_be32(&gur->rcwsr[7]);
+#endif
 #endif
 
 #ifdef CONFIG_SYS_DPAA_PME
@@ -213,7 +256,131 @@ void get_sys_info(sys_info_t *sys_info)
 #endif
 
 #ifdef CONFIG_SYS_DPAA_QBMAN
-	sys_info->freq_qman = sys_info->freq_systembus / 2;
+#ifndef CONFIG_QBMAN_CLK_DIV
+#define CONFIG_QBMAN_CLK_DIV	2
+#endif
+	sys_info->freq_qman = sys_info->freq_systembus / CONFIG_QBMAN_CLK_DIV;
+#endif
+
+#if defined(CONFIG_SYS_MAPLE)
+#define CPRI_CLK_SEL		0x1C000000
+#define CPRI_CLK_SHIFT		26
+#define CPRI_ALT_CLK_SEL	0x00007000
+#define CPRI_ALT_CLK_SHIFT	12
+
+	rcw_tmp1 = in_be32(&gur->rcwsr[7]);	/* Reading RCW bits: 224-255*/
+	rcw_tmp2 = in_be32(&gur->rcwsr[15]);	/* Reading RCW bits: 480-511*/
+	/* For MAPLE and CPRI frequency */
+	switch ((rcw_tmp1 & CPRI_CLK_SEL) >> CPRI_CLK_SHIFT) {
+	case 1:
+		sys_info->freq_maple = freq_c_pll[CONFIG_SYS_CPRI_CLK];
+		sys_info->freq_cpri = freq_c_pll[CONFIG_SYS_CPRI_CLK];
+		break;
+	case 2:
+		sys_info->freq_maple = freq_c_pll[CONFIG_SYS_CPRI_CLK] / 2;
+		sys_info->freq_cpri = freq_c_pll[CONFIG_SYS_CPRI_CLK] / 2;
+		break;
+	case 3:
+		sys_info->freq_maple = freq_c_pll[CONFIG_SYS_CPRI_CLK] / 3;
+		sys_info->freq_cpri = freq_c_pll[CONFIG_SYS_CPRI_CLK] / 3;
+		break;
+	case 4:
+		sys_info->freq_maple = freq_c_pll[CONFIG_SYS_CPRI_CLK] / 4;
+		sys_info->freq_cpri = freq_c_pll[CONFIG_SYS_CPRI_CLK] / 4;
+		break;
+	case 5:
+		if (((rcw_tmp2 & CPRI_ALT_CLK_SEL)
+					>> CPRI_ALT_CLK_SHIFT) == 6) {
+			sys_info->freq_maple =
+				freq_c_pll[CONFIG_SYS_CPRI_CLK - 2] / 2;
+			sys_info->freq_cpri =
+				freq_c_pll[CONFIG_SYS_CPRI_CLK - 2] / 2;
+		}
+		if (((rcw_tmp2 & CPRI_ALT_CLK_SEL)
+					>> CPRI_ALT_CLK_SHIFT) == 7) {
+			sys_info->freq_maple =
+				freq_c_pll[CONFIG_SYS_CPRI_CLK - 2] / 3;
+			sys_info->freq_cpri =
+				freq_c_pll[CONFIG_SYS_CPRI_CLK - 2] / 3;
+		}
+		break;
+	case 6:
+		sys_info->freq_maple = freq_c_pll[CONFIG_SYS_CPRI_CLK + 1] / 2;
+		sys_info->freq_cpri = freq_c_pll[CONFIG_SYS_CPRI_CLK + 1] / 2;
+		break;
+	case 7:
+		sys_info->freq_maple = freq_c_pll[CONFIG_SYS_CPRI_CLK + 1] / 3;
+		sys_info->freq_cpri = freq_c_pll[CONFIG_SYS_CPRI_CLK + 1] / 3;
+		break;
+	default:
+		printf("Error: Unknown MAPLE/CPRI clock select!\n");
+	}
+
+	/* For MAPLE ULB and eTVPE frequencies */
+#define ULB_CLK_SEL		0x00000038
+#define ULB_CLK_SHIFT		3
+#define ETVPE_CLK_SEL		0x00000007
+#define ETVPE_CLK_SHIFT		0
+
+	switch ((rcw_tmp2 & ULB_CLK_SEL) >> ULB_CLK_SHIFT) {
+	case 1:
+		sys_info->freq_maple_ulb = freq_c_pll[CONFIG_SYS_ULB_CLK];
+		break;
+	case 2:
+		sys_info->freq_maple_ulb = freq_c_pll[CONFIG_SYS_ULB_CLK] / 2;
+		break;
+	case 3:
+		sys_info->freq_maple_ulb = freq_c_pll[CONFIG_SYS_ULB_CLK] / 3;
+		break;
+	case 4:
+		sys_info->freq_maple_ulb = freq_c_pll[CONFIG_SYS_ULB_CLK] / 4;
+		break;
+	case 5:
+		sys_info->freq_maple_ulb = sys_info->freq_systembus;
+		break;
+	case 6:
+		sys_info->freq_maple_ulb =
+			freq_c_pll[CONFIG_SYS_ULB_CLK - 1] / 2;
+		break;
+	case 7:
+		sys_info->freq_maple_ulb =
+			freq_c_pll[CONFIG_SYS_ULB_CLK - 1] / 3;
+		break;
+	default:
+		printf("Error: Unknown MAPLE ULB clock select!\n");
+	}
+
+	switch ((rcw_tmp2 & ETVPE_CLK_SEL) >> ETVPE_CLK_SHIFT) {
+	case 1:
+		sys_info->freq_maple_etvpe = freq_c_pll[CONFIG_SYS_ETVPE_CLK];
+		break;
+	case 2:
+		sys_info->freq_maple_etvpe =
+			freq_c_pll[CONFIG_SYS_ETVPE_CLK] / 2;
+		break;
+	case 3:
+		sys_info->freq_maple_etvpe =
+			freq_c_pll[CONFIG_SYS_ETVPE_CLK] / 3;
+		break;
+	case 4:
+		sys_info->freq_maple_etvpe =
+			freq_c_pll[CONFIG_SYS_ETVPE_CLK] / 4;
+		break;
+	case 5:
+		sys_info->freq_maple_etvpe = sys_info->freq_systembus;
+		break;
+	case 6:
+		sys_info->freq_maple_etvpe =
+			freq_c_pll[CONFIG_SYS_ETVPE_CLK - 1] / 2;
+		break;
+	case 7:
+		sys_info->freq_maple_etvpe =
+			freq_c_pll[CONFIG_SYS_ETVPE_CLK - 1] / 3;
+		break;
+	default:
+		printf("Error: Unknown MAPLE eTVPE clock select!\n");
+	}
+
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN
@@ -430,7 +597,7 @@ void get_sys_info(sys_info_t *sys_info)
 #endif
 
 #if defined(CONFIG_FSL_IFC)
-	ccr = in_be32(&ifc_regs->ifc_ccr);
+	ccr = ifc_in32(&ifc_regs->ifc_ccr);
 	ccr = ((ccr & IFC_CCR_CLK_DIV_MASK) >> IFC_CCR_CLK_DIV_SHIFT) + 1;
 
 	sys_info->freq_localbus = sys_info->freq_systembus / ccr;

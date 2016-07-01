@@ -2,7 +2,7 @@
  * FSL SD/MMC Defines
  *-------------------------------------------------------------------
  *
- * Copyright 2007-2008,2010-2011 Freescale Semiconductor, Inc
+ * Copyright 2007-2008, 2010-2013 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -28,6 +28,12 @@
 #define SYSCTL_RSTA		0x01000000
 #define SYSCTL_RSTC		0x02000000
 #define SYSCTL_RSTD		0x04000000
+
+#define VENDORSPEC_CKEN		0x00004000
+#define VENDORSPEC_PEREN		0x00002000
+#define VENDORSPEC_HCKEN		0x00001000
+#define VENDORSPEC_IPGEN		0x00000800
+#define VENDORSPEC_INIT     0x20007809
 
 #define IRQSTAT			0x0002e030
 #define IRQSTAT_DMAE		(0x10000000)
@@ -82,6 +88,7 @@
 #define PRSSTAT_CINS		(0x00010000)
 #define PRSSTAT_BREN		(0x00000800)
 #define PRSSTAT_BWEN		(0x00000400)
+#define PRSSTAT_SDSTB		(0x00000008)
 #define PRSSTAT_DLA		(0x00000004)
 #define PRSSTAT_CICHB		(0x00000002)
 #define PRSSTAT_CIDHB		(0x00000001)
@@ -108,6 +115,7 @@
 #define XFERTYP_RSPTYP_48_BUSY	0x00030000
 #define XFERTYP_MSBSEL		0x00000020
 #define XFERTYP_DTDSEL		0x00000010
+#define XFERTYP_DDREN		0x00000008
 #define XFERTYP_AC12EN		0x00000004
 #define XFERTYP_BCEN		0x00000002
 #define XFERTYP_DMAEN		0x00000001
@@ -154,6 +162,8 @@
 #define ESDHC_HOSTCAPBLT_DMAS	0x00400000
 #define ESDHC_HOSTCAPBLT_HSS	0x00200000
 
+#define ESDHC_VENDORSPEC_VSELECT 0x00000002 /* Use 1.8V */
+
 struct fsl_esdhc_cfg {
 	u32	esdhc_base;
 	u32	sdhc_clk;
@@ -162,7 +172,19 @@ struct fsl_esdhc_cfg {
 };
 
 /* Select the correct accessors depending on endianess */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if defined CONFIG_SYS_FSL_ESDHC_LE
+#define esdhc_read32		in_le32
+#define esdhc_write32		out_le32
+#define esdhc_clrsetbits32	clrsetbits_le32
+#define esdhc_clrbits32		clrbits_le32
+#define esdhc_setbits32		setbits_le32
+#elif defined(CONFIG_SYS_FSL_ESDHC_BE)
+#define esdhc_read32            in_be32
+#define esdhc_write32           out_be32
+#define esdhc_clrsetbits32      clrsetbits_be32
+#define esdhc_clrbits32         clrbits_be32
+#define esdhc_setbits32         setbits_be32
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
 #define esdhc_read32		in_le32
 #define esdhc_write32		out_le32
 #define esdhc_clrsetbits32	clrsetbits_le32

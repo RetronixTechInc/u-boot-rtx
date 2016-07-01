@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Freescale Semiconductor, Inc.
+ * Copyright (C) 2013-2015 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6SL EVK board.
  *
@@ -18,6 +18,18 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
+/* uncomment for PLUGIN mode support */
+/* #define CONFIG_USE_PLUGIN */
+
+/* uncomment for SECURE mode support */
+/* #define CONFIG_SECURE_BOOT */
+
+#ifdef CONFIG_SECURE_BOOT
+#ifndef CONFIG_CSF_SIZE
+#define CONFIG_CSF_SIZE 0x4000
+#endif
+#endif
+
 #define MACH_TYPE_MX6SLEVK		4307
 #define CONFIG_MACH_TYPE		MACH_TYPE_MX6SLEVK
 
@@ -26,10 +38,13 @@
 #define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
 
+#define CONFIG_SYS_GENERIC_BOARD
+
 /* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(3 * SZ_1M)
+#define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
 
 #define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_LATE_INIT
 #define CONFIG_MXC_GPIO
 
 #define CONFIG_MXC_UART
@@ -38,13 +53,29 @@
 /* MMC Configs */
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
+#define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
+#define CONFIG_SYS_FSL_USDHC_NUM	3
+#define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC2*/
 
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
 #define CONFIG_CMD_FAT
 #define CONFIG_DOS_PARTITION
+
+#define CONFIG_SUPPORT_EMMC_BOOT /* eMMC specific */
+
+/* I2C Configs */
+#define CONFIG_CMD_I2C
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_SPEED		  100000
+
+/* PMIC */
+#define CONFIG_POWER
+#define CONFIG_POWER_I2C
+#define CONFIG_POWER_PFUZE100
+#define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
 
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
@@ -72,22 +103,36 @@
 
 #define CONFIG_BOOTDELAY		3
 
-#define CONFIG_LOADADDR			0x82000000
+#define CONFIG_LOADADDR			0x80800000
 #define CONFIG_SYS_TEXT_BASE		0x87800000
 
+#define CONFIG_MFG_ENV_SETTINGS \
+	"mfgtool_args=setenv bootargs console=${console},${baudrate} " \
+		"rdinit=/linuxrc " \
+		"g_mass_storage.stall=0 g_mass_storage.removable=1 " \
+		"g_mass_storage.idVendor=0x066F g_mass_storage.idProduct=0x37FF "\
+		"g_mass_storage.iSerialNumber=\"\" "\
+		"\0" \
+	"initrd_addr=0x83800000\0" \
+	"initrd_high=0xffffffff\0" \
+	"bootcmd_mfg=run mfgtool_args;bootz ${loadaddr} ${initrd_addr} ${fdt_addr};\0" \
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
+	CONFIG_MFG_ENV_SETTINGS \
+	"epdc_waveform=epdc_splash.bin\0" \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
 	"console=ttymxc0\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
 	"fdt_file=imx6sl-evk.dtb\0" \
-	"fdt_addr=0x88000000\0" \
+	"fdt_addr=0x83000000\0" \
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
-	"mmcdev=0\0" \
+	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"mmcpart=1\0" \
-	"mmcroot=/dev/mmcblk0p2 rootwait rw\0" \
+	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
+	"mmcautodetect=yes\0" \
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
 		"root=${mmcroot}\0" \
 	"loadbootscript=" \
@@ -153,13 +198,14 @@
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE		256
+#define CONFIG_SYS_CBSIZE		1024
 
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16
+#define CONFIG_SYS_MAXARGS		256
 #define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE
 
+#define CONFIG_CMD_MEMTEST
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_512M)
 
@@ -185,10 +231,23 @@
 /* FLASH and environment organization */
 #define CONFIG_SYS_NO_FLASH
 
-#define CONFIG_ENV_OFFSET		(6 * SZ_64K)
 #define CONFIG_ENV_SIZE			SZ_8K
+#define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
+#define CONFIG_SYS_MMC_ENV_PART		0	/* user partition */
+#define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
+
+#if defined CONFIG_SYS_BOOT_SPINOR
+#define CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_ENV_OFFSET               (768 * 1024)
+#define CONFIG_ENV_SECT_SIZE            (64 * 1024)
+#define CONFIG_ENV_SPI_BUS              CONFIG_SF_DEFAULT_BUS
+#define CONFIG_ENV_SPI_CS               CONFIG_SF_DEFAULT_CS
+#define CONFIG_ENV_SPI_MODE             CONFIG_SF_DEFAULT_MODE
+#define CONFIG_ENV_SPI_MAX_HZ           CONFIG_SF_DEFAULT_SPEED
+#else
+#define CONFIG_ENV_OFFSET		(8 * SZ_64K)
 #define CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		0
+#endif
 
 #define CONFIG_OF_LIBFDT
 #define CONFIG_CMD_BOOTZ
@@ -203,9 +262,58 @@
 #define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		(0 | (IMX_GPIO_NR(4, 11) << 8))
+#define CONFIG_SF_DEFAULT_CS		0
 #define CONFIG_SF_DEFAULT_SPEED		20000000
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
+#endif
+
+/* USB Configs */
+#define CONFIG_CMD_USB
+#ifdef CONFIG_CMD_USB
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_MX6
+#define CONFIG_USB_STORAGE
+#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
+#define CONFIG_USB_HOST_ETHER
+#define CONFIG_USB_ETHER_ASIX
+#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
+#define CONFIG_MXC_USB_FLAGS		0
+#define CONFIG_USB_MAX_CONTROLLER_COUNT	2
+#endif
+
+#define CONFIG_SYS_FSL_USDHC_NUM	3
+#if defined(CONFIG_ENV_IS_IN_MMC)
+#define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC2*/
+#endif
+
+#define CONFIG_CMD_FUSE
+#if defined(CONFIG_CMD_FUSE)
+#define CONFIG_MXC_OCOTP
+#endif
+
+/*#define CONFIG_SPLASH_SCREEN*/
+
+/*
+ * SPLASH SCREEN Configs
+ */
+#ifdef CONFIG_SPLASH_SCREEN
+	/*
+	 * Framebuffer and LCD
+	 */
+	#define CONFIG_CMD_BMP
+	#define CONFIG_MXC_EPDC				1
+	#define CONFIG_LCD
+	#define CONFIG_SYS_CONSOLE_IS_IN_ENV
+#ifdef CONFIG_MXC_EPDC
+	#undef LCD_TEST_PATTERN
+	#define LCD_BPP					LCD_MONOCHROME
+
+	#define CONFIG_WAVEFORM_BUF_SIZE		0x200000
+#endif
+#endif /* CONFIG_SPLASH_SCREEN */
+
+#if defined(CONFIG_ANDROID_SUPPORT)
+#include "mx6slevkandroid.h"
 #endif
 
 #endif				/* __CONFIG_H */

@@ -83,7 +83,7 @@
 #define GPIO6_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000E0000)
 #define GPIO7_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000E4000)
 #define I2C3_BASE_ADDR		(AIPS1_BASE_ADDR + 0x000EC000)
-#define UART4_BASE_ADDR         (AIPS1_BASE_ADDR + 0x000F0000)
+#define UART4_BASE         (AIPS1_BASE_ADDR + 0x000F0000)
 #endif
 /*
  * AIPS 2
@@ -201,11 +201,6 @@
  * WEIM CSnWCR2
  */
 #define WBED		1
-
-#define CS0_128					0
-#define CS0_64M_CS1_64M				1
-#define CS0_64M_CS1_32M_CS2_32M			2
-#define CS0_32M_CS1_32M_CS2_32M_CS3_32M		3
 
 /*
  * CSPI register definitions
@@ -414,8 +409,7 @@ struct weim {
 
 #if defined(CONFIG_MX51)
 struct iomuxc {
-	u32	gpr0;
-	u32	gpr1;
+	u32	gpr[2];
 	u32	omux0;
 	u32	omux1;
 	u32	omux2;
@@ -424,9 +418,7 @@ struct iomuxc {
 };
 #elif defined(CONFIG_MX53)
 struct iomuxc {
-	u32	gpr0;
-	u32	gpr1;
-	u32	gpr2;
+	u32	gpr[3];
 	u32	omux0;
 	u32	omux1;
 	u32	omux2;

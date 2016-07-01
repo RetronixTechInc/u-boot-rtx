@@ -43,20 +43,42 @@ enum mxc_clock {
 };
 
 enum enet_freq {
-	ENET_25MHz,
-	ENET_50MHz,
-	ENET_100MHz,
-	ENET_125MHz,
+	ENET_25MHZ,
+	ENET_50MHZ,
+	ENET_100MHZ,
+	ENET_125MHZ,
 };
 
 u32 imx_get_uartclk(void);
 u32 imx_get_fecclk(void);
 unsigned int mxc_get_clock(enum mxc_clock clk);
+void setup_gpmi_io_clk(u32 cfg);
+void hab_caam_clock_enable(unsigned char enable);
 void enable_ocotp_clk(unsigned char enable);
 void enable_usboh3_clk(unsigned char enable);
+void enable_uart_clk(unsigned char enable);
+int enable_cspi_clock(unsigned char enable, unsigned spi_num);
+int enable_usdhc_clk(unsigned char enable, unsigned bus_num);
 int enable_sata_clock(void);
+void disable_sata_clock(void);
 int enable_pcie_clock(void);
 int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
+int enable_spi_clk(unsigned char enable, unsigned spi_num);
 void enable_ipu_clock(void);
-int enable_fec_anatop_clock(enum enet_freq freq);
+int enable_fec_anatop_clock(int fec_id, enum enet_freq freq);
+void enable_enet_clk(unsigned char enable);
+#ifdef CONFIG_SECURE_BOOT
+void hab_caam_clock_enable(unsigned char enable);
+#endif
+
+#if defined(CONFIG_MX6SX) || defined(CONFIG_MX6UL)
+void enable_qspi_clk(int qspi_num);
+void mxs_set_lcdclk(uint32_t base_addr, uint32_t freq);
+void enable_lcdif_clock(uint32_t base_addr);
+#endif
+#if defined(CONFIG_MX6SX)
+void enable_lvds(uint32_t lcdif_base);
+void mxs_set_vadcclk(void);
+#endif
+void enable_thermal_clk(void);
 #endif /* __ASM_ARCH_CLOCK_H */

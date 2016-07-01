@@ -23,12 +23,15 @@
 #define MACH_TYPE_OMAP3_CPS 2751
 #endif
 #define CONFIG_MACH_TYPE MACH_TYPE_OMAP3_CPS
+/* Common ARM Erratas */
+#define CONFIG_ARM_ERRATA_454179
+#define CONFIG_ARM_ERRATA_430973
+#define CONFIG_ARM_ERRATA_621766
 
 /*
  * High Level Configuration Options
  */
 #define CONFIG_OMAP		/* in a TI OMAP core */
-#define CONFIG_OMAP34XX		/* which is a 34XX */
 #define CONFIG_OMAP_GPIO
 #define CONFIG_OMAP_COMMON
 
@@ -37,7 +40,7 @@
 #define CONFIG_SDRC	/* The chip has SDRC controller */
 
 #include <asm/arch/cpu.h>		/* get chip and board defs */
-#include <asm/arch/omap3.h>
+#include <asm/arch/omap.h>
 
 /*
  * Display CPU and Board information
@@ -251,10 +254,6 @@
  */
 
 /* **** PISMO SUPPORT *** */
-
-/* Configure the PISMO */
-#define PISMO1_NAND_SIZE		GPMC_SIZE_128M
-
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 2 sectors */
 
 #define CONFIG_SYS_FLASH_BASE		boot_flash_base

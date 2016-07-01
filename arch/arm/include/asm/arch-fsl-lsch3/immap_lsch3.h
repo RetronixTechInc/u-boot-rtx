@@ -15,6 +15,7 @@ struct sys_info {
 	unsigned long freq_processor[CONFIG_MAX_CPUS];
 	unsigned long freq_systembus;
 	unsigned long freq_ddrbus;
+	unsigned long freq_ddrbus2;
 	unsigned long freq_localbus;
 	unsigned long freq_qe;
 #ifdef CONFIG_SYS_DPAA_FMAN
@@ -60,6 +61,8 @@ struct ccsr_gur {
 #define FSL_CHASSIS3_RCWSR0_SYS_PLL_RAT_MASK	0x1f
 #define FSL_CHASSIS3_RCWSR0_MEM_PLL_RAT_SHIFT	10
 #define FSL_CHASSIS3_RCWSR0_MEM_PLL_RAT_MASK	0x3f
+#define FSL_CHASSIS3_RCWSR0_MEM2_PLL_RAT_SHIFT	18
+#define FSL_CHASSIS3_RCWSR0_MEM2_PLL_RAT_MASK	0x3f
 	u8	res_180[0x200-0x180];
 	u32	scratchrw[32];	/* Scratch Read/Write */
 	u8	res_280[0x300-0x280];
@@ -112,5 +115,40 @@ struct ccsr_clk_ctrl {
 		u32 csr;	/* core cluster n clock control status */
 		u8  res_04[0x20-0x04];
 	} clkcncsr[8];
+};
+
+struct ccsr_reset {
+	u32 rstcr;			/* 0x000 */
+	u32 rstcrsp;			/* 0x004 */
+	u8 res_008[0x10-0x08];		/* 0x008 */
+	u32 rstrqmr1;			/* 0x010 */
+	u32 rstrqmr2;			/* 0x014 */
+	u32 rstrqsr1;			/* 0x018 */
+	u32 rstrqsr2;			/* 0x01c */
+	u32 rstrqwdtmrl;		/* 0x020 */
+	u32 rstrqwdtmru;		/* 0x024 */
+	u8 res_028[0x30-0x28];		/* 0x028 */
+	u32 rstrqwdtsrl;		/* 0x030 */
+	u32 rstrqwdtsru;		/* 0x034 */
+	u8 res_038[0x60-0x38];		/* 0x038 */
+	u32 brrl;			/* 0x060 */
+	u32 brru;			/* 0x064 */
+	u8 res_068[0x80-0x68];		/* 0x068 */
+	u32 pirset;			/* 0x080 */
+	u32 pirclr;			/* 0x084 */
+	u8 res_088[0x90-0x88];		/* 0x088 */
+	u32 brcorenbr;			/* 0x090 */
+	u8 res_094[0x100-0x94];		/* 0x094 */
+	u32 rcw_reqr;			/* 0x100 */
+	u32 rcw_completion;		/* 0x104 */
+	u8 res_108[0x110-0x108];	/* 0x108 */
+	u32 pbi_reqr;			/* 0x110 */
+	u32 pbi_completion;		/* 0x114 */
+	u8 res_118[0xa00-0x118];	/* 0x118 */
+	u32 qmbm_warmrst;		/* 0xa00 */
+	u32 soc_warmrst;		/* 0xa04 */
+	u8 res_a08[0xbf8-0xa08];	/* 0xa08 */
+	u32 ip_rev1;			/* 0xbf8 */
+	u32 ip_rev2;			/* 0xbfc */
 };
 #endif /* __ARCH_FSL_LSCH3_IMMAP_H */

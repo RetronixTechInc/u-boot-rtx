@@ -4,7 +4,7 @@
  * Copyright (C) Procsys. All rights reserved.
  *		Mushtaq Khan <mushtaq_k@procsys.com>
  *			<mushtaqk_921@yahoo.co.in>
- * Copyright (C) 2008 Freescale Semiconductor, Inc.
+ * Copyright (C) 2008-2014 Freescale Semiconductor, Inc.
  *		Dave Liu <daveliu@freescale.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
@@ -15,7 +15,7 @@
 #include <part.h>
 #include <sata.h>
 
-static int sata_curr_device = -1;
+int sata_curr_device = -1;
 block_dev_desc_t sata_dev_desc[CONFIG_SYS_SATA_MAX_DEVICE];
 
 int __sata_initialize(void)
@@ -48,6 +48,20 @@ int __sata_initialize(void)
 }
 int sata_initialize(void) __attribute__((weak,alias("__sata_initialize")));
 
+__weak int __sata_stop(void)
+{
+	int i, err = 0;
+
+	for (i = 0; i < CONFIG_SYS_SATA_MAX_DEVICE; i++)
+		err |= reset_sata(i);
+
+	if (err)
+		printf("Could not reset some SATA devices\n");
+
+	return err;
+}
+int sata_stop(void) __attribute__((weak, alias("__sata_stop")));
+
 #ifdef CONFIG_PARTITIONS
 block_dev_desc_t *sata_get_dev(int dev)
 {
@@ -59,8 +73,15 @@ static int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int rc = 0;
 
-	if (argc == 2 && strcmp(argv[1], "init") == 0)
+	if (argc == 2 && strcmp(argv[1], "stop") == 0)
+		return sata_stop();
+
+	if (argc == 2 && strcmp(argv[1], "init") == 0) {
+		if (sata_curr_device != -1)
+			sata_stop();
+
 		return sata_initialize();
+	}
 
 	/* If the user has not yet run `sata init`, do it now */
 	if (sata_curr_device == -1)
@@ -185,6 +206,7 @@ U_BOOT_CMD(
 	sata, 5, 1, do_sata,
 	"SATA sub system",
 	"init - init SATA sub system\n"
+	"sata stop - disable SATA sub system\n"
 	"sata info - show available SATA devices\n"
 	"sata device [dev] - show or set current device\n"
 	"sata part [dev] - print partition table\n"

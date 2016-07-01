@@ -10,4 +10,7 @@
 #
 obj-y	+= board.o
 obj-$(CONFIG_SUNXI_GMAC)	+= gmac.o
-obj-$(CONFIG_CUBIETRUCK)	+= dram_cubietruck.o
+obj-$(CONFIG_SUNXI_AHCI)	+= ahci.o
+obj-$(CONFIG_MACH_SUN4I)	+= dram_sun4i_auto.o
+obj-$(CONFIG_MACH_SUN5I)	+= dram_sun5i_auto.o
+obj-$(CONFIG_MACH_SUN7I)	+= dram_sun5i_auto.o

@@ -11,6 +11,7 @@
 #include <common.h>
 #include <malloc.h>
 #include <net.h>
+#include <netdev.h>
 #include <miiphy.h>
 #include "fec_mxc.h"
 
@@ -27,6 +28,14 @@ DECLARE_GLOBAL_DATA_PTR;
  * the code in the tightloops this timeout is used in adds some overhead.
  */
 #define FEC_XFER_TIMEOUT	5000
+
+/*
+ * The standard 32-byte DMA alignment does not work on mx6solox, which requires
+ * 64-byte alignment in the DMA RX FEC buffer.
+ * Introduce the FEC_DMA_RX_MINALIGN which can cover mx6solox needs and also
+ * satisfies the alignment on other SoCs (32-bytes)
+ */
+#define FEC_DMA_RX_MINALIGN	64
 
 #ifndef CONFIG_MII
 #error "CONFIG_MII has to be defined!"
@@ -129,11 +138,13 @@ static void fec_mii_setspeed(struct ethernet_regs *eth)
 	 * and do not drop the Preamble.
 	 */
 	register u32 speed = DIV_ROUND_UP(imx_get_fecclk(), 5000000);
+	register u32 holdtime = DIV_ROUND_UP(imx_get_fecclk(), 100000000) - 1;
 #ifdef FEC_QUIRK_ENET_MAC
 	speed--;
 #endif
 	speed <<= 1;
-	writel(speed, &eth->mii_speed);
+	holdtime <<= 8;
+	writel(speed | holdtime, &eth->mii_speed);
 	debug("%s: mii_speed %08x\n", __func__, readl(&eth->mii_speed));
 }
 
@@ -171,13 +182,14 @@ static int fec_mdio_write(struct ethernet_regs *eth, uint8_t phyAddr,
 	return 0;
 }
 
-int fec_phy_read(struct mii_dev *bus, int phyAddr, int dev_addr, int regAddr)
+static int fec_phy_read(struct mii_dev *bus, int phyAddr, int dev_addr,
+			int regAddr)
 {
 	return fec_mdio_read(bus->priv, phyAddr, regAddr);
 }
 
-int fec_phy_write(struct mii_dev *bus, int phyAddr, int dev_addr, int regAddr,
-		u16 data)
+static int fec_phy_write(struct mii_dev *bus, int phyAddr, int dev_addr,
+			 int regAddr, u16 data)
 {
 	return fec_mdio_write(bus->priv, phyAddr, regAddr, data);
 }
@@ -517,8 +529,10 @@ static int fec_open(struct eth_device *edev)
 static int fec_init(struct eth_device *dev, bd_t* bd)
 {
 	struct fec_priv *fec = (struct fec_priv *)dev->priv;
+#if !defined(CONFIG_MX6UL)
 	uint32_t mib_ptr = (uint32_t)&fec->eth->rmon_t_drop;
 	int i;
+#endif
 
 	/* Initialize MAC address */
 	fec_set_hwaddr(dev);
@@ -547,13 +561,14 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 	writel(0x00000000, &fec->eth->gaddr1);
 	writel(0x00000000, &fec->eth->gaddr2);
 
-
+#if !defined(CONFIG_MX6UL)
 	/* clear MIB RAM */
 	for (i = mib_ptr; i <= mib_ptr + 0xfc; i += 4)
 		writel(0, i);
 
 	/* FIFO receive start register */
 	writel(0x520, &fec->eth->r_fstart);
+#endif
 
 	/* size and address of each buffer */
 	writel(FEC_MAX_PKT_SIZE, &fec->eth->emrbr);
@@ -711,13 +726,37 @@ static int fec_send(struct eth_device *dev, void *packet, int length)
 			break;
 	}
 
+	if (!timeout) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/*
+	 * The TDAR bit is cleared when the descriptors are all out from TX
+	 * but on mx6solox we noticed that the READY bit is still not cleared
+	 * right after TDAR.
+	 * These are two distinct signals, and in IC simulation, we found that
+	 * TDAR always gets cleared prior than the READY bit of last BD becomes
+	 * cleared.
+	 * In mx6solox, we use a later version of FEC IP. It looks like that
+	 * this intrinsic behaviour of TDAR bit has changed in this newer FEC
+	 * version.
+	 *
+	 * Fix this by polling the READY bit of BD after the TDAR polling,
+	 * which covers the mx6solox case and does not harm the other SoCs.
+	 */
+	timeout = FEC_XFER_TIMEOUT;
+	while (--timeout) {
+		invalidate_dcache_range(addr, addr + size);
+		if (!(readw(&fec->tbd_base[fec->tbd_index].status) &
+		    FEC_TBD_READY))
+			break;
+	}
+
 	if (!timeout)
 		ret = -EINVAL;
 
-	invalidate_dcache_range(addr, addr + size);
-	if (readw(&fec->tbd_base[fec->tbd_index].status) & FEC_TBD_READY)
-		ret = -EINVAL;
-
+out:
 	debug("fec_send: status 0x%x index %d ret %i\n",
 			readw(&fec->tbd_base[fec->tbd_index].status),
 			fec->tbd_index, ret);
@@ -881,9 +920,9 @@ static int fec_alloc_descs(struct fec_priv *fec)
 	/* Allocate RX buffers. */
 
 	/* Maximum RX buffer size. */
-	size = roundup(FEC_MAX_PKT_SIZE, ARCH_DMA_MINALIGN);
+	size = roundup(FEC_MAX_PKT_SIZE, FEC_DMA_RX_MINALIGN);
 	for (i = 0; i < FEC_RBD_NUM; i++) {
-		data = memalign(ARCH_DMA_MINALIGN, size);
+		data = memalign(FEC_DMA_RX_MINALIGN, size);
 		if (!data) {
 			printf("%s: error allocating rxbuf %d\n", __func__, i);
 			goto err_ring;
@@ -1059,7 +1098,11 @@ int fecmxc_initialize_multi(bd_t *bd, int dev_id, int phy_id, uint32_t addr)
 	 */
 	base_mii = MXS_ENET0_BASE;
 #else
+#ifdef CONFIG_FEC_MXC_MDIO_BASE
+	base_mii = CONFIG_FEC_MXC_MDIO_BASE;
+#else
 	base_mii = addr;
+#endif
 #endif
 	debug("eth_init: fec_probe(bd, %i, %i) @ %08x\n", dev_id, phy_id, addr);
 	bus = fec_get_miibus(base_mii, dev_id);

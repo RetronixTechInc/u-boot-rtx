@@ -278,6 +278,7 @@ setup_pll_func:
 
 	/* Gate of clocks to the peripherals first */
 	ldr r1, =0x3FFFFFFF
+    ldr r4, =0x0
 	str r1, [r0, #CLKCTL_CCGR0]
 	str r4, [r0, #CLKCTL_CCGR1]
 	str r4, [r0, #CLKCTL_CCGR2]

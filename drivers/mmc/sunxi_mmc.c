@@ -14,36 +14,14 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/cpu.h>
+#include <asm/arch/gpio.h>
 #include <asm/arch/mmc.h>
-
-struct sunxi_mmc_des {
-	u32 reserved1_1:1;
-	u32 dic:1;		/* disable interrupt on completion */
-	u32 last_des:1;		/* 1-this data buffer is the last buffer */
-	u32 first_des:1;		/* 1-data buffer is the first buffer,
-				   0-data buffer contained in the next
-				   descriptor is 1st buffer */
-	u32 des_chain:1;	/* 1-the 2nd address in the descriptor is the
-				   next descriptor address */
-	u32 end_of_ring:1;	/* 1-last descriptor flag when using dual
-				   data buffer in descriptor */
-	u32 reserved1_2:24;
-	u32 card_err_sum:1;	/* transfer error flag */
-	u32 own:1;		/* des owner:1-idma owns it, 0-host owns it */
-#define SDXC_DES_NUM_SHIFT 16
-#define SDXC_DES_BUFFER_MAX_LEN	(1 << SDXC_DES_NUM_SHIFT)
-	u32 data_buf1_sz:16;
-	u32 data_buf2_sz:16;
-	u32 buf_addr_ptr1;
-	u32 buf_addr_ptr2;
-};
+#include <asm-generic/gpio.h>
 
 struct sunxi_mmc_host {
 	unsigned mmc_no;
 	uint32_t *mclkreg;
-	unsigned database;
 	unsigned fatal_err;
-	unsigned mod_clk;
 	struct sunxi_mmc *reg;
 	struct mmc_config cfg;
 };
@@ -51,10 +29,22 @@ struct sunxi_mmc_host {
 /* support 4 mmc hosts */
 struct sunxi_mmc_host mmc_host[4];
 
+static int sunxi_mmc_getcd_gpio(int sdc_no)
+{
+	switch (sdc_no) {
+	case 0: return sunxi_name_to_gpio(CONFIG_MMC0_CD_PIN);
+	case 1: return sunxi_name_to_gpio(CONFIG_MMC1_CD_PIN);
+	case 2: return sunxi_name_to_gpio(CONFIG_MMC2_CD_PIN);
+	case 3: return sunxi_name_to_gpio(CONFIG_MMC3_CD_PIN);
+	}
+	return -1;
+}
+
 static int mmc_resource_init(int sdc_no)
 {
 	struct sunxi_mmc_host *mmchost = &mmc_host[sdc_no];
 	struct sunxi_ccm_reg *ccm = (struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	int cd_pin, ret = 0;
 
 	debug("init mmc %d resource\n", sdc_no);
 
@@ -79,16 +69,80 @@ static int mmc_resource_init(int sdc_no)
 		printf("Wrong mmc number %d\n", sdc_no);
 		return -1;
 	}
-	mmchost->database = (unsigned int)mmchost->reg + 0x100;
 	mmchost->mmc_no = sdc_no;
+
+	cd_pin = sunxi_mmc_getcd_gpio(sdc_no);
+	if (cd_pin != -1) {
+		ret = gpio_request(cd_pin, "mmc_cd");
+		if (!ret)
+			ret = gpio_direction_input(cd_pin);
+	}
+
+	return ret;
+}
+
+static int mmc_set_mod_clk(struct sunxi_mmc_host *mmchost, unsigned int hz)
+{
+	unsigned int pll, pll_hz, div, n, oclk_dly, sclk_dly;
+
+	if (hz <= 24000000) {
+		pll = CCM_MMC_CTRL_OSCM24;
+		pll_hz = 24000000;
+	} else {
+#ifdef CONFIG_MACH_SUN9I
+		pll = CCM_MMC_CTRL_PLL_PERIPH0;
+		pll_hz = clock_get_pll4_periph0();
+#else
+		pll = CCM_MMC_CTRL_PLL6;
+		pll_hz = clock_get_pll6();
+#endif
+	}
+
+	div = pll_hz / hz;
+	if (pll_hz % hz)
+		div++;
+
+	n = 0;
+	while (div > 16) {
+		n++;
+		div = (div + 1) / 2;
+	}
+
+	if (n > 3) {
+		printf("mmc %u error cannot set clock to %u\n",
+		       mmchost->mmc_no, hz);
+		return -1;
+	}
+
+	/* determine delays */
+	if (hz <= 400000) {
+		oclk_dly = 0;
+		sclk_dly = 7;
+	} else if (hz <= 25000000) {
+		oclk_dly = 0;
+		sclk_dly = 5;
+	} else if (hz <= 50000000) {
+		oclk_dly = 3;
+		sclk_dly = 5;
+	} else {
+		/* hz > 50000000 */
+		oclk_dly = 2;
+		sclk_dly = 4;
+	}
+
+	writel(CCM_MMC_CTRL_ENABLE | pll | CCM_MMC_CTRL_SCLK_DLY(sclk_dly) |
+	       CCM_MMC_CTRL_N(n) | CCM_MMC_CTRL_OCLK_DLY(oclk_dly) |
+	       CCM_MMC_CTRL_M(div), mmchost->mclkreg);
+
+	debug("mmc %u set mod-clk req %u parent %u n %u m %u rate %u\n",
+	      mmchost->mmc_no, hz, pll_hz, 1u << n, div,
+	      pll_hz / (1u << n) / div);
 
 	return 0;
 }
 
 static int mmc_clk_io_on(int sdc_no)
 {
-	unsigned int pll_clk;
-	unsigned int divider;
 	struct sunxi_mmc_host *mmchost = &mmc_host[sdc_no];
 	struct sunxi_ccm_reg *ccm = (struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
 
@@ -97,15 +151,18 @@ static int mmc_clk_io_on(int sdc_no)
 	/* config ahb clock */
 	setbits_le32(&ccm->ahb_gate0, 1 << AHB_GATE_OFFSET_MMC(sdc_no));
 
-	/* config mod clock */
-	pll_clk = clock_get_pll6();
-	/* should be close to 100 MHz but no more, so round up */
-	divider = ((pll_clk + 99999999) / 100000000) - 1;
-	writel(CCM_MMC_CTRL_ENABLE | CCM_MMC_CTRL_PLL6 | divider,
-	       mmchost->mclkreg);
-	mmchost->mod_clk = pll_clk / (divider + 1);
+#if defined(CONFIG_MACH_SUN6I) || defined(CONFIG_MACH_SUN8I) || \
+    defined(CONFIG_MACH_SUN9I)
+	/* unassert reset */
+	setbits_le32(&ccm->ahb_reset0_cfg, 1 << AHB_RESET_OFFSET_MMC(sdc_no));
+#endif
+#if defined(CONFIG_MACH_SUN9I)
+	/* sun9i has a mmc-common module, also set the gate and reset there */
+	writel(SUNXI_MMC_COMMON_CLK_GATE | SUNXI_MMC_COMMON_RESET,
+	       SUNXI_MMC_COMMON_BASE + 4 * sdc_no);
+#endif
 
-	return 0;
+	return mmc_set_mod_clk(mmchost, 24000000);
 }
 
 static int mmc_update_clk(struct mmc *mmc)
@@ -130,7 +187,7 @@ static int mmc_update_clk(struct mmc *mmc)
 	return 0;
 }
 
-static int mmc_config_clock(struct mmc *mmc, unsigned div)
+static int mmc_config_clock(struct mmc *mmc)
 {
 	struct sunxi_mmc_host *mmchost = mmc->priv;
 	unsigned rval = readl(&mmchost->reg->clkcr);
@@ -141,37 +198,34 @@ static int mmc_config_clock(struct mmc *mmc, unsigned div)
 	if (mmc_update_clk(mmc))
 		return -1;
 
-	/* Change Divider Factor */
-	rval &= ~SUNXI_MMC_CLK_DIVIDER_MASK;
-	rval |= div;
-	writel(rval, &mmchost->reg->clkcr);
-	if (mmc_update_clk(mmc))
+	/* Set mod_clk to new rate */
+	if (mmc_set_mod_clk(mmchost, mmc->clock))
 		return -1;
+
+	/* Clear internal divider */
+	rval &= ~SUNXI_MMC_CLK_DIVIDER_MASK;
+	writel(rval, &mmchost->reg->clkcr);
+
 	/* Re-enable Clock */
 	rval |= SUNXI_MMC_CLK_ENABLE;
 	writel(rval, &mmchost->reg->clkcr);
-
 	if (mmc_update_clk(mmc))
 		return -1;
 
 	return 0;
 }
 
-static void mmc_set_ios(struct mmc *mmc)
+static void sunxi_mmc_set_ios(struct mmc *mmc)
 {
 	struct sunxi_mmc_host *mmchost = mmc->priv;
-	unsigned int clkdiv = 0;
 
-	debug("set ios: bus_width: %x, clock: %d, mod_clk: %d\n",
-	      mmc->bus_width, mmc->clock, mmchost->mod_clk);
+	debug("set ios: bus_width: %x, clock: %d\n",
+	      mmc->bus_width, mmc->clock);
 
 	/* Change clock first */
-	clkdiv = (mmchost->mod_clk + (mmc->clock >> 1)) / mmc->clock / 2;
-	if (mmc->clock) {
-		if (mmc_config_clock(mmc, clkdiv)) {
-			mmchost->fatal_err = 1;
-			return;
-		}
+	if (mmc->clock && mmc_config_clock(mmc) != 0) {
+		mmchost->fatal_err = 1;
+		return;
 	}
 
 	/* Change bus width */
@@ -183,12 +237,13 @@ static void mmc_set_ios(struct mmc *mmc)
 		writel(0x0, &mmchost->reg->width);
 }
 
-static int mmc_core_init(struct mmc *mmc)
+static int sunxi_mmc_core_init(struct mmc *mmc)
 {
 	struct sunxi_mmc_host *mmchost = mmc->priv;
 
 	/* Reset controller */
 	writel(SUNXI_MMC_GCTRL_RESET, &mmchost->reg->gctrl);
+	udelay(1000);
 
 	return 0;
 }
@@ -204,6 +259,9 @@ static int mmc_trans_data_by_cpu(struct mmc *mmc, struct mmc_data *data)
 	unsigned timeout_msecs = 2000;
 	unsigned *buff = (unsigned int *)(reading ? data->dest : data->src);
 
+	/* Always read / write data through the CPU */
+	setbits_le32(&mmchost->reg->gctrl, SUNXI_MMC_GCTRL_ACCESS_BY_AHB);
+
 	for (i = 0; i < (byte_cnt >> 2); i++) {
 		while (readl(&mmchost->reg->status) & status_bit) {
 			if (!timeout_msecs--)
@@ -212,91 +270,12 @@ static int mmc_trans_data_by_cpu(struct mmc *mmc, struct mmc_data *data)
 		}
 
 		if (reading)
-			buff[i] = readl(mmchost->database);
+			buff[i] = readl(&mmchost->reg->fifo);
 		else
-			writel(buff[i], mmchost->database);
+			writel(buff[i], &mmchost->reg->fifo);
 	}
 
 	return 0;
-}
-
-static int mmc_trans_data_by_dma(struct mmc *mmc, struct mmc_data *data)
-{
-	struct sunxi_mmc_host *mmchost = mmc->priv;
-	unsigned byte_cnt = data->blocksize * data->blocks;
-	unsigned char *buff;
-	unsigned des_idx = 0;
-	unsigned buff_frag_num =
-		(byte_cnt + SDXC_DES_BUFFER_MAX_LEN - 1) >> SDXC_DES_NUM_SHIFT;
-	unsigned remain;
-	unsigned i, rval;
-	ALLOC_CACHE_ALIGN_BUFFER(struct sunxi_mmc_des, pdes, buff_frag_num);
-
-	buff = data->flags & MMC_DATA_READ ?
-	    (unsigned char *)data->dest : (unsigned char *)data->src;
-	remain = byte_cnt & (SDXC_DES_BUFFER_MAX_LEN - 1);
-
-	flush_cache((unsigned long)buff, (unsigned long)byte_cnt);
-	for (i = 0; i < buff_frag_num; i++, des_idx++) {
-		memset((void *)&pdes[des_idx], 0, sizeof(struct sunxi_mmc_des));
-		pdes[des_idx].des_chain = 1;
-		pdes[des_idx].own = 1;
-		pdes[des_idx].dic = 1;
-		if (buff_frag_num > 1 && i != buff_frag_num - 1)
-			pdes[des_idx].data_buf1_sz = 0; /* 0 == max_len */
-		else
-			pdes[des_idx].data_buf1_sz = remain;
-
-		pdes[des_idx].buf_addr_ptr1 =
-		    (u32) buff + i * SDXC_DES_BUFFER_MAX_LEN;
-		if (i == 0)
-			pdes[des_idx].first_des = 1;
-
-		if (i == buff_frag_num - 1) {
-			pdes[des_idx].dic = 0;
-			pdes[des_idx].last_des = 1;
-			pdes[des_idx].end_of_ring = 1;
-			pdes[des_idx].buf_addr_ptr2 = 0;
-		} else {
-			pdes[des_idx].buf_addr_ptr2 = (u32)&pdes[des_idx + 1];
-		}
-	}
-	flush_cache((unsigned long)pdes,
-		    sizeof(struct sunxi_mmc_des) * (des_idx + 1));
-
-	rval = readl(&mmchost->reg->gctrl);
-	/* Enable DMA */
-	writel(rval | SUNXI_MMC_GCTRL_DMA_RESET | SUNXI_MMC_GCTRL_DMA_ENABLE,
-	       &mmchost->reg->gctrl);
-	/* Reset iDMA */
-	writel(SUNXI_MMC_IDMAC_RESET, &mmchost->reg->dmac);
-	/* Enable iDMA */
-	writel(SUNXI_MMC_IDMAC_FIXBURST | SUNXI_MMC_IDMAC_ENABLE,
-	       &mmchost->reg->dmac);
-	rval = readl(&mmchost->reg->idie) &
-		~(SUNXI_MMC_IDIE_TXIRQ|SUNXI_MMC_IDIE_RXIRQ);
-	if (data->flags & MMC_DATA_WRITE)
-		rval |= SUNXI_MMC_IDIE_TXIRQ;
-	else
-		rval |= SUNXI_MMC_IDIE_RXIRQ;
-	writel(rval, &mmchost->reg->idie);
-	writel((u32) pdes, &mmchost->reg->dlba);
-	writel((0x2 << 28) | (0x7 << 16) | (0x01 << 3),
-	       &mmchost->reg->ftrglevel);
-
-	return 0;
-}
-
-static void mmc_enable_dma_accesses(struct mmc *mmc, int dma)
-{
-	struct sunxi_mmc_host *mmchost = mmc->priv;
-
-	unsigned int gctrl = readl(&mmchost->reg->gctrl);
-	if (dma)
-		gctrl &= ~SUNXI_MMC_GCTRL_ACCESS_BY_AHB;
-	else
-		gctrl |= SUNXI_MMC_GCTRL_ACCESS_BY_AHB;
-	writel(gctrl, &mmchost->reg->gctrl);
 }
 
 static int mmc_rint_wait(struct mmc *mmc, unsigned int timeout_msecs,
@@ -319,15 +298,14 @@ static int mmc_rint_wait(struct mmc *mmc, unsigned int timeout_msecs,
 	return 0;
 }
 
-static int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
-			struct mmc_data *data)
+static int sunxi_mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
+			      struct mmc_data *data)
 {
 	struct sunxi_mmc_host *mmchost = mmc->priv;
 	unsigned int cmdval = SUNXI_MMC_CMD_START;
 	unsigned int timeout_msecs;
 	int error = 0;
 	unsigned int status = 0;
-	unsigned int usedma = 0;
 	unsigned int bytecnt = 0;
 
 	if (mmchost->fatal_err)
@@ -378,20 +356,8 @@ static int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 
 		bytecnt = data->blocksize * data->blocks;
 		debug("trans data %d bytes\n", bytecnt);
-#if defined(CONFIG_MMC_SUNXI_USE_DMA) && !defined(CONFIG_SPL_BUILD)
-		if (bytecnt > 64) {
-#else
-		if (0) {
-#endif
-			usedma = 1;
-			mmc_enable_dma_accesses(mmc, 1);
-			ret = mmc_trans_data_by_dma(mmc, data);
-			writel(cmdval | cmd->cmdidx, &mmchost->reg->cmd);
-		} else {
-			mmc_enable_dma_accesses(mmc, 0);
-			writel(cmdval | cmd->cmdidx, &mmchost->reg->cmd);
-			ret = mmc_trans_data_by_cpu(mmc, data);
-		}
+		writel(cmdval | cmd->cmdidx, &mmchost->reg->cmd);
+		ret = mmc_trans_data_by_cpu(mmc, data);
 		if (ret) {
 			error = readl(&mmchost->reg->rint) & \
 				SUNXI_MMC_RINT_INTERRUPT_ERROR_BIT;
@@ -400,12 +366,12 @@ static int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 		}
 	}
 
-	error = mmc_rint_wait(mmc, 0xfffff, SUNXI_MMC_RINT_COMMAND_DONE, "cmd");
+	error = mmc_rint_wait(mmc, 1000, SUNXI_MMC_RINT_COMMAND_DONE, "cmd");
 	if (error)
 		goto out;
 
 	if (data) {
-		timeout_msecs = usedma ? 120 * bytecnt : 120;
+		timeout_msecs = 120;
 		debug("cacl timeout %x msec\n", timeout_msecs);
 		error = mmc_rint_wait(mmc, timeout_msecs,
 				      data->blocks > 1 ?
@@ -442,23 +408,6 @@ static int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 		debug("mmc resp 0x%08x\n", cmd->response[0]);
 	}
 out:
-	if (data && usedma) {
-		/* IDMASTAREG
-		 * IDST[0] : idma tx int
-		 * IDST[1] : idma rx int
-		 * IDST[2] : idma fatal bus error
-		 * IDST[4] : idma descriptor invalid
-		 * IDST[5] : idma error summary
-		 * IDST[8] : idma normal interrupt sumary
-		 * IDST[9] : idma abnormal interrupt sumary
-		 */
-		status = readl(&mmchost->reg->idst);
-		writel(status, &mmchost->reg->idst);
-		writel(0, &mmchost->reg->idie);
-		writel(0, &mmchost->reg->dmac);
-		writel(readl(&mmchost->reg->gctrl) & ~SUNXI_MMC_GCTRL_DMA_ENABLE,
-		       &mmchost->reg->gctrl);
-	}
 	if (error < 0) {
 		writel(SUNXI_MMC_GCTRL_RESET, &mmchost->reg->gctrl);
 		mmc_update_clk(mmc);
@@ -470,13 +419,26 @@ out:
 	return error;
 }
 
+static int sunxi_mmc_getcd(struct mmc *mmc)
+{
+	struct sunxi_mmc_host *mmchost = mmc->priv;
+	int cd_pin;
+
+	cd_pin = sunxi_mmc_getcd_gpio(mmchost->mmc_no);
+	if (cd_pin == -1)
+		return 1;
+
+	return !gpio_get_value(cd_pin);
+}
+
 static const struct mmc_ops sunxi_mmc_ops = {
-	.send_cmd	= mmc_send_cmd,
-	.set_ios	= mmc_set_ios,
-	.init		= mmc_core_init,
+	.send_cmd	= sunxi_mmc_send_cmd,
+	.set_ios	= sunxi_mmc_set_ios,
+	.init		= sunxi_mmc_core_init,
+	.getcd		= sunxi_mmc_getcd,
 };
 
-int sunxi_mmc_init(int sdc_no)
+struct mmc *sunxi_mmc_init(int sdc_no)
 {
 	struct mmc_config *cfg = &mmc_host[sdc_no].cfg;
 
@@ -487,17 +449,16 @@ int sunxi_mmc_init(int sdc_no)
 
 	cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34;
 	cfg->host_caps = MMC_MODE_4BIT;
-	cfg->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
+	cfg->host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_HC;
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 
 	cfg->f_min = 400000;
 	cfg->f_max = 52000000;
 
-	mmc_resource_init(sdc_no);
+	if (mmc_resource_init(sdc_no) != 0)
+		return NULL;
+
 	mmc_clk_io_on(sdc_no);
 
-	if (mmc_create(cfg, &mmc_host[sdc_no]) == NULL)
-		return -1;
-
-	return 0;
+	return mmc_create(cfg, &mmc_host[sdc_no]);
 }
