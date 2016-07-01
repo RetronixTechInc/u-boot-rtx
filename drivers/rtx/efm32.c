@@ -10,6 +10,7 @@
 #include <i2c.h>
 
 #ifdef CONFIG_RTX_SET_TIMEOUT
+#if ( CONFIG_MACH_TYPE == MACH_TYPE_RTX_BISHOP_MX53 )
 void vEFM32_SetTimeout( )
 {
 	unsigned char buf[4] = { 0 } ;
@@ -39,4 +40,52 @@ void vEFM32_SetTimeout( )
 	/* reset the i2c bus */
 	i2c_set_bus_num(bus);
 }
+#elif ( CONFIG_MACH_TYPE == MACH_TYPE_MX6Q_A6 )
+void vEFM32_SetTimeout( )
+{
+	unsigned char const ubSentBuf[8] = { 5 , 0x8E , 0 , 0 , 0x93 } ;
+	unsigned char ubRecvBuf[8] = { 0 } ;
+	unsigned int iBus = i2c_get_bus_num() ;
+		
+	if ( i2c_set_bus_num( 2 ) ) 
+	{
+		printf("unable to set i2c bus\n");
+	}
+	else
+	{
+		if ( !i2c_probe( 0xc ) )
+		{
+			
+			if ( i2c_write( 0xc , 0x00 , 0 , ubSentBuf , 5 ) ) 
+			{
+				
+				printf("%s:i2c_write:error\n", __func__);
+			}
+			else
+			{
+				if ( i2c_read( 0xc , 0x0 , 0 , ubRecvBuf , 3 ) ) 
+				{
+					printf("%s:i2c_read:error\n", __func__);
+				}
+				else
+				{
+					printf("[%02X][%02X][%02X]\n",ubRecvBuf[0],ubRecvBuf[1],ubRecvBuf[2]);
+				}
+			}
+			
+		}
+		else
+		{
+			printf("unable to probe efm32\n");
+		}
+	}
+	
+	/* reset the i2c bus */
+	i2c_set_bus_num( iBus ) ;
+}
+#else
+void vEFM32_SetTimeout( )
+{
+}
+#endif
 #endif /*CONFIG_RTX_SET_TIMEOUT*/

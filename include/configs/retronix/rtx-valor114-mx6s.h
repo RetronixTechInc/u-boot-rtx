@@ -6,13 +6,13 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __RTX_Q7_MX6S_CONFIG_H
-#define __RTX_Q7_MX6S_CONFIG_H
+#ifndef __RTX_VALOR_MX6DL_CONFIG_H
+#define __RTX_VALOR_MX6DL_CONFIG_H
 
 #define CONFIG_MX6
-#define CONFIG_MX6Q
-#define CONFIG_MACH_TYPE	MACH_TYPE_MX6Q_A6
-#define CONFIG_VERSION_STRING "rtx-a6-mx6dq"
+#define CONFIG_MX6DL
+#define CONFIG_MACH_TYPE	MACH_TYPE_RTX_VALOR111_MX6DL
+#define CONFIG_VERSION_STRING "TRIPAS-mx6dl"
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
@@ -51,7 +51,7 @@
 #define CONFIG_MXC_GPIO
 
 #define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE           UART1_BASE
+#define CONFIG_MXC_UART_BASE           UART4_BASE
 
 #define CONFIG_CMD_FUSE
 #ifdef CONFIG_CMD_FUSE
@@ -75,20 +75,6 @@
 
 #define CONFIG_CMD_FS_GENERIC
 
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
-#define CONFIG_FEC_MXC
-#define CONFIG_MII
-#define IMX_FEC_BASE			        ENET_BASE_ADDR
-#define CONFIG_FEC_XCV_TYPE		        RGMII
-#define CONFIG_ETHPRIME			        "FEC"
-#define CONFIG_FEC_MXC_PHYADDR		    1
-
-#define CONFIG_PHYLIB
-#define CONFIG_PHY_ATHEROS
-
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX               1
@@ -109,38 +95,28 @@
 #define CONFIG_DTB_LOADADDR            0x10F00000
 #define CONFIG_SYS_TEXT_BASE           0x27800000
 
-#define CONFIG_EXTRA_ENV_USE_DTB
-
-#ifdef CONFIG_EXTRA_ENV_USE_DTB
-	#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"
-#else
-	#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel; bootm\0"
-#endif
-
 #define CONFIG_EXTRA_ENV_SETTINGS \
-		"hdmi=setenv bootargs ${bootargs} video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32\0" \
-		"set_mem=setenv bootargs ${bootargs} fbmem=28M,28M,28M gpu_nommu gpu_memory=256M\0" \
-		"fecmac_val=fec_mac=fa:3a:65:c7:14:eb\0" \
-		"set_display=run hdmi\0" \
-		"bootargs_base=setenv bootargs console=ttymxc0,115200 ${fecmac_val}\0"\
+		"no_video=setenv bootargs ${bootargs} video=off\0" \
+		"set_mem=setenv bootargs ${bootargs} gpu_nommu gpumem=16M\0" \
+		"set_display=run no_video\0" \
+		"bootargs_base=setenv bootargs console=ttymxc3,115200\0"\
 		"bootargs_gen=setenv bootargs ${bootargs} ip=off ${root_loc} rootfstype=ext4 rootwait rw\0"\
 		"r_kernel=mmc read ${loadaddr} 0x6800 0x3000\0" \
 		"r_ramdisk=mmc read ${rd_loadaddr} 0x3000 0x3000\0" \
-		"r_dtb=mmc read ${dtb_loadaddr} 0x9800 0x600\0" \
+		"r_dtb=mmc read ${dtb_loadaddr} 0x9000 0x600\0" \
 		"storage=mmc dev 2\0" \
 		"root_loc=root=/dev/mmcblk0p1\0" \
 		"bootargs_ramdisk=setenv bootargs ${bootargs} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0"	\
-		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk r_dtb ;bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
-		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
+		"bootcmd_ramdisk=run bootargs_base bootargs_ramdisk set_display set_mem ;run storage r_kernel r_ramdisk;bootm ${loadaddr} ${rd_loadaddr}\0" \
+		"bootcmd_gen=run bootargs_base bootargs_gen set_display set_mem ;run storage r_kernel; bootm ${loadaddr}\0"	\
 		"bootcmd=run bootcmd_gen\0"	\
 		"version=" CONFIG_VERSION_STRING "\0"
-
 
 #define CONFIG_ARP_TIMEOUT             200UL
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_PROMPT		       "RTX-A6 MX6DQ U-Boot > "
+#define CONFIG_SYS_PROMPT		       "TRIPAS MX6DL U-Boot > "
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE              512
@@ -163,7 +139,7 @@
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS           1
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
-#define PHYS_SDRAM_SIZE		           (1u *1024 * 1024 * 1024)
+#define PHYS_SDRAM_SIZE		           (1u * 1024 * 1024 * 1024)
 
 #define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR
@@ -188,29 +164,6 @@
 #endif
 
 #define CONFIG_OF_LIBFDT
-
-/* Framebuffer */
-#define CONFIG_VIDEO
-#define CONFIG_VIDEO_IPUV3
-#define CONFIG_CFB_CONSOLE
-#define CONFIG_VGA_AS_SINGLE_DEVICE
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-#define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
-#define CONFIG_VIDEO_BMP_RLE8
-#define CONFIG_SPLASH_SCREEN
-#define CONFIG_SPLASH_SCREEN_ALIGN
-#define CONFIG_CMD_BMP
-/* allow decompressing max. 4MB */
-#define CONFIG_VIDEO_BMP_GZIP
-/* this is not only used by cfb_console.c for the logo, but also in cmd_bmp.c */
-#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (4*1024*1024)
-#define CONFIG_BMP_16BPP
-#define CONFIG_BMP_32BPP
-//#define CONFIG_VIDEO_LOGO
-//#define CONFIG_VIDEO_BMP_LOGO
-#define CONFIG_IPUV3_CLK 260000000
-#define CONFIG_IMX_HDMI
-#define CONFIG_IMX_VIDEO_SKIP
 
 /* I2C Configs */
 #define CONFIG_CMD_I2C
@@ -259,4 +212,4 @@
 
 #endif
 
-#endif                         /* __RTX_Q7_MX6S_CONFIG_H */
+#endif                         /* __RTX_VALOR_MX6DL_CONFIG_H */

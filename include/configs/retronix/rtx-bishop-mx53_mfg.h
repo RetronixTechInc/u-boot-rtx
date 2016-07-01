@@ -98,12 +98,14 @@
 #define CONFIG_DTB_LOADADDR     0x70D00000
 #define CONFIG_SYS_TEXT_BASE    0x77800000
 
-#define CONFIG_BOOTARGS         "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=off"
-#define CONFIG_BOOTCOMMAND      "bootm 0x70800000 0x70E00000"
+//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 rootfs=/dev/ram0 rdinit=/init rootwait video=off"
+//#define CONFIG_BOOTCOMMAND      "bootm 0x70800000 0x70E00000"
 
 //#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/mmcblk0p1 init=/sbin/init rootwait rw video=mx3fb:bpp=32 fec_mac=fa:3a:65:c7:14:ea"
-//#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/sda1 init=/sbin/init rootwait rw video=mx3fb:bpp=32 fec_mac=fa:3a:65:c7:14:ea"
 //#define CONFIG_BOOTCOMMAND      "bootm 0x70800000 - 0x70D00000"
+
+#define CONFIG_BOOTARGS         "console=ttymxc3,115200 root=/dev/sda1 init=/sbin/init rootwait rw video=mx3fb:bpp=32 fec_mac=fa:3a:65:c7:14:ea"
+#define CONFIG_BOOTCOMMAND      "bootm 0x70800000"
 
 #define CONFIG_ARP_TIMEOUT	200UL
 
