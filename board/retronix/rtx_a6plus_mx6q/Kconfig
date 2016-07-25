@@ -1,0 +1,16 @@
+if TARGET_RTX_A6PLUS_MX6Q
+
+config SYS_BOARD
+	default "rtx_a6plus_mx6q"
+
+config SYS_VENDOR
+	default "retronix"
+
+config SYS_SOC
+	default "mx6"
+
+config SYS_CONFIG_NAME
+	default "retronix/rtx_a6plus_mx6q"     if !TARGET_RTX_A6PLUS_MX6Q_MFG
+	default "retronix/rtx_a6plus_mx6q_mfg" if TARGET_RTX_A6PLUS_MX6Q_MFG
+
+endif

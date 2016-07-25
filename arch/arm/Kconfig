@@ -61,37 +61,9 @@ config SEMIHOSTING
 choice
 	prompt "Target select"
 
-config TARGET_RTX_BISHOP_MX53
-	bool "Support Retronix BI-SHOP Board (mx53 SOC)"
+config TARGET_RTX_A6PLUS_MX6Q
+	bool "Support Retronix A6Plus Board (imx6q SOC)"
 	select CPU_V7
-
-config TARGET_RTX_BISHOP_MX53_MFG
-    depends on TARGET_RTX_BISHOP_MX53
-	bool "Support Retronix BI-SHOP Board (mx53 SOC) for mfg tools"
-
-config TARGET_RTX_A6_MX6Q
-	bool "Support Retronix A6 Board (imx6q SOC)"
-	select CPU_V7
-
-config TARGET_RTX_A6_MX6Q_MFG
-	depends on TARGET_RTX_A6_MX6Q
-	bool "Support Retronix A6 Board (imx6q SOC) for mfg tools"
-
-config TARGET_RTX_PITX_MX6Q
-	bool "Support Retronix PITX Board (imx6q SOC)"
-	select CPU_V7
-
-config TARGET_RTX_PITX_MX6Q_MFG
-	depends on TARGET_RTX_PITX_MX6Q
-	bool "Support Retronix PITX Board (imx6q SOC) for mfg tools"
-
-config TARGET_RTX_Q7_MX6Q
-	bool "Support Retronix Q7 Board (imx6q SOC)"
-	select CPU_V7
-
-config TARGET_RTX_Q7_MX6Q_MFG
-	depends on TARGET_RTX_Q7_MX6Q
-	bool "Support Retronix Q7 Board (imx6q SOC) for mfg tools"
 
 config TARGET_INTEGRATORAP_CM720T
 	bool "Support integratorap_cm720t"
@@ -935,10 +907,7 @@ source "board/palmtreo680/Kconfig"
 source "board/phytec/pcm051/Kconfig"
 source "board/ppcag/bg0900/Kconfig"
 source "board/pxa255_idp/Kconfig"
-source "board/retronix/rtx_a6_mx6q/Kconfig"
-source "board/retronix/rtx_pitx_mx6q/Kconfig"
-source "board/retronix/rtx_q7_mx6q/Kconfig"
-source "board/retronix/rtx_bishop_mx53/Kconfig"
+source "board/retronix/rtx_a6plus_mx6q/Kconfig"
 source "board/samsung/smdk2410/Kconfig"
 source "board/sandisk/sansa_fuze_plus/Kconfig"
 source "board/scb9328/Kconfig"

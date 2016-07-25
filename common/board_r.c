@@ -54,13 +54,12 @@
 #endif
 #include <dm/root.h>
 #include <linux/compiler.h>
-#include <usb.h>
 #include <linux/err.h>
 #ifdef CONFIG_AVR32
 #include <asm/arch/mmu.h>
 #endif
-#ifdef CONFIG_FASTBOOT
-#include <fastboot.h>
+#ifdef CONFIG_FSL_FASTBOOT
+#include <fsl_fastboot.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -677,26 +676,7 @@ static int initr_kbd(void)
 }
 #endif
 
-static int usb_start_scan(void)
-{
-	if (usb_init() >= 0)
-	{
-#ifdef CONFIG_USB_STORAGE
-	/* try to recognize storage devices immediately */
-	usb_stor_scan(1);
-#endif
-#ifdef CONFIG_USB_HOST_ETHER
-	/* try to recognize ethernet devices immediately */
-	usb_host_eth_scan(1);
-#endif
-#ifdef CONFIG_USB_KEYBOARD
-	drv_usb_kbd_init();
-#endif
-	}
-	return 0;
-}
-
-#ifdef CONFIG_FASTBOOT
+#ifdef CONFIG_FSL_FASTBOOT
 static int initr_fastboot_setup(void)
 {
 	fastboot_setup();
@@ -885,10 +865,7 @@ init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
 #endif
-#ifdef CONFIG_USB_SCAN
-	usb_start_scan,
-#endif
-#ifdef CONFIG_FASTBOOT
+#ifdef CONFIG_FSL_FASTBOOT
 	initr_fastboot_setup,
 #endif
 #ifdef CONFIG_CMD_SCSI
@@ -934,7 +911,7 @@ init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_PS2KBD
 	initr_kbd,
 #endif
-#ifdef CONFIG_FASTBOOT
+#ifdef CONFIG_FSL_FASTBOOT
 	initr_check_fastboot,
 #endif
 	run_main_loop,

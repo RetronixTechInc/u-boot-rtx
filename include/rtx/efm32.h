@@ -6,8 +6,7 @@
 #ifndef _EFM32_H_
 #define _EFM32_H_
 
-#ifdef CONFIG_RTX_EFM32
+void disable_efm32_watchdog( void ) ;
 void vEFM32_SetTimeout( void ) ;
-#endif
 
 #endif

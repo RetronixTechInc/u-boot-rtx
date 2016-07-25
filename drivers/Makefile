@@ -23,5 +23,4 @@ obj-y += input/
 # SOC specific infrastructure drivers.
 obj-y += soc/
 obj-y += thermal/
-obj-y += fastboot/
 obj-y += rtx/

@@ -25,14 +25,10 @@
 #include <dm.h>
 #include <imx_thermal.h>
 #include <mxsfb.h>
-#ifdef CONFIG_FASTBOOT
+#ifdef CONFIG_FSL_FASTBOOT
 #ifdef CONFIG_ANDROID_RECOVERY
 #include <recovery.h>
 #endif
-#endif
-#ifdef CONFIG_IMX_UDC
-#include <asm/arch/mx6_usbphy.h>
-#include <usb/imx_udc.h>
 #endif
 
 enum ldo_reg {
@@ -500,7 +496,8 @@ int arch_cpu_init(void)
 #endif
 
 #if !defined(CONFIG_MX6UL)
-	imx_set_vddpu_power_down();
+	if (!is_mx6dqp())
+		imx_set_vddpu_power_down();
 #endif
 
 #ifdef CONFIG_APBH_DMA
@@ -509,6 +506,9 @@ int arch_cpu_init(void)
 #endif
 
 	init_src();
+	
+	if (is_mx6dqp())
+		writel(0x80000201, 0xbb0608);
 
 	return 0;
 }
@@ -1026,7 +1026,7 @@ void v7_outer_cache_disable(void)
 #endif
 #endif /* !CONFIG_SYS_L2CACHE_OFF */
 
-#ifdef CONFIG_FASTBOOT
+#ifdef CONFIG_FSL_FASTBOOT
 
 #ifdef CONFIG_ANDROID_RECOVERY
 #define ANDROID_RECOVERY_BOOT  (1 << 7)
@@ -1073,58 +1073,7 @@ int fastboot_check_and_clean_flag(void)
 
 void fastboot_enable_flag(void)
 {
-       u32 reg;
-       reg = readl(SNVS_BASE_ADDR + SNVS_LPGPR);
-       reg |= ANDROID_FASTBOOT_BOOT;
-       writel(reg, SNVS_BASE_ADDR + SNVS_LPGPR);
+	setbits_le32(SNVS_BASE_ADDR + SNVS_LPGPR,
+		ANDROID_FASTBOOT_BOOT);
 }
-
-#endif /*CONFIG_FASTBOOT*/
-
-#ifdef CONFIG_IMX_UDC
-void set_usboh3_clk(void)
-{
-	udc_pins_setting();
-}
-
-void set_usb_phy1_clk(void)
-{
-	/* make sure pll3 is enable here */
-	struct mxc_ccm_reg *ccm_regs = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
-
-	writel((BM_ANADIG_USB1_CHRG_DETECT_EN_B |
-		BM_ANADIG_USB1_CHRG_DETECT_CHK_CHRG_B),
-		&ccm_regs->usb1_chrg_detect_set);
-
-	writel(BM_ANADIG_USB1_PLL_480_CTRL_EN_USB_CLKS,
-		&ccm_regs->analog_usb1_pll_480_ctrl_set);
-}
-void enable_usb_phy1_clk(unsigned char enable)
-{
-	if (enable)
-		writel(BM_USBPHY_CTRL_CLKGATE,
-			USB_PHY0_BASE_ADDR + HW_USBPHY_CTRL_CLR);
-	else
-		writel(BM_USBPHY_CTRL_CLKGATE,
-			USB_PHY0_BASE_ADDR + HW_USBPHY_CTRL_SET);
-}
-
-void reset_usb_phy1(void)
-{
-	/* Reset USBPHY module */
-	u32 temp;
-	temp = readl(USB_PHY0_BASE_ADDR + HW_USBPHY_CTRL);
-	temp |= BM_USBPHY_CTRL_SFTRST;
-	writel(temp, USB_PHY0_BASE_ADDR + HW_USBPHY_CTRL);
-	udelay(10);
-
-	/* Remove CLKGATE and SFTRST */
-	temp = readl(USB_PHY0_BASE_ADDR + HW_USBPHY_CTRL);
-	temp &= ~(BM_USBPHY_CTRL_CLKGATE | BM_USBPHY_CTRL_SFTRST);
-	writel(temp, USB_PHY0_BASE_ADDR + HW_USBPHY_CTRL);
-	udelay(10);
-
-	/* Power up the PHY */
-	writel(0, USB_PHY0_BASE_ADDR + HW_USBPHY_PWD);
-}
-#endif
+#endif /*CONFIG_FSL_FASTBOOT*/
