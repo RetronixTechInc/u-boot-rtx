@@ -1268,16 +1268,16 @@ int check_recovery_cmd_file(void)
 
     recovery_mode = recovery_check_and_clean_flag();
 
-    /* Check Recovery Combo Button press or not. */
+    /* Check Recovery Combo Button press or not.
 	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
 			ARRAY_SIZE(recovery_key_pads));
 
     gpio_direction_input(GPIO_VOL_DN_KEY);
 
-    if (gpio_get_value(GPIO_VOL_DN_KEY) == 0) { /* VOL_DN key is low assert */
+    if (gpio_get_value(GPIO_VOL_DN_KEY) == 0) { // VOL_DN key is low assert
 		button_pressed = 1;
 		printf("Recovery key pressed\n");
-    }
+    }*/
 
     return recovery_mode || button_pressed;
 }
@@ -1297,20 +1297,14 @@ void board_recovery_setup(void)
 #if defined(CONFIG_FASTBOOT_STORAGE_MMC)
 	case SD2_BOOT:
 	case MMC2_BOOT:
-		if (!getenv("bootcmd_android_recovery"))
-			setenv("bootcmd_android_recovery",
-				"boota mmc0 recovery");
-		break;
 	case SD3_BOOT:
 	case MMC3_BOOT:
-		if (!getenv("bootcmd_android_recovery"))
-			setenv("bootcmd_android_recovery",
-				"boota mmc1 recovery");
-		break;
 	case MMC4_BOOT:
 		if (!getenv("bootcmd_android_recovery"))
-			setenv("bootcmd_android_recovery",
-				"boota mmc2 recovery");
+		{
+			setenv( "ext_args" , CONFIG_ANDROID_RECOVERY_BOOTARGS ) ;
+			setenv("bootcmd_android_recovery", CONFIG_ANDROID_RECOVERY_BOOTCMD );
+		}
 		break;
 #endif /*CONFIG_FASTBOOT_STORAGE_MMC*/
 	default:
@@ -1319,6 +1313,9 @@ void board_recovery_setup(void)
 		return;
 	}
 
+	#ifdef CONFIG_MCU_WDOG_BUS
+		disable_efm32_watchdog( ) ;
+	#endif
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");
 }

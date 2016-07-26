@@ -704,21 +704,13 @@ void bootsel_menu( int sel )
 			setenv( "rstorage" , "mmc" ) ;
 			setenv( "roption" , "normal" ) ;
 			setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-			#ifdef CONFIG_EXTRA_ENV_USE_DTB
-				setenv("bootcmd_update", CONFIG_ENG_DTB_UKEY_BOOTCMD );
-			#else
-				setenv("bootcmd_update", CONFIG_ENG_UKEY_BOOTCMD );
-			#endif
+			setenv("bootcmd_update", CONFIG_ENG_UKEY_BOOTCMD );
 			run_command( "run bootcmd_update" , 0 ) ;
 			break ;
 		case 'r' :
 		case 'R' :
 			setenv( "ext_args" , CONFIG_ANDROID_RECOVERY_BOOTARGS ) ;
-			#ifdef CONFIG_EXTRA_ENV_USE_DTB
-				setenv("bootcmd_android_recovery", CONFIG_ANDROID_RECOVERY_DTB_BOOTCMD );
-			#else
-				setenv("bootcmd_android_recovery", CONFIG_ANDROID_RECOVERY_BOOTCMD );
-			#endif
+			setenv("bootcmd_android_recovery", CONFIG_ANDROID_RECOVERY_BOOTCMD );
 			run_command( "run bootcmd_android_recovery" , 0 ) ;
 			break ;
 		case 'p' :
@@ -736,44 +728,83 @@ void bootsel_menu( int sel )
 	#endif
 }
 
-void bootsel_set_fec_mac( void )
+static unsigned char nibbleFromChar(char c)
 {
-	char setstr[512] ;
-
-	if ( bootselinfodata.ubMAC01[6] )
-	{
-		sprintf( setstr , "fec_mac=%02x:%02x:%02x:%02x:%02x:%02x" , 
-			bootselinfodata.ubMAC01[0] , bootselinfodata.ubMAC01[1] ,
-			bootselinfodata.ubMAC01[2] , bootselinfodata.ubMAC01[3] ,
-			bootselinfodata.ubMAC01[4] , bootselinfodata.ubMAC01[5] 
-			) ;
-		setenv( "fecmac_val" , setstr ) ;
-	}
+	if(c >= '0' && c <= '9') return c - '0';
+	if(c >= 'a' && c <= 'f') return c - 'a' + 10;
+	if(c >= 'A' && c <= 'F') return c - 'A' + 10;
+	return 255;
 }
 
-int bootsel_Read_Mac( char* Mac )
+void bootsel_set_fec_mac( int inum, char* data )
 {
+	char* pdata ;
+	int i ;
+	unsigned char bval[6] ;
+
+	switch(inum)
+	{
+	case 0 :
+		pdata = (char*)bootselinfodata.ubMAC01;
+		break ;
+	case 1 :
+		pdata = (char*)bootselinfodata.ubMAC02;
+		break ;
+	case 2 :
+		pdata = (char*)bootselinfodata.ubMAC03;
+		break ;
+	case 3 :
+		pdata = (char*)bootselinfodata.ubMAC04;
+		break ;
+	default :
+		return ;
+	}
+
+	for(i = 0 ; i < strlen(data) ; i ++ )
+	{
+		bval[i] = 0;
+		bval[i] = nibbleFromChar(data[i]);
+		if(bval[i] == 255)
+		{
+			return ;
+		}
+	}
+	for(i = 0 ; i < strlen(data)/2 ; i ++ )
+	{
+		*pdata = bval[i*2+ 1] + (bval[i*2 ] << 4);
+		pdata++;
+	}
+	*pdata += 1;
+	bootsel_write_setting_data( ) ;
+}
+
+void bootsel_Read_Mac()
+{
+	char* commandline ;
+	char Mac[32] ;
+
 	if ( bootselinfodata.ubMAC01[6] )
 	{
-		sprintf( Mac , " fec_mac=%02x:%02x:%02x:%02x:%02x:%02x" , 
+		sprintf( Mac , "fec_mac=%02x:%02x:%02x:%02x:%02x:%02x" ,
 			bootselinfodata.ubMAC01[0] , bootselinfodata.ubMAC01[1] ,
 			bootselinfodata.ubMAC01[2] , bootselinfodata.ubMAC01[3] ,
 			bootselinfodata.ubMAC01[4] , bootselinfodata.ubMAC01[5] 
 			) ;
-		return 0 ;
+		setenv("bootargs", Mac);
 	}
-	return 1 ;
+	return ;
 }
 
 void bootsel_adjust_bootargs( void )
 {
-	bootsel_set_fec_mac( ) ;
+	bootsel_Read_Mac( ) ;
 }
 
 static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	int loop ;
+	int inum ;
 	
 	if ( argc < 3 )
 	{
@@ -803,12 +834,35 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 			}
 		}
 	}
-	
-	if ( strcmp( argv[1] , "mac" ) == 0 )
+	else if ( strcmp( argv[1] , "mac" ) == 0 )
 	{
 		if ( argc < 4 )
 		{
 			return CMD_RET_USAGE ;
+		}
+		inum = simple_strtol(argv[2], NULL, 10) ;
+
+		if(strlen(argv[3]) == 12)
+		{
+			bootsel_set_fec_mac(inum ,(char*)argv[3]);
+			return CMD_RET_SUCCESS;
+		}
+	}
+	else if ( strcmp( argv[1] , "run" ) == 0 )
+	{
+		if ( argc < 3 )
+		{
+			return CMD_RET_USAGE ;
+		}
+		if ( strcmp( argv[2] , "update" ) == 0 )
+		{
+			bootsel_menu('u');
+			return CMD_RET_SUCCESS;
+		}
+		else if ( strcmp( argv[2] , "recovery" ) == 0 )
+		{
+			bootsel_menu('r');
+			return CMD_RET_SUCCESS;
 		}
 	}
 	
@@ -827,13 +881,14 @@ U_BOOT_CMD(
 	"    function extsd    <enable/disable>\n"
 	"    function usb      <enable/disable>\n"
 	"    function menu     <enable/disable>\n"
-	/*
 	"** MAC class **\n"
-	"    mac 0 <00:00:00:00:00:00>\n"
-	"    mac 1 <00:00:00:00:00:00>\n"
-	"    mac 2 <00:00:00:00:00:00>\n"
-	"    mac 3 <00:00:00:00:00:00>\n"
-	*/
+	"    mac 0 000000000000\n"
+	"    mac 1 000000000000\n"
+	"    mac 2 000000000000\n"
+	"    mac 3 000000000000\n"
+	"** run class **\n"
+	"    run update\n"
+	"    run recovery\n"
 );
 
 #ifdef CONFIG_BOOT_CMD_RESET_ENV
@@ -872,7 +927,7 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	printf( "\n" ) ;
 	
-	for ( loop1 = 0 ; loop1 < 8 ; loop1 ++ )
+	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
 	{
 		printf( "ubMAC0%d:" , loop1 ) ;
 		for ( loop = 0 ; loop < 8 ; loop ++ )
@@ -908,7 +963,7 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	printf( "\n" ) ;
 	
 	printf( "BSP Version:" ) ;
-	for ( loop = 0 ; loop < 32 ; loop ++ )
+	for ( loop = 0 ; loop < 64 ; loop ++ )
 	{
 		if ( bootselinfodata.ubProductSerialNO[loop] == 0x00 )
 		{

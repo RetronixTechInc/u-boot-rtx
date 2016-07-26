@@ -199,9 +199,9 @@
 
 	#define CONFIG_VERSION_STRING "rtx-a6plus-mx6q"
 
-	/* */
+	/*
 	#define CONFIG_EXTRA_ENV_USE_DTB
-
+	*/
 	/*-----------------------------------------------------------------------
 	 * update and recovery parameter
 	 */
@@ -216,30 +216,35 @@
 	/* recovery mode parameter 'r' or 'R' key*/
 	#define CONFIG_ANDROID_RECOVERY_BOOTARGS \
 		"setenv bootargs ${bootargs} init=/init"
-	#define CONFIG_ANDROID_RECOVERY_BOOTCMD  \
-		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
-		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
-		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
-		"bootm ${loadaddr} ${rd_loadaddr}"
-	#define CONFIG_ANDROID_RECOVERY_DTB_BOOTCMD  \
-		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
-		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
-		"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
-		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
-		"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
-
+	#ifdef CONFIG_EXTRA_ENV_USE_DTB
+		#define CONFIG_ANDROID_RECOVERY_BOOTCMD  \
+			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
+			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+			"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
+			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
+			"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+	#else
+		#define CONFIG_ANDROID_RECOVERY_BOOTCMD  \
+			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
+			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
+			"bootm ${loadaddr} ${rd_loadaddr}"
+	#endif
 	/* recovery mode parameter 'u' or 'U' key*/
-	#define CONFIG_ENG_UKEY_BOOTCMD  \
-		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
-		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
-		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
-		"bootm ${loadaddr} ${rd_loadaddr}"
-	#define CONFIG_ENG_DTB_UKEY_BOOTCMD  \
-		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
-		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
-		"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
-		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
-		"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+	#ifdef CONFIG_EXTRA_ENV_USE_DTB
+		#define CONFIG_ENG_UKEY_BOOTCMD  \
+			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
+			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+			"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
+			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE) ";" \
+			"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+	#else
+		#define CONFIG_ENG_UKEY_BOOTCMD  \
+			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
+			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE) ";" \
+			"bootm ${loadaddr} ${rd_loadaddr}"
+	#endif
 
 
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
@@ -250,7 +255,7 @@
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
-		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
+		"bootargs_base=setenv bootargs ${bootargs} androidboot.hardware=freescale no_console_suspend\0" \
 		"bootargs_gen=setenv bootargs ${bootargs} init=/init\0"	\
 		"set_display=run hdmi\0" \
 		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV ",115200 androidboot.console=" CONFIG_CONSOLE_DEV " ldb=spl0\0"	\
