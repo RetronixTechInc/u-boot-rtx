@@ -156,7 +156,11 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 		of_start =
 		    (void *)(ulong) lmb_alloc_base(lmb, of_len, 0x1000,
 						   getenv_bootm_mapsize()
+	#if defined(CONFIG_MX6_DDR_2G)
+						   + getenv_bootm_low() - 384*1024*1024);
+	#else
 						   + getenv_bootm_low());
+	#endif
 	}
 
 	if (of_start == NULL) {

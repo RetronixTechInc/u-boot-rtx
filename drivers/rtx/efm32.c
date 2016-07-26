@@ -11,6 +11,7 @@
 
 void disable_efm32_watchdog( )
 {
+#ifdef CONFIG_MCU_WDOG_BUS
 	unsigned char const ubSentBuf[8] = { 5 , 0x8E , 0 , 0 , 0x93 } ;
 	unsigned char ubRecvBuf[8] = { 0 } ;
 	unsigned int iBus = i2c_get_bus_num() ;
@@ -50,6 +51,7 @@ void disable_efm32_watchdog( )
 	
 	/* reset the i2c bus */
 	i2c_set_bus_num( iBus ) ;
+#endif
 }
 
 

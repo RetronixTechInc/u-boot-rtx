@@ -99,10 +99,11 @@ static iomux_v3_cfg_t const uart1_pads[] = {
 	MX6_PAD_CSI0_DAT11__UART1_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
-static iomux_v3_cfg_t const uart4_pads[] = {
-	MX6_PAD_CSI0_DAT12__UART4_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
-	MX6_PAD_CSI0_DAT13__UART4_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+static iomux_v3_cfg_t const uart2_pads[] = {
+	MX6_PAD_EIM_D26__UART2_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
+	MX6_PAD_EIM_D27__UART2_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
+
 static iomux_v3_cfg_t const enet_pads[] = {
 	MX6_PAD_ENET_MDIO__ENET_MDIO		| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_ENET_MDC__ENET_MDC		| MUX_PAD_CTRL(ENET_PAD_CTRL),
@@ -248,9 +249,9 @@ static struct i2c_pads_info i2c_pad_info1 = {
 
 static struct i2c_pads_info i2c_pad_info2 = {
 	.scl = {
-		.i2c_mode = MX6_PAD_GPIO_5__I2C3_SCL | I2C_PAD,
-		.gpio_mode = MX6_PAD_GPIO_5__GPIO1_IO05 | I2C_PAD,
-		.gp = IMX_GPIO_NR(1, 5)
+		.i2c_mode = MX6_PAD_GPIO_3__I2C3_SCL | I2C_PAD,
+		.gpio_mode = MX6_PAD_GPIO_3__GPIO1_IO03 | I2C_PAD,
+		.gp = IMX_GPIO_NR(1, 3)
 	},
 	.sda = {
 		.i2c_mode = MX6_PAD_GPIO_6__I2C3_SDA | I2C_PAD,
@@ -325,8 +326,7 @@ static iomux_v3_cfg_t const epdc_disable_pads[] = {
 
 static void setup_iomux_uart(void)
 {
-	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
-	imx_iomux_v3_setup_multiple_pads(uart4_pads, ARRAY_SIZE(uart4_pads));
+	imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
 }
 
 #ifdef CONFIG_FSL_ESDHC
@@ -1196,7 +1196,7 @@ static const struct boot_mode board_boot_modes[] = {
 
 int board_late_init(void)
 {
-#ifdef CONFIG_TARGET_RTX_A6PLUS_MX6Q_MFG
+#ifdef CONFIG_TARGET_RTX_PITX_MX6Q_MFG
 	disable_efm32_watchdog( ) ;
 #endif
 
