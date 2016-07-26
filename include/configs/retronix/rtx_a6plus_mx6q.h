@@ -1,6 +1,6 @@
 
-#ifndef __RTX_A6_MX6Q_CONFIG_H
-	#define __RTX_A6_MX6Q_CONFIG_H
+#ifndef __RTX_A6PLUS_MX6Q_CONFIG_H
+	#define __RTX_A6PLUS_MX6Q_CONFIG_H
 
 	#include <asm/arch/imx-regs.h>
 	#include <asm/imx-common/gpio.h>
@@ -56,7 +56,7 @@
 	#define CONFIG_MXC_UART_BASE				UART4_BASE
 	#define CONFIG_CONSOLE_DEV					"ttymxc3"
 
-	#define CONFIG_MMCROOT						"/dev/mmcblk2p2"  /* SDHC3 */
+	#define CONFIG_MMCROOT						"/dev/mmcblk1p1"
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
 	#define PHYS_SDRAM_SIZE						(1u * 1024 * 1024 * 1024)
 
@@ -207,7 +207,7 @@
 	 */
 	/* usb or sd card */
 	#define CONFIG_ENG_BOOTARGS \
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage}"
+		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_MMCROOT
 	#define CONFIG_ENG_BOOTCMD  \
 		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr}"
 	#define CONFIG_ENG_DTB_BOOTCMD  \

@@ -1,6 +1,6 @@
 
-#ifndef __RTX_PITX_MX6Q_CONFIG_H
-	#define __RTX_PITX_MX6Q_CONFIG_H
+#ifndef __RTX_A6_MX6Q_CONFIG_H
+	#define __RTX_A6_MX6Q_CONFIG_H
 
 	#include <asm/arch/imx-regs.h>
 	#include <asm/imx-common/gpio.h>
@@ -53,17 +53,12 @@
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
-	#define CONFIG_MXC_UART_BASE				UART2_BASE
-	#define CONFIG_CONSOLE_DEV					"ttymxc1"
+	#define CONFIG_MXC_UART_BASE				UART1_BASE
+	#define CONFIG_CONSOLE_DEV					"ttymxc0"
 
-	#define CONFIG_MMCROOT						"/dev/mmcblk1p1"  /* SDHC3 */
+	#define CONFIG_MMCROOT						"/dev/mmcblk1p1" 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
-
-	#if defined(CONFIG_MX6_DDR_2G)
-		#define PHYS_SDRAM_SIZE				(2u * 1024 * 1024 * 1024)
-	#else 
-		#define PHYS_SDRAM_SIZE				(1u * 1024 * 1024 * 1024)
-	#endif
+	#define PHYS_SDRAM_SIZE						(1u * 1024 * 1024 * 1024)
 
 	#define CONFIG_MX6
 
