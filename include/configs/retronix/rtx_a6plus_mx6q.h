@@ -23,19 +23,26 @@
 		#define CONFIG_BOOT_VIDEO_BG_LOGO
 		#define CONFIG_BOOT_ETHERNET_MAC
 
-		#define CONFIG_BOOT_SYSTEM_MAX_EXTSD                  4
-
 		#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET     0x800
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       0x5000
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 0x5C00
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   0x400
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         0xF000
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           0x5000
-
-		#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                0x1E000
-		#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  0x1000
+		#define CONFIG_BOOT_SYSTEM_MAX_EXTSD                  4
 	#endif
+
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET     	0x800
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       	0x5000
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 	0x5C00
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   	0x400
+		#define CONFIG_BOOT_SYSTEM_KERNEL_OFFSET     			0x6800
+		#define CONFIG_BOOT_SYSTEM_KERNEL_SIZE       			0x5000
+		#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET 			0x6400
+		#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE   			0x400
+		#define CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET         	0xC000
+		#define CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE           	0x1000
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         	0xD000
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           	0x2000
+		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET         	0xF000
+		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0x5000
+		#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1E000
+		#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  	0x1000
 	
 	/*-----------------------------------------------------------------------
 	 * MCU watch dog
@@ -45,53 +52,6 @@
 		#define CONFIG_MCU_WDOG_BUS	2
 	#endif
 	
-	/*-----------------------------------------------------------------------
-	 * update and recovery parameter
-	 */
-		#define CONFIG_BOOT_SYSTEM_EXTSD_RUN_ARGS 	\
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init"
-	#define CONFIG_BOOT_SYSTEM_EXTSD_RUN_CMDS 	\
-		"run bootargs_base set_display bootargs_console ext_args;"			\
-		"mmc dev ${dev_num};mmc read ${loadaddr} 0x800 0x4000;mmc read ${rd_loadaddr} 0xF000 0x1400;"		\
-		"bootm ${loadaddr} ${rd_loadaddr}"
-#ifdef CONFIG_CMD_FAT
-	#define CONFIG_BOOT_SYSTEM_EXTSD_FAT_RUN_CMDS 	\
-		"run bootargs_base set_display bootargs_console ext_args;"			\
-		"fatload mmc ${dev_num} ${loadaddr} uImage-recovery;fatload mmc ${dev_num} ${rd_loadaddr} uramdisk-imx6.img;"		\
-		"bootm ${loadaddr} ${rd_loadaddr}"
-#endif
-
-	#define CONFIG_BOOT_SYSTEM_UDISK_RUN_ARGS 	\
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init"
-	#define CONFIG_BOOT_SYSTEM_UDISK_RUN_CMDS 	\
-		"run bootargs_base set_display bootargs_console ext_args;"			\
-		"usb dev ${dev_num};usb read ${loadaddr} 0x800 0x4000;usb read ${rd_loadaddr} 0xF000 0x1400;"		\
-		"bootm ${loadaddr} ${rd_loadaddr}"
-#ifdef CONFIG_CMD_FAT
-	#define CONFIG_BOOT_SYSTEM_UDISK_FAT_RUN_CMDS 	\
-		"run bootargs_base set_display bootargs_console ext_args;"			\
-		"fatload usb ${dev_num} ${loadaddr} uImage-recovery;fatload usb ${dev_num} ${rd_loadaddr} uramdisk-imx6.img;"		\
-		"bootm ${loadaddr} ${rd_loadaddr}"
-#endif
-
-	/* recovery mode parameter 'r' or 'R' key*/
-	#define CONFIG_ANDROID_RECOVERY_BOOTARGS_MMC \
-		"setenv bootargs ${bootargs}"
-	#define CONFIG_ANDROID_RECOVERY_BOOTCMD_MMC  \
-		"run bootargs_base set_display bootargs_console ext_args;"			\
-		"mmc dev ${mmc_num};mmc read ${loadaddr} 0x800 0x4000;mmc read ${rd_loadaddr} 0xD000 0x2000;"		\
-		"bootm ${loadaddr} ${rd_loadaddr}"
-
-	/* engineer os mode parameter 'u' or 'U' key*/
-	#define CONFIG_ENG_BOOTARGS \
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init"
-	#define CONFIG_ENG_BOOTCMD  \
-		"run bootargs_base set_display bootargs_console ext_args;"			\
-		"mmc dev ${mmc_num};mmc read ${loadaddr} 0x800 0x4000;mmc read ${rd_loadaddr} 0xF000 0x1400;"		\
-		"bootm ${loadaddr} ${rd_loadaddr}"
-
-
-
 	#define CONFIG_MACH_TYPE					3980
 	#define CONFIG_MXC_UART_BASE				UART4_BASE
 	#define CONFIG_CONSOLE_DEV					"ttymxc3"
@@ -242,6 +202,46 @@
 	/* */
 	#define CONFIG_EXTRA_ENV_USE_DTB
 
+	/*-----------------------------------------------------------------------
+	 * update and recovery parameter
+	 */
+	/* usb or sd card */
+	#define CONFIG_ENG_BOOTARGS \
+		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage}"
+	#define CONFIG_ENG_BOOTCMD  \
+		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr}"
+	#define CONFIG_ENG_DTB_BOOTCMD  \
+		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+
+	/* recovery mode parameter 'r' or 'R' key*/
+	#define CONFIG_ANDROID_RECOVERY_BOOTARGS \
+		"setenv bootargs ${bootargs} init=/init"
+	#define CONFIG_ANDROID_RECOVERY_BOOTCMD  \
+		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
+		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
+		"bootm ${loadaddr} ${rd_loadaddr}"
+	#define CONFIG_ANDROID_RECOVERY_DTB_BOOTCMD  \
+		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
+		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+		"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
+		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
+		"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+
+	/* recovery mode parameter 'u' or 'U' key*/
+	#define CONFIG_ENG_UKEY_BOOTCMD  \
+		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
+		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
+		"bootm ${loadaddr} ${rd_loadaddr}"
+	#define CONFIG_ENG_DTB_UKEY_BOOTCMD  \
+		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
+		"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
+		"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
+		"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
+		"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+
+
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
 		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base ui_port set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb r_ramdisk; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
 	#else
@@ -263,9 +263,9 @@
 		"set_mem=setenv bootargs ${bootargs} video=mxcfb2:off fbmem=28M,28M gpumem=176M vmalloc=400M\0" \
 		"mmc_num=2\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
-		"r_kernel=mmc read ${loadaddr} 0x6800 0x5000\0" \
-		"r_dtb=mmc read ${dtb_loadaddr} 0x6400 0x400\0" \
-		"r_ramdisk=mmc read ${rd_loadaddr} 0xC000 0x1000\0" \
+		"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE) "\0" \
+		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\
+		"r_ramdisk=mmc read ${rd_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE) "\0" \
 		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
 		"splashpos=m,m\0"	  \
 		"version=" CONFIG_VERSION_STRING "\0"
