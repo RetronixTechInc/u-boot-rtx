@@ -9,14 +9,14 @@ export ARCH=arm
 export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.23-hf-64bits/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/gcc-4.8.5-glibc-2.23/arm-fsl-linux-gnueabi/bin/arm-fsl-linux-gnueabi-
 
-U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_android_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_2g_android_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_1g_android_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_1g_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_1g_mfg_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_android_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_defconfig
+U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_n_roymark_tv_android_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_y_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_y_rtx_all_android_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_y_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_mfg_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_y_rtx_all_android_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_y_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_y_rtx_all_android_defconfig
 
 # Get Host Number of CPUs
 CPUS=`cat /proc/cpuinfo | grep processor | wc -l`

@@ -89,7 +89,7 @@ void main_loop(void)
 
 #ifdef CONFIG_BOOT_SYSTEM
 	bootsel_init() ;
-	bootsel_checkstorage() ;
+	//bootsel_checkstorage() ;
 #endif
 
 	if (cli_process_fdt(&s))

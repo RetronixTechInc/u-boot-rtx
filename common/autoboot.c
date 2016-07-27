@@ -309,6 +309,9 @@ void autoboot_command(const char *s)
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 #endif
+		#ifdef CONFIG_BOOT_SYSTEM
+			bootsel_checkstorage() ;
+		#endif
 
 		run_command_list(s, -1, 0);
 

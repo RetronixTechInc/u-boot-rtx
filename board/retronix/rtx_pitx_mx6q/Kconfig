@@ -13,4 +13,50 @@ config SYS_CONFIG_NAME
 	default "retronix/rtx_pitx_mx6q"     if !TARGET_RTX_PITX_MX6Q_MFG
 	default "retronix/rtx_pitx_mx6q_mfg" if TARGET_RTX_PITX_MX6Q_MFG
 
+config EXTRA_ENV_USE_DTB
+	bool "kernel is dtb type."
+	default y
+	help
+	  Kernel has DTB.
+
+config BOOTARGS_GEN
+	string "init=/sbin/init root=/dev/mmcblk0p1 rootwait rw"
+	help
+	  GUI port hdmi,vga or dual-hdmi.
+
+config GUIPORT
+	string "hdmi"
+	help
+	  GUI port hdmi,vga or dual-hdmi.
+
+config BOOTARGS_HDMI
+	string "hdmi"
+	help
+	  GUI port hdmi,vga or dual-hdmi.
+
+config BOOTARGS_VGA
+	string "hdmi"
+	help
+	  GUI port hdmi,vga or dual-hdmi.
+
+config BOOTARGS_DUAL_HDMI
+	string "hdmi"
+	help
+	  GUI port hdmi,vga or dual-hdmi.
+
+config BOOTARGS_GUIMEM
+	string "fbmem=28M,28M gpumem=176M vmalloc=400M"
+	help
+	  fbmem,gpumem and vmallock define.
+
+config UBOOT_MMCNUM
+	string "2"
+	help
+	  uboot mmc num.
+
+config UPDATEROOT
+	string "/dev/mmcblk1p1"
+	help
+	  update and reovery filesystem mount path.
+
 endif
