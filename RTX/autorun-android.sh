@@ -3,7 +3,7 @@
 DEVNODE="/dev/mmcblk0"
 #EMMC_TYPE="EMMCBOOT0"
 CHECK_MCU="TRUE"
-CLEANSET="true"
+CLEANSET="TRUE"
 
 MYPATH="/data"
 MYPATHSD="/tmp"
@@ -130,7 +130,7 @@ print "clean MBR"
 dd if=/dev/zero of=$DEVNODE bs=1024 count=512
 print "clean 1M~64M"
 
-if [ $CLEANSET == "true" ] ;  then
+if [ $CLEANSET == "TRUE" ] ;  then
 	dd if=/dev/zero of=$DEVNODE bs=1024 seek=768 count=1
 fi
 

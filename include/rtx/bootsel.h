@@ -26,6 +26,6 @@ void bootsel_init( void ) ;
 int bootsel_checkstorage( void ) ;
 void bootsel_menu( int sel ) ;
 void bootsel_password( void ) ;
-int bootsel_Read_Mac(char* Mac);
+void bootsel_Read_Mac( void ) ;
 
 #endif	/* _BOOTSEL_H_ */

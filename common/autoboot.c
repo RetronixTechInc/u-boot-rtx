@@ -17,6 +17,10 @@
 #include <environment.h>
 #endif
 
+#ifdef CONFIG_BOOT_SYSTEM
+	#include <rtx/bootsel.h>
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_DELAY_STOP_STR 32

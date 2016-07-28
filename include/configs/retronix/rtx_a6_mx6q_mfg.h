@@ -53,11 +53,11 @@
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
-	#define CONFIG_MXC_UART_BASE				UART2_BASE
-	#define CONFIG_CONSOLE_DEV					"ttymxc1"
+	#define CONFIG_MXC_UART_BASE				UART1_BASE
+	#define CONFIG_CONSOLE_DEV					"ttymxc0"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
-
+	
 	#if defined(CONFIG_MX6_DDR_2G)
 		#define PHYS_SDRAM_SIZE				(2u * 1024 * 1024 * 1024)
 	#else 
@@ -171,7 +171,7 @@
 	#undef CONFIG_CMD_IMLS
 
 	#define CONFIG_BOOTDELAY               		1
-
+	
 	#define CONFIG_LOADADDR   CONFIG_DEF_LOADADDR
 	/* define by configs/vendor_***_defconfig.h
 	#define CONFIG_DTB_LOADADDR            0x11300000
@@ -203,7 +203,7 @@
 		#define EMMC_ENV ""
 	#endif
 
-	#define CONFIG_VERSION_STRING "rtx-a6plus-mx6q"
+	#define CONFIG_VERSION_STRING "rtx-a6-mx6q"
 
 	/*-----------------------------------------------------------------------
 	 * update and recovery parameter
@@ -249,6 +249,7 @@
 			"bootm ${loadaddr} ${rd_loadaddr}"
 	#endif
 
+
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
 		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
 		#define CONFIG_EXTRA_ENV_BOOTCMD_MFG "bootcmd_mfg=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
@@ -258,7 +259,6 @@
 	#endif
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
-		CONFIG_EXTRA_ENV_BOOTCMD_MFG	\		
 		"bootcmd=run bootcmd_gen\0"	\
 		"bootargs_base=setenv bootargs ${bootargs} androidboot.hardware=freescale no_console_suspend\0" \
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
@@ -281,7 +281,7 @@
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
-			
+
 	#define CONFIG_ARP_TIMEOUT     					200UL
 
 	/* Miscellaneous configurable options */

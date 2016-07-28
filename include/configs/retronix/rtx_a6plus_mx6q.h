@@ -46,6 +46,7 @@
 	
 	/*-----------------------------------------------------------------------
 	 * MCU watch dog
+	 * 
 	 */
 	#define CONFIG_RTX_EFM32
 	#ifdef CONFIG_RTX_EFM32
@@ -57,7 +58,12 @@
 	#define CONFIG_CONSOLE_DEV					"ttymxc3"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
-	#define PHYS_SDRAM_SIZE						(1u * 1024 * 1024 * 1024)
+	
+	#if defined(CONFIG_MX6_DDR_2G)
+		#define PHYS_SDRAM_SIZE				(2u * 1024 * 1024 * 1024)
+	#else 
+		#define PHYS_SDRAM_SIZE				(1u * 1024 * 1024 * 1024)
+	#endif
 
 	#define CONFIG_MX6
 
@@ -167,10 +173,13 @@
 
 	#define CONFIG_BOOTDELAY               		1
 
-	#define CONFIG_LOADADDR                0x10800000
+
+	#define CONFIG_LOADADDR   CONFIG_DEF_LOADADDR
+	/* define by configs/vendor_***_defconfig.h
 	#define CONFIG_DTB_LOADADDR            0x11300000
 	#define CONFIG_RD_LOADADDR             0x11400000
 	#define CONFIG_SYS_TEXT_BASE           0x27800000
+	*/
 
 	#define CONFIG_SYS_MMC_IMG_LOAD_PART		1
 
@@ -205,23 +214,23 @@
 	#define CONFIG_ENG_BOOTARGS \
 		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_UPDATEROOT
 	#define CONFIG_ENG_BOOTCMD  \
-		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr}"
+		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr}"
 	#define CONFIG_ENG_DTB_BOOTCMD  \
-		"run bootargs_base ui_port set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
 
 	/* recovery mode parameter 'r' or 'R' key*/
 	#define CONFIG_ANDROID_RECOVERY_BOOTARGS \
 		"setenv bootargs ${bootargs} init=/init"
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
 		#define CONFIG_ANDROID_RECOVERY_BOOTCMD  \
-			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
+			"run bootargs_base set_display set_mem bootargs_console ext_args;"			\
 			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
 			"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
 			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
 			"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
 	#else
 		#define CONFIG_ANDROID_RECOVERY_BOOTCMD  \
-			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;"			\
+			"run bootargs_base set_display set_mem bootargs_console ext_args;"			\
 			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
 			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
 			"bootm ${loadaddr} ${rd_loadaddr}"
@@ -229,14 +238,14 @@
 	/* recovery mode parameter 'u' or 'U' key*/
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
 		#define CONFIG_ENG_UKEY_BOOTCMD  \
-			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
+			"run bootargs_base set_display set_mem bootargs_console ext_args;" \
 			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
 			"mmc read ${dtb_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE) ";" \
 			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE) ";" \
 			"bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
 	#else
 		#define CONFIG_ENG_UKEY_BOOTCMD  \
-			"run bootargs_base ui_port set_display set_mem bootargs_console ext_args;" \
+			"run bootargs_base set_display set_mem bootargs_console ext_args;" \
 			"mmc dev ${mmc_num};mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE) ";"\
 			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE) ";" \
 			"bootm ${loadaddr} ${rd_loadaddr}"
@@ -262,7 +271,7 @@
 		"bootargs_base=setenv bootargs ${bootargs} androidboot.hardware=freescale no_console_suspend\0" \
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
 		"set_display=run " CONFIG_GUIPORT "\0" \
-		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV ","  __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV " ldb=spl0\0"	\
+		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
@@ -274,6 +283,10 @@
 		"r_ramdisk=mmc read ${rd_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE) "\0" \
 		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
 		"splashpos=m,m\0"	  \
+		"def_video=" CONFIG_VGA_VIDEO "\0" \
+		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
+		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
+		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 

@@ -9,7 +9,7 @@
 #include <common.h>
 #include <i2c.h>
 
-void disable_efm32_watchdog( )
+void disable_efm32_watchdog( void )
 {
 #ifdef CONFIG_MCU_WDOG_BUS
 	unsigned char const ubSentBuf[8] = { 5 , 0x8E , 0 , 0 , 0x93 } ;
@@ -55,7 +55,7 @@ void disable_efm32_watchdog( )
 }
 
 
-void vEFM32_SetTimeout( )
+void vEFM32_SetTimeout( void )
 {
 	unsigned char buf[4] = { 0 } ;
 	unsigned int bus = i2c_get_bus_num() ;

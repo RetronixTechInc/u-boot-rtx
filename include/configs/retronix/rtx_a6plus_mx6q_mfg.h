@@ -1,6 +1,6 @@
 
-#ifndef __RTX_A6_MX6Q_CONFIG_H
-	#define __RTX_A6_MX6Q_CONFIG_H
+#ifndef __RTX_A6PLUS_MX6Q_CONFIG_H
+	#define __RTX_A6PLUS_MX6Q_CONFIG_H
 
 	#include <asm/arch/imx-regs.h>
 	#include <asm/imx-common/gpio.h>
@@ -53,11 +53,11 @@
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
-	#define CONFIG_MXC_UART_BASE				UART2_BASE
-	#define CONFIG_CONSOLE_DEV					"ttymxc1"
+	#define CONFIG_MXC_UART_BASE				UART4_BASE
+	#define CONFIG_CONSOLE_DEV					"ttymxc3"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
-
+	
 	#if defined(CONFIG_MX6_DDR_2G)
 		#define PHYS_SDRAM_SIZE				(2u * 1024 * 1024 * 1024)
 	#else 
@@ -249,6 +249,7 @@
 			"bootm ${loadaddr} ${rd_loadaddr}"
 	#endif
 
+
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
 		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
 		#define CONFIG_EXTRA_ENV_BOOTCMD_MFG "bootcmd_mfg=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
@@ -258,7 +259,6 @@
 	#endif
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
-		CONFIG_EXTRA_ENV_BOOTCMD_MFG	\		
 		"bootcmd=run bootcmd_gen\0"	\
 		"bootargs_base=setenv bootargs ${bootargs} androidboot.hardware=freescale no_console_suspend\0" \
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
@@ -281,7 +281,8 @@
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
-			
+
+
 	#define CONFIG_ARP_TIMEOUT     					200UL
 
 	/* Miscellaneous configurable options */

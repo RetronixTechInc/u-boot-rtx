@@ -52,6 +52,10 @@
 #endif
 #endif /*CONFIG_FSL_FASTBOOT*/
 
+#ifdef CONFIG_MCU_WDOG_BUS
+	#include <rtx/efm32.h>
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #define UART_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
@@ -1191,7 +1195,7 @@ static const struct boot_mode board_boot_modes[] = {
 
 int board_late_init(void)
 {
-#ifdef CONFIG_TARGET_RTX_A6_MX6Q_MFG
+#if defined(CONFIG_TARGET_RTX_A6_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
 	disable_efm32_watchdog( ) ;
 #endif
 

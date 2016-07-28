@@ -778,9 +778,8 @@ void bootsel_set_fec_mac( int inum, char* data )
 	bootsel_write_setting_data( ) ;
 }
 
-void bootsel_Read_Mac()
+void bootsel_Read_Mac( void )
 {
-	char* commandline ;
 	char Mac[32] ;
 
 	if ( bootselinfodata.ubMAC01[6] )

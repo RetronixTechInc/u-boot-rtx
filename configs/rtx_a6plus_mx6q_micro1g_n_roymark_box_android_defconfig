@@ -8,12 +8,13 @@ CONFIG_DM_THERMAL=y
 CONFIG_EXTRA_ENV_USE_DTB=n
 CONFIG_BOOTARGS_GEN="init=/init"
 CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
-CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
-CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off"
+CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
+CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb1:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off"
 CONFIG_BOOTARGS_GUIMEM="fbmem=28M,28M gpumem=176M vmalloc=400M ldb=spl0"
 CONFIG_GUIPORT="dual-hdmi"
 CONFIG_UBOOT_MMCNUM="2"
 CONFIG_UPDATEROOT="/dev/mmcblk1p1"
+CONFIG_VGA_VIDEO="1024x768@60"
 CONFIG_DEF_LOADADDR=0x10800000
 CONFIG_DTB_LOADADDR=0x11300000
 CONFIG_RD_LOADADDR=0x11400000

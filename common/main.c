@@ -16,8 +16,13 @@
 #include <environment.h>
 #endif
 
-#include <rtx/bootsel.h>
-#include <rtx/efm32.h>
+#ifdef CONFIG_BOOT_SYSTEM
+	#include <rtx/bootsel.h>
+#endif
+
+#ifdef CONFIG_MCU_WDOG_BUS
+	#include <rtx/efm32.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 

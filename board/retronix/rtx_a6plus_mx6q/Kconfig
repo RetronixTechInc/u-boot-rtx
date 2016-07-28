@@ -20,43 +20,81 @@ config EXTRA_ENV_USE_DTB
 	  Kernel has DTB.
 
 config BOOTARGS_GEN
-	string "init=/sbin/init root=/dev/mmcblk0p1 rootwait rw"
+	string "bootagrs parameter"
+	default "init=/sbin/init root=/dev/mmcblk0p1 rootwait rw"
 	help
 	  GUI port hdmi,vga or dual-hdmi.
 
 config GUIPORT
-	string "hdmi"
+	string "GUI port"
+	default "hdmi"
 	help
 	  GUI port hdmi,vga or dual-hdmi.
 
 config BOOTARGS_HDMI
-	string "hdmi"
+	string "hdmi gui parameter"
+	default "video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
 	help
 	  GUI port hdmi,vga or dual-hdmi.
 
 config BOOTARGS_VGA
-	string "hdmi"
+	string "vga gui parameter"
+	default "video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:of"
 	help
 	  GUI port hdmi,vga or dual-hdmi.
 
 config BOOTARGS_DUAL_HDMI
-	string "hdmi"
+	string "dual gui parameter"
+	default "video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off"
 	help
 	  GUI port hdmi,vga or dual-hdmi.
 
 config BOOTARGS_GUIMEM
-	string "fbmem=28M,28M gpumem=176M vmalloc=400M"
+	string "FB GPU memory"
+	default "fbmem=28M,28M gpumem=176M vmalloc=400M"
 	help
 	  fbmem,gpumem and vmallock define.
 
 config UBOOT_MMCNUM
-	string "2"
+	string "boot mmc number"
+	default "2"
 	help
 	  uboot mmc num.
 
 config UPDATEROOT
-	string "/dev/mmcblk1p1"
+	string "update mount path"
+	default "/dev/mmcblk1p1"
 	help
 	  update and reovery filesystem mount path.
+
+config VGA_VIDEO
+	string "vga resolution"
+	default "1024x768@60"
+	help
+	  VGA resolution.
+
+config DEF_LOADADDR
+	hex "loadaddr"
+	default "0x10800000"
+	help
+	  loadaddr.
+
+config DTB_LOADADDR
+	hex "dtb_loadaddr"
+	default "0x11300000"
+	help
+	  dtb_loadaddr.
+
+config RD_LOADADDR
+	hex "rd_loadaddr"
+	default "0x11400000"
+	help
+	  rd_loadaddr.
+
+config SYS_TEXT_BASE
+	hex "system text loadaddr address"
+	default "0x27800000"
+	help
+	  SYS_TEXT_BASE.
 
 endif
