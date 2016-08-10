@@ -1055,7 +1055,6 @@ static void setup_usb(void)
 int board_ehci_hcd_init(int port)
 {
 	u32 *usbnc_usb_ctrl;
-	printf("Tom=========%s[%d]=====\n", __func__, __LINE__);
 
 	if (port > 1)
 		return -EINVAL;
@@ -1348,7 +1347,7 @@ int board_late_init(void)
 
 int checkboard(void)
 {
-	puts("Board: MX6-SabreSD\n");
+	puts("Board: MX6-A6PLUS\n");
 	return 0;
 }
 
