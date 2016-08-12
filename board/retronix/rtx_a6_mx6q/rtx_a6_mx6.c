@@ -55,6 +55,7 @@
 #ifdef CONFIG_MCU_WDOG_BUS
 	#include <rtx/efm32.h>
 #endif
+	#include <rtx/bootsel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -361,10 +362,26 @@ int mmc_get_env_devno(void)
 
 int mmc_map_to_kernel_blk(int dev_no)
 {
-	return dev_no + 1;
+	int kernel_no = 0 ;
+	//printf("Tom========%s[%d]========dev_no=%d\n",__func__, __LINE__, dev_no);
+	switch(dev_no)
+	{
+	case 0:
+		kernel_no = 2 ;
+		break ;
+	case 1:
+		kernel_no = 1 ;
+		break ;
+	case 2:
+		kernel_no = 0 ;
+		break ;
+	case 3:
+		kernel_no = 0 ;
+		break ;
+	}
+	return kernel_no;
 }
 
-#define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 2)
 #define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
 
 int board_mmc_getcd(struct mmc *mmc)
@@ -374,7 +391,7 @@ int board_mmc_getcd(struct mmc *mmc)
 
 	switch (cfg->esdhc_base) {
 	case USDHC2_BASE_ADDR:
-		ret = !gpio_get_value(USDHC2_CD_GPIO);
+		ret = 0;
 		break;
 	case USDHC3_BASE_ADDR:
 		ret = !gpio_get_value(USDHC3_CD_GPIO);
@@ -405,7 +422,7 @@ int board_mmc_init(bd_t *bis)
 		case 0:
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
-			gpio_direction_input(USDHC2_CD_GPIO);
+			//gpio_direction_input(USDHC2_CD_GPIO);
 			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 			break;
 		case 1:
@@ -487,22 +504,22 @@ int check_mmc_autodetect(void)
 
 void board_late_mmc_env_init(void)
 {
-	char cmd[32];
+	//char cmd[32];
 	char mmcblk[32];
 	u32 dev_no = mmc_get_env_devno();
 
-	if (!check_mmc_autodetect())
+	if (!bootsel_func_changestorage())
 		return;
 
-	setenv_ulong("mmcdev", dev_no);
+	setenv_ulong("mmc_num", dev_no);
 
 	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
+	sprintf(mmcblk, "/dev/mmcblk%dp1 rootwait rw",
 		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
+	setenv("mmcrootpath", mmcblk);
 
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
+	//sprintf(cmd, "mmc dev %d", dev_no);
+	//run_command(cmd, 0);
 }
 
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
@@ -716,7 +733,7 @@ int mx6_rgmii_rework(struct phy_device *phydev)
 
 int board_phy_config(struct phy_device *phydev)
 {
-	mx6_rgmii_rework(phydev);
+	//mx6_rgmii_rework(phydev);
 
 	if (phydev->drv->config)
 		phydev->drv->config(phydev);
@@ -1211,7 +1228,7 @@ int board_late_init(void)
 
 int checkboard(void)
 {
-	puts("Board: MX6-SabreSD\n");
+	puts("Board: MX6-A6\n");
 	return 0;
 }
 
@@ -1259,7 +1276,7 @@ void board_fastboot_setup(void)
 
 #ifdef CONFIG_ANDROID_RECOVERY
 
-#define GPIO_VOL_DN_KEY IMX_GPIO_NR(1, 5)
+//#define GPIO_VOL_DN_KEY IMX_GPIO_NR(1, 5)
 iomux_v3_cfg_t const recovery_key_pads[] = {
 	(MX6_PAD_GPIO_5__GPIO1_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL)),
 };

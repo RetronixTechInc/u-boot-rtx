@@ -19,11 +19,23 @@ config EXTRA_ENV_USE_DTB
 	help
 	  Kernel has DTB.
 
+config MMCROOTPATH
+	string "rootfs mount path"
+	default "root=/dev/mmcblk0p1 rootwait rw"
+	help
+	  FileSystem mount path.
+
 config BOOTARGS_GEN
 	string "bootagrs parameter"
-	default "init=/sbin/init root=/dev/mmcblk0p1 rootwait rw"
+	default "init=/sbin/init ${mmcrootpath}"
 	help
-	  GUI port hdmi,vga or dual-hdmi.
+	  bootargs parameter.
+
+config DEFAULT_MAC01
+	string "mac01 default address"
+	default "1E:ED:19:27:1A:B3"
+	help
+	  MAC address.
 
 config GUIPORT
 	string "GUI port"
@@ -35,19 +47,19 @@ config BOOTARGS_HDMI
 	string "hdmi gui parameter"
 	default "video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
 	help
-	  GUI port hdmi,vga or dual-hdmi.
+	  GUI port hdmi.
 
 config BOOTARGS_VGA
 	string "vga gui parameter"
 	default "video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:of"
 	help
-	  GUI port hdmi,vga or dual-hdmi.
+	  GUI port vga.
 
 config BOOTARGS_DUAL_HDMI
 	string "dual gui parameter"
 	default "video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off"
 	help
-	  GUI port hdmi,vga or dual-hdmi.
+	  GUI port dual-hdmi.
 
 config BOOTARGS_GUIMEM
 	string "FB GPU memory"
@@ -75,13 +87,13 @@ config VGA_VIDEO
 
 config DEF_LOADADDR
 	hex "loadaddr"
-	default "0x10800000"
+	default "0x10880000"
 	help
 	  loadaddr.
 
 config DTB_LOADADDR
 	hex "dtb_loadaddr"
-	default "0x11300000"
+	default "0x10800000"
 	help
 	  dtb_loadaddr.
 

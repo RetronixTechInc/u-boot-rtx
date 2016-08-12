@@ -102,13 +102,9 @@ void main_loop(void)
 
 	autoboot_command(s);
 	
-#ifdef CONFIG_BOOT_SYSTEM_PASSWORD
 	bootsel_password();
-#endif /*CONFIG_CHECK_PASSWORD*/
 
-#ifdef CONFIG_MCU_WDOG_BUS
 	disable_efm32_watchdog( ) ;
-#endif
 
 	cli_loop();
 }

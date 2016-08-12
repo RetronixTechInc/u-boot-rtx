@@ -22,10 +22,18 @@
 #ifndef _BOOTSEL_H_
 #define _BOOTSEL_H_
 
+int bootsel_func_password( void ) ;
+int bootsel_func_password_chg( void ) ;
+int bootsel_func_extsd( void ) ;
+int bootsel_func_usbstorage( void ) ;
+int bootsel_func_menu( void ) ;
+int bootsel_func_changestorage( void ) ;
+int bootsel_func_scanmagiccode_self( void ) ;
+
+int bootsel_load_logo_data( void ) ;
 void bootsel_init( void ) ;
 int bootsel_checkstorage( void ) ;
-void bootsel_menu( int sel ) ;
 void bootsel_password( void ) ;
-void bootsel_Read_Mac( void ) ;
+void bootsel_menu( int sel ) ;
 
 #endif	/* _BOOTSEL_H_ */

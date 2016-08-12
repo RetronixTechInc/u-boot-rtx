@@ -55,6 +55,7 @@
 #ifdef CONFIG_MCU_WDOG_BUS
 	#include <rtx/efm32.h>
 #endif
+	#include <rtx/bootsel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -396,7 +397,24 @@ int mmc_get_env_devno(void)
 
 int mmc_map_to_kernel_blk(int dev_no)
 {
-	return dev_no + 1;
+	int kernel_no = 0 ;
+	//printf("Tom========%s[%d]========dev_no=%d\n",__func__, __LINE__, dev_no);
+	switch(dev_no)
+	{
+	case 0:
+		kernel_no = 2 ;
+		break ;
+	case 1:
+		kernel_no = 1 ;
+		break ;
+	case 2:
+		kernel_no = 0 ;
+		break ;
+	case 3:
+		kernel_no = 0 ;
+		break ;
+	}
+	return kernel_no;
 }
 
 #define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
@@ -521,22 +539,22 @@ int check_mmc_autodetect(void)
 
 void board_late_mmc_env_init(void)
 {
-	char cmd[32];
+	//char cmd[32];
 	char mmcblk[32];
 	u32 dev_no = mmc_get_env_devno();
 
-	if (!check_mmc_autodetect())
+	if (!bootsel_func_changestorage())
 		return;
 
-	setenv_ulong("mmcdev", dev_no);
+	setenv_ulong("mmc_num", dev_no);
 
 	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
+	sprintf(mmcblk, "/dev/mmcblk%dp1 rootwait rw",
 		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
+	setenv("mmcrootpath", mmcblk);
 
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
+	//sprintf(cmd, "mmc dev %d", dev_no);
+	//run_command(cmd, 0);
 }
 
 int mx6_rgmii_rework(struct phy_device *phydev)

@@ -30,8 +30,11 @@
 #include <environment.h>
 
 #ifdef CONFIG_DYNAMIC_MMC_DEVNO
-int mmc_get_env_devno(void) ;
-//int get_mmc_env_devno(void) ;
+int get_mmc_env_devno(void) ;
+#endif
+
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+#define CONFIG_RTX_MAGIC_PACKAGE "This file is RTX magic package for start up from extsdcard.\n"
 #endif
 
 static unsigned char const bootseldefaultmagiccode[16] = {
@@ -62,7 +65,14 @@ typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulFunction ;
 	unsigned long ulCmd ;
 	unsigned long ulStatus ;
-	unsigned char ubRecv[188] ;
+	unsigned long ulDataExistInfo ;
+	unsigned char ubRecv01[184] ;
+	unsigned char ubProductSerialNO_Vendor[64] ;
+	unsigned char ubMAC01_Vendor[8] ;
+	unsigned char ubMAC02_Vendor[8] ;
+	unsigned char ubMAC03_Vendor[8] ;
+	unsigned char ubMAC04_Vendor[8] ;
+	unsigned char ubRecv02[416] ;
 } bootselinfo ;
 
 static bootselinfo bootselinfodata ;
@@ -72,11 +82,13 @@ static char bootselconfirmpassword[32] ;
 static int  bootselconfirmpasswordlen ;
 
 enum __BOOTSEL_FUNC__{
-	DEF_BOOTSEL_FUNC_PASSWORD = 0x00000001 ,
-	DEF_BOOTSEL_FUNC_CHANG_PW = 0x00000002 ,
-	DEF_BOOTSEL_FUNC_UD_EXTSD = 0x00000004 ,
-	DEF_BOOTSEL_FUNC_UD_USB   = 0x00000008 ,
-	DEF_BOOTSEL_FUNC_MENU     = 0x00000010 ,
+	DEF_BOOTSEL_FUNC_PASSWORD    = 0x00000001 ,
+	DEF_BOOTSEL_FUNC_CHANG_PW    = 0x00000002 ,
+	DEF_BOOTSEL_FUNC_UD_EXTSD    = 0x00000004 ,
+	DEF_BOOTSEL_FUNC_UD_USB      = 0x00000008 ,
+	DEF_BOOTSEL_FUNC_MENU        = 0x00000010 ,
+	DEF_BOOTSEL_FUNC_CHG_STORAGE = 0x00000020 ,
+	DEF_BOOTSEL_FUNC_SCANFILE_SELF = 0x00000040 ,
 } ;
 
 typedef struct __bootselfunc__ {
@@ -85,14 +97,81 @@ typedef struct __bootselfunc__ {
 } BOOTSELFUNC ;
 
 static BOOTSELFUNC const bootselfuncarray[] = {
-	{ (char *)"password" , DEF_BOOTSEL_FUNC_PASSWORD } ,
-	{ (char *)"change"   , DEF_BOOTSEL_FUNC_CHANG_PW } ,
-	{ (char *)"extsd"    , DEF_BOOTSEL_FUNC_UD_EXTSD } ,
-	{ (char *)"usb"      , DEF_BOOTSEL_FUNC_UD_USB   } ,
-	{ (char *)"menu"     , DEF_BOOTSEL_FUNC_MENU     } ,
+	{ (char *)"password" , DEF_BOOTSEL_FUNC_PASSWORD    } ,
+	{ (char *)"change"   , DEF_BOOTSEL_FUNC_CHANG_PW    } ,
+	{ (char *)"extsd"    , DEF_BOOTSEL_FUNC_UD_EXTSD    } ,
+	{ (char *)"usb"      , DEF_BOOTSEL_FUNC_UD_USB      } ,
+	{ (char *)"menu"     , DEF_BOOTSEL_FUNC_MENU        } ,
+	{ (char *)"storage"  , DEF_BOOTSEL_FUNC_CHG_STORAGE } ,
+	{ (char *)"selfmagic", DEF_BOOTSEL_FUNC_SCANFILE_SELF } ,
 } ;
 
-void bootsel_adjust_bootargs( void ) ;
+int bootsel_func_password( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_PASSWORD )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+int bootsel_func_password_chg( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_CHANG_PW )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+int bootsel_func_extsd( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_UD_EXTSD )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+int bootsel_func_usbstorage( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_UD_USB )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+int bootsel_func_menu( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_MENU )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+int bootsel_func_changestorage( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_CHG_STORAGE )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;	
+}
+
+int bootsel_func_scanmagiccode_self( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_SCANFILE_SELF )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+#ifdef CONFIG_DYNAMIC_MMC_DEVNO
+	extern int mmc_get_env_devno(void) ;
+#endif
 
 static int bootsel_getmmcdevno( void )
 {
@@ -115,8 +194,8 @@ static void bootsel_write_setting_data( void )
 	{
 		if( mmc_init( extsd_dev ) == 0 )
 		{
-			blksize = extsd_dev->block_dev.block_write( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , 1 , &bootselinfodata ) ;
-			if ( blksize != 1 )
+			blksize = extsd_dev->block_dev.block_write( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , &bootselinfodata ) ;
+			if ( blksize != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 			{
 				printf("\n emmc write error.\n") ;
 			}
@@ -150,6 +229,26 @@ int bootsel_load_logo_data( void )
 	return 0 ;
 }
 
+static void bootsel_set_fec_mac( void )
+{
+	char setstr[512] ;
+
+	if ( bootselinfodata.ubMAC01[6] )
+	{
+		sprintf( setstr , "%02x:%02x:%02x:%02x:%02x:%02x" ,
+			bootselinfodata.ubMAC01[0] , bootselinfodata.ubMAC01[1] ,
+			bootselinfodata.ubMAC01[2] , bootselinfodata.ubMAC01[3] ,
+			bootselinfodata.ubMAC01[4] , bootselinfodata.ubMAC01[5]
+			) ;
+		setenv( "fecmac_val" , setstr ) ;
+	}
+}
+
+static void bootsel_adjust_bootargs( void )
+{
+	bootsel_set_fec_mac( ) ;
+}
+
 void bootsel_init( void )
 {
 	memset( (void *)&bootselinfodata , 0 , sizeof(bootselinfo) ) ;
@@ -160,14 +259,14 @@ void bootsel_init( void )
 		u32 blksize ;
 		void *pbuf = (void *)CONFIG_LOADADDR ;
 		int ok = 0 ;
-		
+
 		extsd_dev = find_mmc_device( sdid ) ;
 		if ( extsd_dev ) 
 		{
 			if( mmc_init( extsd_dev ) == 0 )
 			{
-				blksize = extsd_dev->block_dev.block_read( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , 1 , pbuf ) ;
-				if ( blksize == 1 )
+				blksize = extsd_dev->block_dev.block_read( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , pbuf ) ;
+				if ( blksize == CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 				{
 					memcpy( (void *)&bootselinfodata , (void *)pbuf , sizeof(bootselinfo) ) ;
 					if ( bootselinfodata.ulCheckCode == 0x5AA5AA55 )
@@ -182,6 +281,7 @@ void bootsel_init( void )
 			memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 			memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 			bootselinfodata.ulPasswordLen = 8 ;
+			bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
 			bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 			bootsel_write_setting_data( ) ;
 		}
@@ -190,6 +290,7 @@ void bootsel_init( void )
 		memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 		memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 		bootselinfodata.ulPasswordLen = 8 ;
+		bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
 		bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 	#endif
 	bootselnewpasswordlen     = 0 ;
@@ -199,7 +300,8 @@ void bootsel_init( void )
 
 static int bootsel_load( int fstype , const char *ifname , const char *dev_part_str , const char *filename , int pos , int size , unsigned long addr )
 {
-	loff_t len_read;
+	int len_read;
+	loff_t actread;
 
 	if ( !file_exists(ifname,dev_part_str,filename,fstype) )
 	{
@@ -211,12 +313,14 @@ static int bootsel_load( int fstype , const char *ifname , const char *dev_part_
 		return 0 ;
 	}
 
-	if (fs_read( filename , addr , pos , size , &len_read) < 0)
+	len_read = fs_read( filename , addr , pos , size , &actread ) ;
+
+	if (len_read < 0)
 	{
 		return 0;
 	}
 
-	return (int)( len_read ) ;
+	return (int)( actread ) ;
 }
 
 static int bootsel_load_backupsystem( void )
@@ -268,7 +372,6 @@ static int bootsel_load_backupsystem( void )
 	}
 	
 	printf("boot from ram disk\n") ;
-	setenv( "roption"  , "recovery" ) ;
 	run_command( "run bootcmd_update" , 0 ) ;
 	return 0 ;
 }
@@ -300,7 +403,7 @@ static int bootsel_load_system_from_files( const char *ifname ,  const char *dev
 	}
 	//setenv( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm" ) ;
 	
-	if ( ! bootsel_load( FS_TYPE_ANY , ifname , dev_part_str , "uramdisk-imx6.img" , 0 , 0 , (unsigned long)CONFIG_RD_LOADADDR ) )
+	if ( ! bootsel_load( FS_TYPE_ANY , ifname , dev_part_str , "uramdisk-recovery.img" , 0 , 0 , (unsigned long)CONFIG_RD_LOADADDR ) )
 	{
 		return 0 ;
 	}
@@ -325,6 +428,7 @@ static int bootsel_load_system_from_files( const char *ifname ,  const char *dev
 
 run_backup_command :
 	/* run from backup system */
+	setenv( "roption" , "recovery" ) ;
 	bootsel_load_backupsystem( ) ;
 	return 0 ;
 }
@@ -348,14 +452,24 @@ static int bootsel_load_system_from_emmc( int sdid )
 		return 0 ;
 	}
 
-	if ( extsd_dev->block_dev.block_read( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , 1 , (void *)CONFIG_LOADADDR ) != 1 )
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+	if ( extsd_dev->block_dev.block_read( (int)sdid , 0 , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
+	{
+		return 0 ;
+	}
+
+	if( !memcmp( (const char *)CONFIG_LOADADDR , CONFIG_RTX_MAGIC_PACKAGE , strlen( CONFIG_RTX_MAGIC_PACKAGE ) ))
+	{
+		goto run_old_command ;
+	}	
+#endif
+	if ( extsd_dev->block_dev.block_read( (int)sdid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (void *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 	{
 		return 0 ;
 	}
 
 	if( memcmp( (void *)CONFIG_LOADADDR , &bootselinfodata.ubMagicCode , 16 ) )
 	{
-		
 		needcheckcode = 1 ;
 		goto run_file_command ;
 	}
@@ -397,6 +511,17 @@ static int bootsel_load_system_from_emmc( int sdid )
 	run_command( "run bootcmd_update" , 0 ) ;
 	goto run_boot_exit ;
 
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+run_old_command:
+	setenv( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm ${loadaddr} 0x800 0x2000;mmc read ${rd_loadaddr} 0x3000 0x2000 " ) ;
+	printf("boot from extsd card\n") ;
+	setenv( "rstorage" , "mmc" ) ;
+	setenv( "roption"  , "update" ) ;
+	setenv( "ext_args" , "setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init" ) ;
+	run_command( "run bootcmd_update" , 0 ) ;
+	goto run_boot_exit ;
+#endif
+
 run_file_command :
 	setenv( "rstorage" , "mmc" ) ;
 	setenv( "roption"  , "update" ) ;
@@ -417,7 +542,7 @@ static int bootsel_load_system_from_usb( int usbid )
 	int needcheckcode = 0 ;
 	char usbidstr[8] ;
 	block_dev_desc_t *stor_dev = NULL;
-	
+
 	if ( usbid < 0 )
 	{
 		return 0 ;
@@ -429,8 +554,19 @@ static int bootsel_load_system_from_usb( int usbid )
 	{
 		return 0 ;
 	}
-	
-	if ( stor_dev->block_read( usbid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , 1 , (ulong *)CONFIG_LOADADDR ) != 1 )
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+	if ( stor_dev->block_read( usbid , 0 , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
+	{
+		return 0 ;
+	}
+
+	if( !memcmp( (const char *)CONFIG_LOADADDR , CONFIG_RTX_MAGIC_PACKAGE , strlen( CONFIG_RTX_MAGIC_PACKAGE ) ))
+	{
+		goto run_old_command ;
+	}
+//	printf("read: %s, sizeof: %d, strlen: %d,strlen2: %d\n ", CONFIG_LOADADDR , sizeof(CONFIG_LOADADDR), strlen(CONFIG_LOADADDR),strlen( CONFIG_RTX_MAGIC_PACKAGE ) ) ;
+#endif
+	if ( stor_dev->block_read( usbid , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 	{
 		return 0 ;
 	}
@@ -477,6 +613,15 @@ static int bootsel_load_system_from_usb( int usbid )
 	run_command( "run bootcmd_update" , 0 ) ;
 	goto run_boot_exit ;
 	
+#ifdef CONFIG_BISHOP_MAGIC_PACKAGE
+run_old_command:
+	setenv( "bootcmd_update"  , "run bootargs_ramdisk;mmc dev 1;mmc read ${loadaddr} 0x800 0x2000;mmc read ${rd_loadaddr} 0x3000 0x2000;bootm ${loadaddr} ${rd_loadaddr}" ) ;
+	printf("boot from extsd card\n") ;
+	setenv( "bootargs_ramdisk" , "setenv bootargs console=ttymxc3 root=/dev/ram0 rootwait rw rdinit=/sbin/init\0" ) ;
+	run_command( "run bootcmd_update" , 0 ) ;
+	goto run_boot_exit ;
+#endif
+
 run_file_command :
 	setenv( "rstorage" , "usb" ) ;
 	setenv( "roption"  , "update" ) ;
@@ -497,14 +642,15 @@ static void bootsel_checkstorage_mmc( void )
 #ifdef CONFIG_CMD_MMC
 	int sdid = 0 ;
 	
-	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_UD_EXTSD )
+	if ( !bootsel_func_extsd() )
 	{
 		return ;
 	}
 
 	for ( sdid = 0 ; sdid < CONFIG_BOOT_SYSTEM_MAX_EXTSD ; sdid ++ )
 	{
-		if ( sdid == bootsel_getmmcdevno() ) continue ;
+		
+		if ( sdid == bootsel_getmmcdevno() && !bootsel_func_scanmagiccode_self() ) continue ;
 
 		bootsel_load_system_from_emmc( sdid ) ;
 	}
@@ -516,7 +662,7 @@ static void bootsel_checkstorage_usb( void )
 #ifdef CONFIG_USB_STORAGE
 	int usbid = -1 ;
 
-	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_UD_USB )
+	if ( !bootsel_func_usbstorage() )
 	{
 		return ;
 	}
@@ -537,7 +683,7 @@ int bootsel_checkstorage( void )
 	return ( ret ) ;
 }
 
-void bootsel_getpassword( int *len , char *passwd )
+static void bootsel_getpassword( int *len , char *passwd )
 {
 	char ichar ;
 	int  getlen ;
@@ -590,7 +736,7 @@ void bootsel_password( void )
 	int len ;
 	char password[32] ;
 
-	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_PASSWORD )
+	if ( !bootsel_func_password() )
 	{
 		return ;
 	}
@@ -634,7 +780,7 @@ void bootsel_password( void )
 	}
 }
 
-void bootsel_newpassword( void )
+static void bootsel_newpassword( void )
 {
 	int ok = 0 ;
 	
@@ -692,7 +838,7 @@ void bootsel_newpassword( void )
 
 void bootsel_menu( int sel )
 {
-	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_MENU )
+	if ( !bootsel_func_menu() )
 	{
 		return ;
 	}
@@ -701,25 +847,35 @@ void bootsel_menu( int sel )
 	{
 		case 'u' :
 		case 'U' :
-			setenv( "rstorage" , "mmc" ) ;
-			setenv( "roption" , "normal" ) ;
-			setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-			setenv("bootcmd_update", CONFIG_ENG_UKEY_BOOTCMD );
-			run_command( "run bootcmd_update" , 0 ) ;
-			break ;
 		case 'r' :
 		case 'R' :
+			{						
+				if ( sel == 'r' || sel == 'R' )
+				{
+					setenv( "roption" , "recovery" ) ;
+				}
+				else
+				{
+					setenv( "roption" , "update" ) ;
+				}
+			    setenv( "rstorage" , "mmc" ) ;
+			    setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
+			    bootsel_load_backupsystem( ) ;
+			}
+			break ;
+		case 'a' :
+		case 'A' :
 			setenv( "ext_args" , CONFIG_ANDROID_RECOVERY_BOOTARGS ) ;
 			setenv("bootcmd_android_recovery", CONFIG_ANDROID_RECOVERY_BOOTCMD );
 			run_command( "run bootcmd_android_recovery" , 0 ) ;
 			break ;
 		case 'p' :
 		case 'P' :
-			if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_CHANG_PW )
+			if ( !bootsel_func_password_chg() )
 			{
 				break ;
 			}
-			bootsel_password( ) ;
+			//bootsel_password( ) ;
 			bootsel_newpassword( ) ;
 			break ;
 		default :
@@ -728,88 +884,41 @@ void bootsel_menu( int sel )
 	#endif
 }
 
-static unsigned char nibbleFromChar(char c)
+static int bootsel_hex_string_to_binary_dec( int ch )
 {
-	if(c >= '0' && c <= '9') return c - '0';
-	if(c >= 'a' && c <= 'f') return c - 'a' + 10;
-	if(c >= 'A' && c <= 'F') return c - 'A' + 10;
-	return 255;
-}
-
-void bootsel_set_fec_mac( int inum, char* data )
-{
-	char* pdata ;
-	int i ;
-	unsigned char bval[6] ;
-
-	switch(inum)
+	if ( ch >= 'a' && ch <= 'f' )
 	{
-	case 0 :
-		pdata = (char*)bootselinfodata.ubMAC01;
-		break ;
-	case 1 :
-		pdata = (char*)bootselinfodata.ubMAC02;
-		break ;
-	case 2 :
-		pdata = (char*)bootselinfodata.ubMAC03;
-		break ;
-	case 3 :
-		pdata = (char*)bootselinfodata.ubMAC04;
-		break ;
-	default :
-		return ;
+		ch = ch - 'a' + 10 ;
 	}
 
-	for(i = 0 ; i < strlen(data) ; i ++ )
+	else if ( ch >= 'A' && ch <= 'F' )
 	{
-		bval[i] = 0;
-		bval[i] = nibbleFromChar(data[i]);
-		if(bval[i] == 255)
-		{
-			return ;
-		}
+		ch = ch - 'A' + 10 ;
 	}
-	for(i = 0 ; i < strlen(data)/2 ; i ++ )
+	else if ( ch >= '0' && ch <= '9' )
 	{
-		*pdata = bval[i*2+ 1] + (bval[i*2 ] << 4);
-		pdata++;
+		ch = ch - '0' ;
 	}
-	*pdata += 1;
-	bootsel_write_setting_data( ) ;
-}
-
-void bootsel_Read_Mac( void )
-{
-	char Mac[32] ;
-
-	if ( bootselinfodata.ubMAC01[6] )
+	else
 	{
-		sprintf( Mac , "fec_mac=%02x:%02x:%02x:%02x:%02x:%02x" ,
-			bootselinfodata.ubMAC01[0] , bootselinfodata.ubMAC01[1] ,
-			bootselinfodata.ubMAC01[2] , bootselinfodata.ubMAC01[3] ,
-			bootselinfodata.ubMAC01[4] , bootselinfodata.ubMAC01[5] 
-			) ;
-		setenv("bootargs", Mac);
+		return ( -1 ) ;
 	}
-	return ;
-}
-
-void bootsel_adjust_bootargs( void )
-{
-	bootsel_Read_Mac( ) ;
+	return ( ch ) ;
 }
 
 static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	int loop ;
-	int inum ;
+	int value ;
+	int ch ;
+	unsigned char * pMac ;
 	
 	if ( argc < 3 )
 	{
 		return CMD_RET_USAGE ;
 	}
-	
+
 	if ( strcmp( argv[1] , "function" ) == 0 )
 	{
 		if ( argc < 4 )
@@ -822,11 +931,11 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 			{
 				if ( strcmp( argv[3] , "enable" ) == 0 )
 				{
-					bootselinfodata.ulFunction &= ~bootselfuncarray[loop].mask ;
+					bootselinfodata.ulFunction |= bootselfuncarray[loop].mask ;
 				}
 				else
 				{
-					bootselinfodata.ulFunction |= bootselfuncarray[loop].mask ;
+					bootselinfodata.ulFunction &= ~bootselfuncarray[loop].mask ;
 				}
 				bootsel_write_setting_data( ) ;
 				return CMD_RET_SUCCESS;
@@ -835,19 +944,44 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	else if ( strcmp( argv[1] , "mac" ) == 0 )
 	{
+		pMac = 0 ;
 		if ( argc < 4 )
 		{
 			return CMD_RET_USAGE ;
 		}
-		inum = simple_strtol(argv[2], NULL, 10) ;
-
-		if(strlen(argv[3]) == 12)
+		
+		switch( argv[2][0] )
 		{
-			bootsel_set_fec_mac(inum ,(char*)argv[3]);
-			return CMD_RET_SUCCESS;
+			case '0' : pMac = &bootselinfodata.ubMAC01[0] ; break ;
+			case '1' : pMac = &bootselinfodata.ubMAC02[0] ; break ;
+			case '2' : pMac = &bootselinfodata.ubMAC03[0] ; break ;
+			case '3' : pMac = &bootselinfodata.ubMAC04[0] ; break ;
+			default :
+				return CMD_RET_USAGE ;
 		}
+		
+		for ( loop = 0 ; loop <  6 ; loop ++ )
+		{
+			value = 0 ;
+			ch = bootsel_hex_string_to_binary_dec( argv[3][loop*2] ) ;
+			if ( ch == -1 )
+			{
+				return CMD_RET_USAGE ;
+			}
+			value = value + ch * 16 ;
+			ch = bootsel_hex_string_to_binary_dec( argv[3][loop*2+1] ) ;
+			if ( ch == -1 )
+			{
+				return CMD_RET_USAGE ;
+			}
+			value = value + ch ;
+			pMac[loop] = value ;
+		}
+		pMac[6] = 1 ;
+		bootsel_write_setting_data( ) ;
+		return CMD_RET_SUCCESS;
 	}
-	else if ( strcmp( argv[1] , "run" ) == 0 )
+	else if ( strcmp( argv[1] , "menu" ) == 0 )
 	{
 		if ( argc < 3 )
 		{
@@ -861,6 +995,16 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 		else if ( strcmp( argv[2] , "recovery" ) == 0 )
 		{
 			bootsel_menu('r');
+			return CMD_RET_SUCCESS;
+		}
+		else if ( strcmp( argv[2] , "android_recovery" ) == 0 )
+		{
+			bootsel_menu('a');
+			return CMD_RET_SUCCESS;
+		}
+		else if ( strcmp( argv[2] , "password_change" ) == 0 )
+		{
+			bootsel_menu('p');
 			return CMD_RET_SUCCESS;
 		}
 	}
@@ -880,14 +1024,18 @@ U_BOOT_CMD(
 	"    function extsd    <enable/disable>\n"
 	"    function usb      <enable/disable>\n"
 	"    function menu     <enable/disable>\n"
+	"    function storage  <enable/disable>\n"
+	"    function selfmagic  <enable/disable>\n"
 	"** MAC class **\n"
-	"    mac 0 000000000000\n"
-	"    mac 1 000000000000\n"
-	"    mac 2 000000000000\n"
-	"    mac 3 000000000000\n"
-	"** run class **\n"
-	"    run update\n"
-	"    run recovery\n"
+	"    mac 0 <000000000000>\n"
+	"    mac 1 <000000000000>\n"
+	"    mac 2 <000000000000>\n"
+	"    mac 3 <000000000000>\n"
+	"** menu class **\n"
+	"    menu update\n"
+	"    menu recovery\n"
+	"    menu android_recovery\n"
+	"    menu password_change\n"
 );
 
 #ifdef CONFIG_BOOT_CMD_RESET_ENV
@@ -901,6 +1049,29 @@ static int do_reset_env(cmd_tbl_t *cmdtp, int flag, int argc,
 U_BOOT_CMD(
 	env_reset, 1, 0,	do_reset_env,
 	"reset environment to default",
+	""
+);
+#endif
+
+#ifdef CONFIG_BOOT_CMD_RESET_SETTING
+static int do_reset_setting(cmd_tbl_t *cmdtp, int flag, int argc,
+		       char * const argv[])
+{
+	memset( (void *)&bootselinfodata , 0 , sizeof(bootselinfo) ) ;
+
+	memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
+	memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
+	bootselinfodata.ulPasswordLen = 8 ;
+	bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
+	bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
+	bootsel_write_setting_data( ) ;
+	
+	return CMD_RET_SUCCESS;
+}
+
+U_BOOT_CMD(
+	setting_reset, 1, 0,	do_reset_setting,
+	"reset setting to default",
 	""
 );
 #endif
@@ -961,7 +1132,7 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	printf( "\n" ) ;
 	
-	printf( "BSP Version:" ) ;
+	printf( "Product Serial:" ) ;
 	for ( loop = 0 ; loop < 64 ; loop ++ )
 	{
 		if ( bootselinfodata.ubProductSerialNO[loop] == 0x00 )
@@ -979,7 +1150,7 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	printf( "\n" ) ;
 	
-	printf( "Product Serial:" ) ;
+	printf( "BSP Version:" ) ;
 	for ( loop = 0 ; loop < 32 ; loop ++ )
 	{
 		if ( bootselinfodata.ubBSPVersion[loop] == 0x00 )
@@ -996,7 +1167,54 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 		}
 	}
 	printf( "\n" ) ;
+
+	for ( loop = 0 ; loop < sizeof(bootselfuncarray) / sizeof(BOOTSELFUNC) ; loop ++ )
+	{
+		if ( bootselinfodata.ulFunction & bootselfuncarray[loop].mask )
+		{
+			printf( "function %s : enable \n", bootselfuncarray[loop].name ) ;
+		}
+		else
+		{
+			printf( "function %s : disable \n", bootselfuncarray[loop].name ) ;
+		}
+	}
 	
+	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
+	{
+		printf( "ubMAC0%d_Vendor:" , loop1 ) ;
+		for ( loop = 0 ; loop < 8 ; loop ++ )
+		{
+			if ( loop == 7 )
+			{
+				printf( "%02X" , bootselinfodata.ubMAC01_Vendor[loop+loop1*8] ) ;
+			}
+			else
+			{
+				printf( "%02X:" , bootselinfodata.ubMAC01_Vendor[loop+loop1*8] ) ;
+			}
+		}
+		printf( "\n" ) ;
+	}
+
+	printf( "Product Serial_Vendor:" ) ;
+	for ( loop = 0 ; loop < 64 ; loop ++ )
+	{
+		if ( bootselinfodata.ubProductSerialNO_Vendor[loop] == 0x00 )
+		{
+			break ;
+		}
+		if ( bootselinfodata.ubProductSerialNO_Vendor[loop] >= 32 && bootselinfodata.ubProductSerialNO_Vendor[loop] < 128 )
+		{
+			printf( "%c" , bootselinfodata.ubProductSerialNO_Vendor[loop] ) ;
+		}
+		else
+		{
+			printf( "%c" , '?' ) ;
+		}
+	}
+	printf( "\n" ) ;
+
 	return CMD_RET_SUCCESS;
 }
 
@@ -1006,90 +1224,4 @@ U_BOOT_CMD(
 	"show setting info.",
 	""
 );
-
-void bootsel_ddr_calibration( void )
-{
-	#if defined(CONFIG_CMD_MMC) || defined(CONFIG_DDR_AUTO_CALIBRATION)
-	unsigned long ulDDRcal[128] ;
-	struct mmc *extsd_dev = NULL ;
-	u32 blksize ;
-	void *pbuf = (void *)CONFIG_LOADADDR ;
-#ifdef CONFIG_DYNAMIC_MMC_DEVNO
-	int sdid = ( mmc_get_env_devno() ) ;
-#else
-	int sdid = (CONFIG_SYS_MMC_ENV_DEV) ;
-#endif
-	int ok = 1 ;
-	unsigned int reg;
-
-	memset( (void *)&ulDDRcal , 0 , sizeof(ulDDRcal) ) ;
-
-	extsd_dev = find_mmc_device( sdid ) ;
-	if ( extsd_dev )
-	{
-		if( mmc_init( extsd_dev ) == 0 )
-		{
-			blksize = extsd_dev->block_dev.block_read( (int)sdid , 0x3 , 1 , pbuf ) ;
-			if ( blksize == 1 )
-			{
-				memcpy( (void *)&ulDDRcal , (void *)pbuf , sizeof(ulDDRcal) ) ;
-				if ( ulDDRcal[0x0] == 0x00 )
-				{
-					ok = 0 ;
-				}
-			}
-		}
-	}
-
-	if ( !ok )
-	{
-		ulDDRcal[0x00] = 0x00000001 ;
-		printf("\nChange DDR Calibration information success.\n");
-		reg = readl(MMDC_P0_BASE_ADDR + 0x80C);
-		ulDDRcal[42*2] = reg ;
-		printf("MPWLDECTRL0_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P0_BASE_ADDR + 0x810);
-		ulDDRcal[43*2] = reg ;
-		printf("MPWLDECTRL1_1FFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P1_BASE_ADDR + 0x80C);
-		ulDDRcal[44*2] = reg ;
-		printf("MPWLDECTRL0_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P1_BASE_ADDR + 0x810);
-		ulDDRcal[45*2] = reg ;
-		printf("MPWLDECTRL1_1FFSET : 0x%08x\n", reg);
-
-		reg = readl(MMDC_P0_BASE_ADDR + 0x83C);
-		ulDDRcal[46*2] = reg ;
-		printf("MPDGCTRL0_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P0_BASE_ADDR + 0x840);
-		ulDDRcal[47*2] = reg ;
-		printf("MPDGCTRL1_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P1_BASE_ADDR + 0x83C);
-		ulDDRcal[48*2] = reg ;
-		printf("MPDGCTRL0_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P1_BASE_ADDR + 0x840);
-		ulDDRcal[49*2] = reg ;
-		printf("MPDGCTRL1_OFFSET : 0x%08x\n", reg);
-
-		reg = readl(MMDC_P0_BASE_ADDR + 0x848);
-		ulDDRcal[50*2] = reg ;
-		printf("MPRDDLCTL_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P1_BASE_ADDR + 0x848);
-		ulDDRcal[51*2] = reg ;
-		printf("MPRDDLCTL_OFFSET : 0x%08x\n", reg);
-
-		reg = readl(MMDC_P0_BASE_ADDR + 0x850);
-		ulDDRcal[52*2] = reg ;
-		printf("MPWRDLCTL_OFFSET : 0x%08x\n", reg);
-		reg = readl(MMDC_P1_BASE_ADDR + 0x850);
-		ulDDRcal[53*2] = reg ;
-		printf("MPWRDLCTL_OFFSET : 0x%08x\n", reg);
-
-		blksize = extsd_dev->block_dev.block_write( (int)sdid , 0x3 , 1 , ulDDRcal ) ;
-	}
-	#endif
-
-}
-
-
 #endif
