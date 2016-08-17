@@ -249,6 +249,32 @@ static void bootsel_adjust_bootargs( void )
 	bootsel_set_fec_mac( ) ;
 }
 
+static void vbootsel_def_func()
+{
+	bootselinfodata.ulFunction = 0 ;
+	#ifdef CONFIG_BOOTSEL_FUNC_PASSWORD
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_PASSWORD ;
+	#endif
+	#ifdef CONFIG_BOOTSEL_FUNC_CHANG_PW
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_CHANG_PW ;
+	#endif
+	#ifdef CONFIG_BOOTSEL_FUNC_UD_EXTSD
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_UD_EXTSD ;
+	#endif
+	#ifdef CONFIG_BOOTSEL_FUNC_UD_USB
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_UD_USB ;
+	#endif
+	#ifdef CONFIG_BOOTSEL_FUNC_MENU
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_MENU ;
+	#endif
+	#ifdef CONFIG_BOOTSEL_FUNC_CHG_STORAGE
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_CHG_STORAGE ;
+	#endif
+	#ifdef CONFIG_BOOTSEL_FUNC_SCANFILE_SELF
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_SCANFILE_SELF ;
+	#endif
+}
+
 void bootsel_init( void )
 {
 	memset( (void *)&bootselinfodata , 0 , sizeof(bootselinfo) ) ;
@@ -281,7 +307,7 @@ void bootsel_init( void )
 			memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 			memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 			bootselinfodata.ulPasswordLen = 8 ;
-			bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
+			vbootsel_def_func();
 			bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 			bootsel_write_setting_data( ) ;
 		}
@@ -290,7 +316,7 @@ void bootsel_init( void )
 		memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 		memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 		bootselinfodata.ulPasswordLen = 8 ;
-		bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
+		vbootsel_def_func();
 		bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 	#endif
 	bootselnewpasswordlen     = 0 ;
@@ -1062,7 +1088,7 @@ static int do_reset_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 	memcpy( (void *)&bootselinfodata.ubMagicCode , (void *)bootseldefaultmagiccode , 16 ) ;
 	memcpy( (void *)&bootselinfodata.ubPassword , (void *)bootseldefaultpassword , 8 ) ;
 	bootselinfodata.ulPasswordLen = 8 ;
-	bootselinfodata.ulFunction = DEF_BOOTSEL_FUNC_DEFAULT ;
+	vbootsel_def_func();
 	bootselinfodata.ulCheckCode = 0x5AA5AA55 ;
 	bootsel_write_setting_data( ) ;
 	

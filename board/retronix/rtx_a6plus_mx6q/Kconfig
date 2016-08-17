@@ -109,4 +109,54 @@ config SYS_TEXT_BASE
 	help
 	  SYS_TEXT_BASE.
 
+config BOOTSEL_FUNC_PASSWORD
+	bool "Bootsel password function."
+	default n
+	help
+	  Uboot passwork funciton.
+
+config BOOTSEL_FUNC_CHANG_PW
+	bool "Bootsel change password function."
+	default n
+	help
+	  Uboot change passwork funciton.
+
+config BOOTSEL_FUNC_UD_EXTSD
+	bool "Bootsel scan extsd function."
+	default n
+	help
+	  Uboot scan external sd card magic code funciton.
+
+config BOOTSEL_FUNC_UD_USB
+	bool "Bootsel scan usb function."
+	default n
+	help
+	  Uboot scan usb storage magic code funciton.
+
+config BOOTSEL_FUNC_MENU
+	bool "Bootsel menu function."
+	default n
+	help
+	  Uboot munu funciton.It is u/U, r/R, a/A and p/P mode.
+	  u/U mode : roption is update.
+	  r/R mode : roption is recovery.
+	  a/A mode : this is android recovery mode.
+	  p/P mode : this is change password mode.
+
+config BOOTSEL_FUNC_CHG_STORAGE
+	bool "Bootsel autodetect storage function."
+	default n
+	help
+	  Uboot autodetect upstart device number funciton.
+	  usdhc1 is unknow.
+	  usdhc2 is mmcblk2
+	  usdhc3 is mmcblk1
+	  usdhc4 is mmcblk0
+
+config BOOTSEL_FUNC_SCANFILE_SELF
+	bool "Bootsel scan self function."
+	default n
+	help
+	  Uboot scan self magic code funciton.
+
 endif
