@@ -73,6 +73,10 @@ config TARGET_RTX_PITX_MX6Q
 	bool "Support Retronix PITX Board (imx6q SOC)"
 	select CPU_V7
 
+config TARGET_RTX_Q7_MX6Q
+	bool "Support Retronix Q7 Board (imx6q SOC)"
+	select CPU_V7
+
 config TARGET_INTEGRATORAP_CM720T
 	bool "Support integratorap_cm720t"
 	select CPU_ARM720T
@@ -918,6 +922,7 @@ source "board/pxa255_idp/Kconfig"
 source "board/retronix/rtx_a6plus_mx6q/Kconfig"
 source "board/retronix/rtx_a6_mx6q/Kconfig"
 source "board/retronix/rtx_pitx_mx6q/Kconfig"
+source "board/retronix/rtx_q7_mx6q/Kconfig"
 source "board/samsung/smdk2410/Kconfig"
 source "board/sandisk/sansa_fuze_plus/Kconfig"
 source "board/scb9328/Kconfig"
