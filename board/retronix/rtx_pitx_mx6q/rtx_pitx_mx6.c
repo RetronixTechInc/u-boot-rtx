@@ -1064,6 +1064,10 @@ int board_late_init(void)
 	disable_efm32_watchdog( ) ;
 #endif
 
+#ifdef CONFIG_BOOT_SYSTEM
+	bootsel_init() ;
+#endif
+
 #ifdef CONFIG_CMD_BMODE
 	add_board_boot_modes(board_boot_modes);
 #endif

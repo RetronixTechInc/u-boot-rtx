@@ -92,11 +92,6 @@ void main_loop(void)
 
 	s = bootdelay_process();
 
-#ifdef CONFIG_BOOT_SYSTEM
-	bootsel_init() ;
-	//bootsel_checkstorage() ;
-#endif
-
 	if (cli_process_fdt(&s))
 		cli_secure_boot_cmd(s);
 
