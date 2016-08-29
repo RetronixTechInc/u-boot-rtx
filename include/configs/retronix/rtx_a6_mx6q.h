@@ -430,6 +430,8 @@
 		#define CONFIG_USB_MAX_CONTROLLER_COUNT	1 /* Enabled USB controller number */
 	#endif
 
+	#define CONFIG_HW_OC
+
 	/*#define CONFIG_SPLASH_SCREEN*/
 	/*#define CONFIG_MXC_EPDC*/
 
