@@ -18,7 +18,7 @@ MYPATHSD="/tmp"
 DEVNUM=0
 DEVNODE="/dev/mmcblk${DEVNUM}"
 EMMC_PATH="/sys/class/mmc_host"
-EMMC_VALUE=8
+EMMC_VALUE=0
 
 #===================================
 #efm32cmd : mcu command
