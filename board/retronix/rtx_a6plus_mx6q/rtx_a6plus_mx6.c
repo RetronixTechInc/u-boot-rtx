@@ -1037,7 +1037,7 @@ int overwrite_console(void)
 int board_eth_init(bd_t *bis)
 {
 	setup_iomux_enet();
-	setup_pcie();
+	//setup_pcie();
 	setup_iomux_usb();
 
 	return cpu_eth_init(bis);
