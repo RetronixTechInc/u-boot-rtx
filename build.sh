@@ -33,7 +33,8 @@ export CROSS_COMPILE=/home/artie/JOB-Area/Android/prebuilts/gcc/linux-x86/arm/ar
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 
 #Q7 Board
-U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig
+U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_mfg_defconfig
 
 # Get Host Number of CPUs
 CPUS=`cat /proc/cpuinfo | grep processor | wc -l`
