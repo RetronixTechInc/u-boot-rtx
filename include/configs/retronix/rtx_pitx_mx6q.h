@@ -249,7 +249,7 @@
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
-		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
+		"bootargs_base=setenv bootargs no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
 		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
@@ -430,6 +430,8 @@
 		#define CONFIG_MXC_USB_FLAGS		0
 		#define CONFIG_USB_MAX_CONTROLLER_COUNT	1 /* Enabled USB controller number */
 	#endif
+
+	#define CONFIG_HW_OC
 
 	/*#define CONFIG_SPLASH_SCREEN*/
 	/*#define CONFIG_MXC_EPDC*/

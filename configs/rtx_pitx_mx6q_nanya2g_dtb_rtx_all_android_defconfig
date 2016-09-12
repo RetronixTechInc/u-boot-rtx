@@ -6,7 +6,7 @@ CONFIG_SYS_MALLOC_F_LEN=0x400
 CONFIG_DM=y
 CONFIG_DM_THERMAL=y
 CONFIG_EXTRA_ENV_USE_DTB=y
-CONFIG_BOOTARGS_GEN="fec_mac=${fecmac_val} init=/init"
+CONFIG_BOOTARGS_GEN="fec_mac=${fecmac_val} androidboot.selinux=disabled androidboot.dm_verity=disabled init=/init"
 CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
 CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
 CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off"
