@@ -254,7 +254,7 @@
 		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
-		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_PESUDO_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_PESUDO_DEV "\0"	\
+		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_PESUDO_DEV "\0"	\
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \

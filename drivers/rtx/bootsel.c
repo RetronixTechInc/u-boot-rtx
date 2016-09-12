@@ -29,6 +29,8 @@
 #include <image.h>
 #include <environment.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 #ifdef CONFIG_DYNAMIC_MMC_DEVNO
 int get_mmc_env_devno(void) ;
 #endif
@@ -702,10 +704,16 @@ static void bootsel_checkstorage_usb( void )
 int bootsel_checkstorage( void )
 {
 	int ret  = 0 ;
+	char* s ;
 	
+	gd->flags &= ~GD_FLG_SILENT;
 	bootsel_checkstorage_mmc( ) ;
 	bootsel_checkstorage_usb( ) ;
 	
+	s = getenv("silent") ;
+	if(s && strncmp(s, "1", 1) == 0 )
+		gd->flags |= GD_FLG_SILENT;
+		
 	return ( ret ) ;
 }
 
