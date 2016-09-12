@@ -51,8 +51,9 @@
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
-	#define CONFIG_MXC_UART_BASE				UART4_BASE
-	#define CONFIG_CONSOLE_DEV					"ttymxc3"
+	#define CONFIG_MXC_UART_BASE				UART1_BASE
+	#define CONFIG_CONSOLE_DEV					"ttymxc0"
+	#define CONFIG_CONSOLE_PESUDO_DEV			"ttymxc1"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
 
@@ -100,6 +101,7 @@
 
 	#define CONFIG_IMX_THERMAL
 
+	#define CONFIG_SILENT_CONSOLE
 	#define CONFIG_DISPLAY_CPUINFO
 	#define CONFIG_DISPLAY_BOARDINFO
 
@@ -252,7 +254,7 @@
 		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
-		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
+		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_PESUDO_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_PESUDO_DEV "\0"	\
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \
@@ -270,6 +272,7 @@
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
+		"silent=1\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 	#define CONFIG_ARP_TIMEOUT     					200UL

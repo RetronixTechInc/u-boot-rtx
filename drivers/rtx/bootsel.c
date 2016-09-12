@@ -713,11 +713,19 @@ static void bootsel_getpassword( int *len , char *passwd )
 {
 	char ichar ;
 	int  getlen ;
+	int count = 0 ;
 	
 	getlen = 0 ;
 	
 	for (;;) 
 	{
+		udelay(10000); // 10ms
+		count++;
+		if ( count > 1500){	// len = 0 ,if not push enter in 10ms * 1500 = 15s.
+			*len = 0 ;
+			break ; 
+		}
+
 		if (tstc()) 
 		{   /* we got a key press   */
 			ichar = getc();  /* consume input       */
@@ -761,6 +769,7 @@ void bootsel_password( void )
 	int times ;
 	int len ;
 	char password[32] ;
+	char *s;
 
 	if ( !bootsel_func_password() )
 	{
@@ -796,11 +805,26 @@ void bootsel_password( void )
 					break ;
 				}
 			}
+			if( memcmp( password , "androidrecovery" , 15 ) == 0 ){
+					bootsel_menu( 'a' );
+			}else if( memcmp( password , "rtxupdate" , 9 ) == 0 ){
+					bootsel_menu( 'u' );
+			}
 			if ( times >= 3 ) 
 			{
-				do_reset (NULL, 0, 0, NULL);
+				s = getenv ("bootcmd");
+				if(s)
+					run_command (s, 0);
+				else
+					do_reset (NULL, 0, 0, NULL);
 			}
 			len   = 0 ;
+		}else{
+			s = getenv ("bootcmd");
+			if(s)
+				run_command (s, 0);
+			else
+				do_reset (NULL, 0, 0, NULL);
 		}
 		printf ("Please Enter Password(%d): ", times ) ;
 	}

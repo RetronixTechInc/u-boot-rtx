@@ -132,10 +132,15 @@ static iomux_v3_cfg_t const gpio_pads_init[] = {
 	MX6_PAD_EIM_D27__GPIO3_IO27 | MUX_PAD_CTRL(NO_PAD_CTRL), /* GPIO 7 (91) */
 	MX6_PAD_EIM_D28__GPIO3_IO28 | MUX_PAD_CTRL(NO_PAD_CTRL), /* GPIO 8 (92) */
 	MX6_PAD_EIM_D31__GPIO3_IO31 | MUX_PAD_CTRL(NO_PAD_CTRL), /* GPIO 9 (95) */
+	// pos_m gpio 0~2
+	MX6_PAD_NANDF_WP_B__GPIO6_IO09 | MUX_PAD_CTRL(NO_PAD_CTRL), /* M0 */
+	MX6_PAD_NANDF_RB0__GPIO6_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL), /* M1 */
+	MX6_PAD_NANDF_D2__GPIO2_IO02 | MUX_PAD_CTRL(NO_PAD_CTRL), /* M2 */
 };
 
 #define GPIO_USB_H1_OC IMX_GPIO_NR(3, 30) /* USB_H1_OC */
 #define GPIO_USB_HUB_RESET_B IMX_GPIO_NR(7, 12) /* USB_HUB_RESET_B */
+#define GPIO_POS_MODE2 IMX_GPIO_NR(2, 2) /* POS_M2 for TV or BOX uboot UI parameter */
 static void setup_iomux_gpio_init(void)
 {
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
@@ -177,7 +182,11 @@ static void setup_iomux_gpio_init(void)
 	gpio_direction_output(IMX_GPIO_NR(3, 27) , 0);
 	gpio_direction_output(IMX_GPIO_NR(3, 28) , 0);
 	gpio_direction_output(IMX_GPIO_NR(3, 31) , 0);
-
+	// pos_m gpio 0~2
+	gpio_direction_input(IMX_GPIO_NR(6, 9));
+	gpio_direction_input(IMX_GPIO_NR(6, 10));
+	gpio_direction_input(GPIO_POS_MODE2);
+	
 }
 
 static void setup_iomux_usb(void)
@@ -199,6 +208,21 @@ static void setup_iomux_usb(void)
 		gpio_set_value(IMX_GPIO_NR(2, 5), 0);
 	}
 }
+
+static void setup_ui_define(void)
+{
+	int ival = 1;
+	char* BOOTARGS_LVDS="setenv bootargs ${bootargs} video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off" ;
+	char* BOOTARGS_DUAL_LVDS="setenv bootargs ${bootargs} video=mxcfb0:dev=ldb,LDB-FUHD,if=RGB24,bpp=32 video=mxcfb1:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off" ;
+
+	ival = gpio_get_value(GPIO_POS_MODE2);
+	if(ival == 0)
+	{
+		setenv("vga", BOOTARGS_LVDS );
+		setenv("dual-hdmi", BOOTARGS_DUAL_LVDS );
+	}
+}
+
 
 static iomux_v3_cfg_t const uart1_pads[] = {
 	MX6_PAD_CSI0_DAT10__UART1_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -1039,6 +1063,7 @@ int board_eth_init(bd_t *bis)
 	setup_iomux_enet();
 	//setup_pcie();
 	setup_iomux_usb();
+	setup_ui_define();
 
 	return cpu_eth_init(bis);
 }
