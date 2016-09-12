@@ -14,10 +14,10 @@ static void show_usage(){
 	printf("Options:\n");
     printf("        -info     	show setting info\n");
 	printf("        -clean     clean all variable\n");
+	printf("        -write mac 0 000000000000 [mp] \n");
 	printf("        -write mac 1 000000000000 [mp] \n");
 	printf("        -write mac 2 000000000000 [mp] \n");
 	printf("        -write mac 3 000000000000 [mp] \n");
-	printf("        -write mac 4 000000000000 [mp] \n");
 	printf("        -write name RTX-R064Roymark-Digitalsinige(max128) \n");
 	printf("        -write serialno RTX001258746(max64) [mp] \n");
 	printf("        -write bspver rtx123456789(max32) \n");
@@ -269,11 +269,11 @@ static int do_show_setting_info( )
 	{
 		if ( bootselinfodata.ulFunction & bootselfuncarray[loop].mask )
 		{
-			printf( "function %s : enable \n", bootselfuncarray[loop].name ) ;
+			printf( "function %s:enable \n", bootselfuncarray[loop].name ) ;
 		}
 		else
 		{
-			printf( "function %s : disable \n", bootselfuncarray[loop].name ) ;
+			printf( "function %s:disable \n", bootselfuncarray[loop].name ) ;
 		}
 	}
 	
@@ -438,7 +438,7 @@ static int do_set_bootsel_setting(int argc, char * const arg[])
 		if( strlen( argv[2] ) < 64)
 		{
 			strcpy(&bootselinfodata.ubProductSerialNO[0], argv[2]) ;
-			if ( argv[4] != NULL && strcmp( argv[3] , "mp" ) == 0 )
+			if ( argv[3] != NULL && strcmp( argv[3] , "mp" ) == 0 )
 			{
 				strcpy(&bootselinfodata.ubProductSerialNO_Vendor[0], argv[2]) ;
 			}

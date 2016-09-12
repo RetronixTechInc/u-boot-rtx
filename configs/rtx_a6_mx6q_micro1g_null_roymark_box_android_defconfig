@@ -9,13 +9,13 @@ CONFIG_EXTRA_ENV_USE_DTB=n
 CONFIG_BOOTARGS_GEN="fec_mac=${fecmac_val} init=/init"
 CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
 CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off"
-CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb1:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off"
+CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb2:off"
 CONFIG_BOOTARGS_GUIMEM="fbmem=28M,28M gpumem=176M vmalloc=400M ldb=dul0"
 CONFIG_GUIPORT="dual-hdmi"
 CONFIG_UBOOT_MMCNUM="2"
 CONFIG_UPDATEROOT="/dev/mmcblk1p1"
 CONFIG_VGA_VIDEO="1024x768@60"
-#CONFIG_BOOTSEL_FUNC_PASSWORD=y
+CONFIG_BOOTSEL_FUNC_PASSWORD=y
 #CONFIG_BOOTSEL_FUNC_CHANG_PW=y
 CONFIG_BOOTSEL_FUNC_UD_EXTSD=y
 #CONFIG_BOOTSEL_FUNC_UD_USB=y

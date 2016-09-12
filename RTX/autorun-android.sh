@@ -1,13 +1,46 @@
 #! /bin/sh
 
-DEVNODE="/dev/mmcblk0"
-#EMMC_TYPE="EMMCBOOT0"
-CHECK_MCU="TRUE"
-CLEANSET="TRUE"
-
 MYPATH="/data"
 MYPATHSD="/tmp"
 
+#===================================
+#DEVNUM : defaut storage
+#EMMC_PATH : mmc cotroller path
+#EMMC_VALUE : where is boot part.
+#	0 : normal user data.
+#	8 : bootpart1
+#	16 : bootpart2
+#===================================
+DEVNUM=0
+DEVNODE="/dev/mmcblk${DEVNUM}"
+EMMC_PATH="/sys/class/mmc_host"
+EMMC_VALUE=0
+
+#===================================
+#efm32cmd : mcu command
+#CHECK_MCU : update mcu if version un-correct.
+#MCU_VER : correct mcu version
+#===================================
+efm32cmd=`ls /data/iMX6-A6PLUS*`
+CHECK_MCU="TRUE"
+MCU_VER="160715"
+
+#===================================
+#CLEANSET : Errase Setting info at 768KB, Len 1KB
+#===================================
+CLEANSET="TRUE"
+
+#===================================
+#Storage Parttion define
+#MBR_SIZE : P0
+#BOOT_SIZE : P1
+#RECOVERY_SIZE : P2
+#SYSTEM_SIZE : P5
+#CACHE_SIZE : P6
+#VENDER_SIZE : P7
+#MISC_SIZE : P8
+#CRYPT_SIZE : P9
+#REV_SIZE : Reserve
 # ==================================
 MBR_SIZE=64
 BOOT_SIZE=8
@@ -15,12 +48,17 @@ RECOVERY_SIZE=8
 SYSTEM_SIZE=512
 CACHE_SIZE=512
 VENDER_SIZE=8
-MISC_SIZE=8
-REV_SIZE=128
+MISC_SIZE=6
+CRYPT_SIZE=2
+REV_SIZE=16
+
 # =================================
+#MESSAGE_PORT : ttymxc message port
+# ==================================
+MESSAGE_PORT="/dev/ttymxc3"
 
 print() {
-	echo $1 > /dev/ttymxc0
+	echo $1 > ${MESSAGE_PORT}
 	echo $1 > /dev/tty1
 }
 
@@ -46,7 +84,6 @@ umount_sd()
 
 run() {
 print "update system start........."
-efm32cmd=`ls /data/iMX6-A6*`
 if [ "$efm32cmd"x != x ]; then
 print "efm32 command is $efm32cmd"
 $efm32cmd 2 12 -sg 0
@@ -59,7 +96,7 @@ if [ "$CHECK_MCU"x = TRUEx ]; then
 if [ "$efmver"x = x ]; then
 	print "efm32 get version command fail."
 else
-if [ "$efmver" != "160715" ]; then
+if [ "$efmver" != ${MCU_VER} ]; then
 	print "efm32 updating......"
 	$efm32cmd 2 12 -u
 	sleep 1
@@ -102,12 +139,29 @@ if [ "$URAMDISK"x = "x" ] ; then run_end ; fi
 #if [ "$RECOVERY"x = "x" ] ; then run_end ; fi
 #if [ "$SYSTEM"x = "x" ] ;  then run_end ; fi
 
+# check emmc_path if EMMC_PATH have define
+if [ ! -z $EMMC_PATH ] ;  then
+	
+	for i in 0 3 2 1 ; do
+		if [ -z ${emmc_path} ] ; then
+			emmc_path=`ls ${EMMC_PATH}/mmc${i}/mmc*/boot_info`
+			if [ ! -z ${emmc_path} ] ; then
+				DEVNUM=${i}
+				DEVNODE="/dev/mmcblk${i}"
+				emmc_conf=`ls ${EMMC_PATH}/mmc${i}/mmc*/boot_config`
+				emmc_bus=`ls ${EMMC_PATH}/mmc${i}/mmc*/boot_bus_config`
+				break ;
+			fi
+		fi
+	done
+fi
+
 #umount $DEVNODE
 umount_sd
 
 # cal size
-TOTAL_SIZE=`fdisk -l /dev/mmcblk0 | grep 'Disk /dev/mmcblk0:' | awk '{print $5}'`
-UNITS_SIZE=`fdisk -l /dev/mmcblk0 | grep 'Units = cylinders' | awk '{print $9}'`
+TOTAL_SIZE=`fdisk -l ${DEVNODE} | grep "Disk ${DEVNODE}:" | awk '{print $5}'`
+UNITS_SIZE=`fdisk -l ${DEVNODE} | grep 'Units = cylinders' | awk '{print $9}'`
 
 MBR_SIZE=`expr $MBR_SIZE \* 1024 \* 1024`
 BOOT_SIZE=`expr $BOOT_SIZE \* 1024 \* 1024`
@@ -116,7 +170,8 @@ SYSTEM_SIZE=`expr $SYSTEM_SIZE \* 1024 \* 1024`
 CACHE_SIZE=`expr $CACHE_SIZE \* 1024 \* 1024`
 VENDER_SIZE=`expr $VENDER_SIZE \* 1024 \* 1024`
 MISC_SIZE=`expr $MISC_SIZE \* 1024 \* 1024`
-EXTENDED_SIZE=`expr $SYSTEM_SIZE + $CACHE_SIZE + $VENDER_SIZE + $MISC_SIZE`
+CRYPT_SIZE=`expr $CRYPT_SIZE \* 1024 \* 1024`
+EXTENDED_SIZE=`expr $SYSTEM_SIZE + $CACHE_SIZE + $VENDER_SIZE + $MISC_SIZE + $CRYPT_SIZE`
 REV_SIZE=`expr $REV_SIZE \* 1024 \* 1024`
 
 if [ $TOTAL_SIZE -gt 3000000000 ] ; then
@@ -127,131 +182,158 @@ fi
 
 print "clean MBR"
 # clean MBR
-dd if=/dev/zero of=$DEVNODE bs=1024 count=512
+dd if=/dev/zero of=${DEVNODE} bs=1024 count=512
+
+if [ "$CLEANSET"x == "TRUEx" ] ;  then
+	dd if=/dev/zero of=${DEVNODE} bs=1024 seek=768 count=1
+fi
+
 print "clean 1M~64M"
-
-if [ $CLEANSET == "TRUE" ] ;  then
-	dd if=/dev/zero of=$DEVNODE bs=1024 seek=768 count=1
-fi
-
 # clean clean 1M~64M
-dd if=/dev/zero of=$DEVNODE bs=1M seek=1 count=60
+dd if=/dev/zero of=${DEVNODE} bs=1M seek=1 count=60
 
-# bootloader: reboot or uboot
-# for EMMCBOOT0 eMMC
-if [ "$EMMC_TYPE"x == "EMMCBOOT0x" ] ;  then
-	echo 0 > /sys/class/block/mmcblk0boot0/force_ro
-	if [ "$RTXBOOT"x == "x" ] ;  then
-		dd if=$UBOOT of=${DEVNODE}boot0 bs=1024 seek=1 || run_end
+# u-boot write to eMMC
+if [ ! -z ${emmc_conf} ] ; then
+#boot_info=`cat ${emmc_path}`
+echo "${EMMC_VALUE}" > ${emmc_conf}
+	if [ ${EMMC_VALUE} -eq 8 ] ; then
+		echo 0 > /sys/class/block/mmcblk${DEVNUM}boot0/force_ro
+		if [ "$RTXBOOT"x == "x" ] ;  then
+			dd if=${UBOOT} of=${DEVNODE}boot0 bs=1024 seek=1 || run_end
+		else
+			dd if=${RTXBOOT} of=${DEVNODE}boot0 bs=1024 skip=1 seek=1 || run_end
+			dd if=${UBOOT} of=${DEVNODE}boot0 bs=1024 seek=256 || run_end	
+		fi
+		echo 1 > /sys/class/block/mmcblk${DEVNUM}boot0/force_ro
+	elif [ ${EMMC_VALUE} -eq 16 ] ; then
+		echo 1 > /sys/class/block/mmcblk${DEVNUM}boot1/force_ro
+		if [ "$RTXBOOT"x == "x" ] ;  then
+			dd if=${UBOOT} of=${DEVNODE}boot1 bs=1024 seek=1 || run_end
+		else
+			dd if=${RTXBOOT} of=${DEVNODE}boot1 bs=1024 skip=1 seek=1 || run_end
+			dd if=${UBOOT} of=${DEVNODE}boot1 bs=1024 seek=256 || run_end	
+		fi	
+		echo 1 > /sys/class/block/mmcblk${DEVNUM}boot1/force_ro
 	else
-		dd if=$RTXBOOT of=${DEVNODE}boot0 bs=1024 skip=1 seek=1 || run_end
-		dd if=$UBOOT of=${DEVNODE}boot0 bs=1024 seek=256 || run_end	
+		if [ "$RTXBOOT"x == "x" ] ;  then
+			dd if=${UBOOT} of=${DEVNODE} bs=1024 seek=1 || run_end
+		else
+			dd if=${RTXBOOT} of=${DEVNODE} bs=1024 skip=1 seek=1 || run_end
+			dd if=${UBOOT} of=${DEVNODE} bs=1024 seek=256 || run_end	
+		fi
 	fi
-	sync
-	echo 1 > /sys/class/block/mmcblk0boot0/force_ro
 else
-# for Other eMMC
 	if [ "$RTXBOOT"x == "x" ] ;  then
-		dd if=$UBOOT of=${DEVNODE} bs=1024 seek=1 || run_end
+		dd if=${UBOOT} of=${DEVNODE} bs=1024 seek=1 || run_end
 	else
-		dd if=$RTXBOOT of=${DEVNODE} bs=1024 skip=1 seek=1 || run_end
-		dd if=$UBOOT of=${DEVNODE} bs=1024 seek=256 || run_end	
+		dd if=${RTXBOOT} of=${DEVNODE} bs=1024 skip=1 seek=1 || run_end
+		dd if=${UBOOT} of=${DEVNODE} bs=1024 seek=256 || run_end	
 	fi
 fi
+
 sync
 
-print "fdisk $DEVNODE"
-rm -f $MYPATHSD/.SD_PARTITION
-touch $MYPATHSD/.SD_PARTITION
+print "fdisk ${DEVNODE}"
+rm -f ${MYPATHSD}/.SD_PARTITION
+touch ${MYPATHSD}/.SD_PARTITION
 # - P1 ----------------------------------
 MBR_SIZE=`expr $MBR_SIZE / $UNITS_SIZE`
 BOOT_SIZE=`expr $MBR_SIZE + $BOOT_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		p" >> $MYPATHSD/.SD_PARTITION
-echo "		1" >> $MYPATHSD/.SD_PARTITION
-echo "		$MBR_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$BOOT_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		p" >> ${MYPATHSD}/.SD_PARTITION
+echo "		1" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$MBR_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$BOOT_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - P2 ----------------------------------
 BOOT_SIZE=`expr $BOOT_SIZE + 1`
 RECOVERY_SIZE=`expr $BOOT_SIZE + $RECOVERY_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		p" >> $MYPATHSD/.SD_PARTITION
-echo "		2" >> $MYPATHSD/.SD_PARTITION
-echo "		$BOOT_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$RECOVERY_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		p" >> ${MYPATHSD}/.SD_PARTITION
+echo "		2" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$BOOT_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$RECOVERY_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - E3 ----------------------------------
 RECOVERY_SIZE=`expr $RECOVERY_SIZE + 2`
 EXTENDED_SIZE=`expr $RECOVERY_SIZE + 6 + $EXTENDED_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		e" >> $MYPATHSD/.SD_PARTITION
-echo "		3" >> $MYPATHSD/.SD_PARTITION
-echo "		$RECOVERY_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$EXTENDED_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		e" >> ${MYPATHSD}/.SD_PARTITION
+echo "		3" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$RECOVERY_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$EXTENDED_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - P4 ----------------------------------
 EXTENDED_SIZE=`expr $EXTENDED_SIZE + 1`
 DATA_SIZE=`expr $EXTENDED_SIZE + $DATA_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		p" >> $MYPATHSD/.SD_PARTITION
-echo "		$EXTENDED_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$DATA_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		p" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$EXTENDED_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$DATA_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - P5 ----------------------------------
 SYSTEM_SIZE=`expr $RECOVERY_SIZE + $SYSTEM_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		$RECOVERY_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$SYSTEM_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$RECOVERY_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$SYSTEM_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - P6 ----------------------------------
 SYSTEM_SIZE=`expr $SYSTEM_SIZE + 2`
 CACHE_SIZE=`expr $SYSTEM_SIZE + $CACHE_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		$SYSTEM_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$CACHE_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$SYSTEM_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$CACHE_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - P7 ----------------------------------
 CACHE_SIZE=`expr $CACHE_SIZE + 2`
 VENDER_SIZE=`expr $CACHE_SIZE + $VENDER_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		$CACHE_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$VENDER_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$CACHE_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$VENDER_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - P8 ----------------------------------
 VENDER_SIZE=`expr $VENDER_SIZE + 2`
 MISC_SIZE=`expr $VENDER_SIZE + $MISC_SIZE / $UNITS_SIZE`
 
-echo "		n" >> $MYPATHSD/.SD_PARTITION
-echo "		$VENDER_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "		$MISC_SIZE" >> $MYPATHSD/.SD_PARTITION
-echo "" >> $MYPATHSD/.SD_PARTITION
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$VENDER_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$MISC_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
+
+# - P9 ----------------------------------
+MISC_SIZE=`expr $MISC_SIZE + 2`
+CRYPT_SIZE=`expr $MISC_SIZE + $CRYPT_SIZE / $UNITS_SIZE`
+
+echo "		n" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$MISC_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "		$CRYPT_SIZE" >> ${MYPATHSD}/.SD_PARTITION
+echo "" >> ${MYPATHSD}/.SD_PARTITION
 
 # - Finish write-------------------------
-echo "		w" >> $MYPATHSD/.SD_PARTITION
+echo "		w" >> ${MYPATHSD}/.SD_PARTITION
 echo "" >> /.SD_PARTITION
 
-fdisk $DEVNODE < $MYPATHSD/.SD_PARTITION
+fdisk ${DEVNODE} < ${MYPATHSD}/.SD_PARTITION
 sync
 sleep 5
 
 print "format ${DEVNODE}p?"
 mke2fs -t ext4 -L data ${DEVNODE}p4
-mke2fs -t ext4 -L system ${DEVNODE}p5
+mke2fs -t ext4 -O ^extent -L system ${DEVNODE}p5
 mke2fs -t ext4 -O ^extent -L cache ${DEVNODE}p6
 mke2fs -t ext4 -L vender ${DEVNODE}p7
 mke2fs -t ext4 -L misc ${DEVNODE}p8
@@ -318,8 +400,8 @@ if [ "$SYSTEM"x != "x" ] ;  then
 else
 # rootfs: It will be mounted as "/"
 if [ "$ROOTFS"x != "x" ] ;  then
-	print "  mount /dev/mmcblk0p5"
-	mount /dev/mmcblk0p5 /mnt
+	print "  mount /${DEVNODE}p5"
+	mount ${DEVNODE}p5 /mnt
 	rm -rf /mnt/*
 	
 	print "  tar ${ROOTFS}"
@@ -339,8 +421,8 @@ fi
 
 # user data : It will be mounted as "/data"
 if [ "$DATA"x != "x" ] ;  then
-	print "  mount /dev/mmcblk0p4"
-	mount /dev/mmcblk0p4 /mnt
+	print "  mount ${DEVNODE}p4"
+	mount ${DEVNODE}p4 /mnt
 	rm -rf /mnt/*
 	
 	print "  tar ${DATA}"
@@ -367,8 +449,8 @@ fi
 	sync
 else
 if [ "$DATAAPP"x != "x" ] ;  then
-	print "  mount /dev/mmcblk0p4"
-	mount /dev/mmcblk0p4 /mnt
+	print "  mount ${DEVNODE}p4"
+	mount ${DEVNODE}p4 /mnt
 	rm -rf /mnt/*
 	
 	print "  tar ${DATAAPP}"

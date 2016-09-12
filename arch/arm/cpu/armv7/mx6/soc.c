@@ -444,6 +444,17 @@ int arch_cpu_init(void)
 	}
 #endif
 
+#if defined(CONFIG_HW_OC)
+	/* 
+	 * Modify USB OTG Control Register for schematic
+	 * bit9 : OTG Power Polarity, 
+	 *	1 Power switch has an active-high enable input
+	 * bit8 : OTG Polarity of Overcurrent
+	 *	1 Low active
+	 */
+	writel(0x00001300, OTG_BASE_ADDR + 0x800);
+#endif
+
 	init_aips();
 
 	/* Need to clear MMDC_CHx_MASK to make warm reset work. */
