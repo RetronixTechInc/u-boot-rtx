@@ -9,6 +9,12 @@ config SYS_VENDOR
 config SYS_SOC
 	default "mx6"
 
+config TARGET_RTX_PITX_MX6Q_MFG
+	bool "Uboot is MFG mode."
+	default n
+	help
+	  Uboot is MFG mode.
+	  
 config SYS_CONFIG_NAME
 	default "retronix/rtx_pitx_mx6q"     if !TARGET_RTX_PITX_MX6Q_MFG
 	default "retronix/rtx_pitx_mx6q_mfg" if TARGET_RTX_PITX_MX6Q_MFG
