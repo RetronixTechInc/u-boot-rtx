@@ -259,7 +259,7 @@
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
 		"mmc_num=" CONFIG_UBOOT_MMCNUM "\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
-		"fecmac_val=" CONFIG_DEFAULT_MAC01 "\0" \
+		"mac1_val=" CONFIG_DEFAULT_MAC01 "\0" \
 		"mmcrootpath=" CONFIG_MMCROOTPATH "\0" \
 		"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE) "\0" \
 		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\

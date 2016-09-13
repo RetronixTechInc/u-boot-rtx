@@ -19,6 +19,7 @@
 	#ifdef CONFIG_BOOT_SYSTEM
 		#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 		#define CONFIG_BOOT_CMD_RESET_ENV
+		#define CONFIG_BOOT_CMD_RESET_SETTING
 
 		#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
 		#define CONFIG_BOOT_SYSTEM_SETTING_SIZE               0x2
@@ -261,7 +262,7 @@
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
 		"mmc_num=" CONFIG_UBOOT_MMCNUM "\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
-		"fecmac_val=" CONFIG_DEFAULT_MAC01 "\0" \
+		"mac1_val=" CONFIG_DEFAULT_MAC01 "\0" \
 		"mmcrootpath=" CONFIG_MMCROOTPATH "\0" \
 		"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE) "\0" \
 		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\

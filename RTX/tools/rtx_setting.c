@@ -18,6 +18,7 @@ static void show_usage(){
 	printf("        -write mac 1 000000000000 [mp] \n");
 	printf("        -write mac 2 000000000000 [mp] \n");
 	printf("        -write mac 3 000000000000 [mp] \n");
+	printf("        -write lvds parameter fps,hv,vv,clk,lm,rm,um,dm,hs,vs,sy,mode \n");
 	printf("        -write name RTX-R064Roymark-Digitalsinige(max128) \n");
 	printf("        -write serialno RTX001258746(max64) [mp] \n");
 	printf("        -write bspver rtx123456789(max32) \n");
@@ -29,6 +30,23 @@ static void show_usage(){
 	printf("        -write function storage <enable/disable> \n");
 	printf("        -write function selfmagic <enable/disable> \n");
 }
+
+typedef struct __LVDS_PAR__ {
+	unsigned long ulchecksum ;
+	unsigned long ulrefresh ;
+	unsigned long ulxres ;
+	unsigned long ulyres ;
+	unsigned long pixclock ;
+	unsigned long ulleft_margin ;
+	unsigned long ulright_margin ;
+	unsigned long ulupper_margin ;
+	unsigned long ullower_margin ;
+	unsigned long ulhsync_len ;
+	unsigned long ulvsync_len ;
+	unsigned long ulsync ;
+	unsigned long ulvmode ;
+	unsigned long ulRecv[3] ;
+} lvdspar ;
 
 typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulCheckCode ;
@@ -46,7 +64,8 @@ typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulCmd ;
 	unsigned long ulStatus ;
 	unsigned long ulDataExistInfo ;
-	unsigned char ubRecv01[184] ;
+	lvdspar sLVDSVal ;
+	unsigned char ubRecv01[120] ;
 	unsigned char ubProductSerialNO_Vendor[64] ;
 	unsigned char ubMAC01_Vendor[8] ;
 	unsigned char ubMAC02_Vendor[8] ;
@@ -178,6 +197,7 @@ static int do_show_setting_info( )
 {
 	int loop = 0 ;
 	int loop1 = 0 ;
+	unsigned long * ulval ;
 	
 	printf( "ulCheckCode:%08X\n" , (unsigned int)bootselinfodata.ulCheckCode ) ;
 	printf( "ubMagicCode:" ) ;
@@ -277,6 +297,21 @@ static int do_show_setting_info( )
 		}
 	}
 	
+	printf( "lvds parameter:" ) ;
+	ulval = &bootselinfodata.sLVDSVal.ulchecksum ;
+	for ( loop = 0 ; loop < sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long) ; loop ++ )
+	{
+		if ( loop == (sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long))-1 )
+		{
+			printf( "%d" , *ulval++ ) ;
+		}
+		else
+		{
+			printf( "%d," , *ulval++ ) ;
+		}
+	}
+	printf( "\n" ) ;
+
 	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
 	{
 		printf( "ubMAC0%d_Vendor:" , loop1 ) ;
@@ -325,12 +360,15 @@ static int do_reset_setting()
 static int do_set_bootsel_setting(int argc, char * const arg[])
 {
 	int loop ;
-	int value ;
+	int value = 0 ;
 	int ch ;
 	unsigned char * pMac ;
 	unsigned char * pMac_ven ;
 	char** argv = arg ;
-	
+	lvdspar lvds_temp ;
+	unsigned long* ullvds ;
+	unsigned long* ullvds_temp ;
+
 	if ( argc < 4 )
 	{
 		return CMD_RET_USAGE ;
@@ -456,6 +494,53 @@ static int do_set_bootsel_setting(int argc, char * const arg[])
 		{
 			strcpy(&bootselinfodata.ubBSPVersion[0], argv[2]) ;
 			return bootsel_write_setting_data( ) ;
+		}
+	}
+	else if ( strcmp( argv[1] , "lvds" ) == 0 )
+	{
+		if ( argc < 5 )
+		{
+			return CMD_RET_USAGE ;
+		}
+		if ( strcmp( argv[2] , "parameter" ) == 0 )
+		{
+			memset(&lvds_temp, 0, sizeof(lvdspar)) ;
+			ullvds_temp = &lvds_temp.ulrefresh ;
+			for(loop = 0 ; loop < strlen(argv[3]) ; loop ++)
+			{
+				if ( argv[3][loop] >= '0' && argv[3][loop] <= '9' )
+				{
+					ch =  argv[3][loop] - '0' ;
+					value *= 10 ;
+					value += ch ;
+				}
+				else if ( argv[3][loop] == ',' )
+				{
+					*ullvds_temp = value ;
+					lvds_temp.ulchecksum += value ;
+					ullvds_temp++ ;
+					value = 0 ;
+				}
+				else
+				{
+					return CMD_RET_USAGE ;
+				}	
+			}
+			*ullvds_temp = value ;
+			lvds_temp.ulchecksum += value ;
+			
+			ullvds_temp = &lvds_temp.ulchecksum ;
+			ullvds = &bootselinfodata.sLVDSVal.ulchecksum ;
+
+			for ( loop = 0 ; loop < sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long) ; loop ++ )
+			{
+				*ullvds = *ullvds_temp ;
+				ullvds++ ;
+				ullvds_temp++;
+			}
+			//bootsel_set lvds parameter 60,1280,720,12345,100,10,50,20,10,10,0,1
+			bootsel_write_setting_data( ) ;	
+			return CMD_RET_SUCCESS;
 		}
 	}
 
