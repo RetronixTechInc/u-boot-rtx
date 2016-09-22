@@ -29,6 +29,8 @@
 #include <image.h>
 #include <environment.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 #ifdef CONFIG_DYNAMIC_MMC_DEVNO
 int get_mmc_env_devno(void) ;
 #endif
@@ -50,6 +52,23 @@ static unsigned char const bootseldefaultpassword[8] = {
 extern int usb_get_stor_dev( void ) ;
 #endif
 
+typedef struct __LVDS_PAR__ {
+	unsigned long ulchecksum ;
+	unsigned long ulrefresh ;
+	unsigned long ulxres ;
+	unsigned long ulyres ;
+	unsigned long pixclock ;
+	unsigned long ulleft_margin ;
+	unsigned long ulright_margin ;
+	unsigned long ulupper_margin ;
+	unsigned long ullower_margin ;
+	unsigned long ulhsync_len ;
+	unsigned long ulvsync_len ;
+	unsigned long ulsync ;
+	unsigned long ulvmode ;
+	unsigned long ulRecv[3] ;
+} lvdspar ;
+
 typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulCheckCode ;
 	unsigned char ubMagicCode[16] ;
@@ -66,7 +85,8 @@ typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulCmd ;
 	unsigned long ulStatus ;
 	unsigned long ulDataExistInfo ;
-	unsigned char ubRecv01[184] ;
+	lvdspar sLVDSVal ;
+	unsigned char ubRecv01[120] ;
 	unsigned char ubProductSerialNO_Vendor[64] ;
 	unsigned char ubMAC01_Vendor[8] ;
 	unsigned char ubMAC02_Vendor[8] ;
@@ -231,22 +251,77 @@ int bootsel_load_logo_data( void )
 
 static void bootsel_set_fec_mac( void )
 {
-	char setstr[512] ;
+	int loop ;
+	char macnum[32] = { 0 };
+	char setstr[512] = { 0 };
 
-	if ( bootselinfodata.ubMAC01[6] )
+	for ( loop = 0 ; loop < 4 ; loop ++ )
 	{
-		sprintf( setstr , "%02x:%02x:%02x:%02x:%02x:%02x" ,
-			bootselinfodata.ubMAC01[0] , bootselinfodata.ubMAC01[1] ,
-			bootselinfodata.ubMAC01[2] , bootselinfodata.ubMAC01[3] ,
-			bootselinfodata.ubMAC01[4] , bootselinfodata.ubMAC01[5]
-			) ;
-		setenv( "fecmac_val" , setstr ) ;
-	}
+		macnum[0] = 0 ; 
+		setstr[0] = 0 ; 
+		printf("bootselinfodata.ubMAC01[6+loop*8]=%d\n", bootselinfodata.ubMAC01[6+loop*8]);
+		if ( bootselinfodata.ubMAC01[6+loop*8] )
+		{
+			sprintf( setstr , "%02x:%02x:%02x:%02x:%02x:%02x" ,
+				bootselinfodata.ubMAC01[0+loop*8] , bootselinfodata.ubMAC01[1+loop*8] ,
+				bootselinfodata.ubMAC01[2+loop*8] , bootselinfodata.ubMAC01[3+loop*8] ,
+				bootselinfodata.ubMAC01[4+loop*8] , bootselinfodata.ubMAC01[5+loop*8]
+				) ;
+			sprintf( macnum , "mac%d_val", loop+1 ) ;
+			setenv( macnum , setstr ) ;
+		}
+	}	
 }
 
+static void bootsel_set_lvds_par( void )
+{
+	char setstr[512] ;
+	int loop = 0 ;
+	unsigned long * ulval ;
+	unsigned long ulcount = 0 ;
+
+	ulval = &bootselinfodata.sLVDSVal.ulrefresh ;
+	for ( loop = 1 ; loop < sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long) ; loop ++ )
+	{
+		if( *ulval < 4096 )
+		{
+			ulcount += *ulval ;
+		}
+		else
+		{
+			if( loop == 4 )
+			{
+				ulcount += *ulval ;
+			}
+			else
+			{	
+				ulcount = 0 ;
+				break;
+			}
+		}
+		ulval++;
+	}
+
+	if (ulcount != 0)
+	{
+		if (ulcount == bootselinfodata.sLVDSVal.ulchecksum)
+		{
+			sprintf( setstr , "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d" ,
+				bootselinfodata.sLVDSVal.ulrefresh , bootselinfodata.sLVDSVal.ulxres , bootselinfodata.sLVDSVal.ulyres ,
+				bootselinfodata.sLVDSVal.ulleft_margin , bootselinfodata.sLVDSVal.ulright_margin ,
+				bootselinfodata.sLVDSVal.ulupper_margin , bootselinfodata.sLVDSVal.ullower_margin ,
+				bootselinfodata.sLVDSVal.ulhsync_len , bootselinfodata.sLVDSVal.ulvsync_len ,
+				bootselinfodata.sLVDSVal.ulsync , bootselinfodata.sLVDSVal.ulvmode
+				) ;
+			setenv( "lvds_val" , setstr ) ;
+		}
+		
+	}
+}
 static void bootsel_adjust_bootargs( void )
 {
 	bootsel_set_fec_mac( ) ;
+	bootsel_set_lvds_par( ) ;
 }
 
 static void vbootsel_def_func()
@@ -702,10 +777,16 @@ static void bootsel_checkstorage_usb( void )
 int bootsel_checkstorage( void )
 {
 	int ret  = 0 ;
+	char* s ;
 	
+	gd->flags &= ~GD_FLG_SILENT;
 	bootsel_checkstorage_mmc( ) ;
 	bootsel_checkstorage_usb( ) ;
 	
+	s = getenv("silent") ;
+	if(s && strncmp(s, "1", 1) == 0 )
+		gd->flags |= GD_FLG_SILENT;
+		
 	return ( ret ) ;
 }
 
@@ -713,11 +794,19 @@ static void bootsel_getpassword( int *len , char *passwd )
 {
 	char ichar ;
 	int  getlen ;
+	int count = 0 ;
 	
 	getlen = 0 ;
 	
 	for (;;) 
 	{
+		udelay(10000); // 10ms
+		count++;
+		if ( count > 1500){	// len = 0 ,if not push enter in 10ms * 1500 = 15s.
+			*len = 0 ;
+			break ; 
+		}
+
 		if (tstc()) 
 		{   /* we got a key press   */
 			ichar = getc();  /* consume input       */
@@ -761,6 +850,7 @@ void bootsel_password( void )
 	int times ;
 	int len ;
 	char password[32] ;
+	char *s;
 
 	if ( !bootsel_func_password() )
 	{
@@ -796,11 +886,26 @@ void bootsel_password( void )
 					break ;
 				}
 			}
+			if( memcmp( password , "androidrecovery" , 15 ) == 0 ){
+					bootsel_menu( 'a' );
+			}else if( memcmp( password , "rtxupdate" , 9 ) == 0 ){
+					bootsel_menu( 'u' );
+			}
 			if ( times >= 3 ) 
 			{
-				do_reset (NULL, 0, 0, NULL);
+				s = getenv ("bootcmd");
+				if(s)
+					run_command (s, 0);
+				else
+					do_reset (NULL, 0, 0, NULL);
 			}
 			len   = 0 ;
+		}else{
+			s = getenv ("bootcmd");
+			if(s)
+				run_command (s, 0);
+			else
+				do_reset (NULL, 0, 0, NULL);
 		}
 		printf ("Please Enter Password(%d): ", times ) ;
 	}
@@ -936,9 +1041,12 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	int loop ;
-	int value ;
+	int value = 0;
 	int ch ;
 	unsigned char * pMac ;
+	lvdspar lvds_temp ;
+	unsigned long* ullvds ;
+	unsigned long* ullvds_temp ;
 	
 	if ( argc < 3 )
 	{
@@ -1034,6 +1142,53 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 			return CMD_RET_SUCCESS;
 		}
 	}
+	else if ( strcmp( argv[1] , "lvds" ) == 0 )
+	{
+		if ( argc < 4 )
+		{
+			return CMD_RET_USAGE ;
+		}
+		if ( strcmp( argv[2] , "parameter" ) == 0 )
+		{
+			memset(&lvds_temp, 0, sizeof(lvdspar)) ;
+			ullvds_temp = &lvds_temp.ulrefresh ;
+			for(loop = 0 ; loop < strlen(argv[3]) ; loop ++)
+			{
+				if ( argv[3][loop] >= '0' && argv[3][loop] <= '9' )
+				{
+					ch =  argv[3][loop] - '0' ;
+					value *= 10 ;
+					value += ch ;
+				}
+				else if ( argv[3][loop] == ',' )
+				{
+					*ullvds_temp = value ;
+					lvds_temp.ulchecksum += value ;
+					ullvds_temp++ ;
+					value = 0 ;
+				}
+				else
+				{
+					return CMD_RET_USAGE ;
+				}	
+			}
+			*ullvds_temp = value ;
+			lvds_temp.ulchecksum += value ;
+			
+			ullvds_temp = &lvds_temp.ulchecksum ;
+			ullvds = &bootselinfodata.sLVDSVal.ulchecksum ;
+
+			for ( loop = 0 ; loop < sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long) ; loop ++ )
+			{
+				*ullvds = *ullvds_temp ;
+				ullvds++ ;
+				ullvds_temp++;
+			}
+			//bootsel_set lvds parameter 60,1280,720,12345,100,10,50,20,10,10,0,1
+			bootsel_write_setting_data( ) ;	
+			return CMD_RET_SUCCESS;
+		}
+	}
 	
 	return CMD_RET_USAGE;
 }
@@ -1062,6 +1217,8 @@ U_BOOT_CMD(
 	"    menu recovery\n"
 	"    menu android_recovery\n"
 	"    menu password_change\n"
+	"** lvds class **\n"
+	"    lvds parameter <00,0000,0000,00,00,00,00,00,00,00,0>\n"
 );
 
 #ifdef CONFIG_BOOT_CMD_RESET_ENV
@@ -1107,6 +1264,7 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	int loop , loop1 ;
+	unsigned long * ulval ;
 	
 	printf( "ulCheckCode:%08X\n" , (unsigned int)bootselinfodata.ulCheckCode ) ;
 	printf( "ubMagicCode:" ) ;
@@ -1206,6 +1364,21 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 		}
 	}
 	
+	printf( "lvds parameter:" ) ;
+	ulval = &bootselinfodata.sLVDSVal.ulchecksum ;
+	for ( loop = 0 ; loop < sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long) ; loop ++ )
+	{
+		if ( loop == (sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long))-1 )
+		{
+			printf( "%d" , *ulval++ ) ;
+		}
+		else
+		{
+			printf( "%d," , *ulval++ ) ;
+		}
+	}
+	printf( "\n" ) ;
+
 	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
 	{
 		printf( "ubMAC0%d_Vendor:" , loop1 ) ;

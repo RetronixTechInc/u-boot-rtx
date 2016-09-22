@@ -19,6 +19,7 @@
 	#ifdef CONFIG_BOOT_SYSTEM
 		#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 		#define CONFIG_BOOT_CMD_RESET_ENV
+		#define CONFIG_BOOT_CMD_RESET_SETTING
 
 		#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
 		#define CONFIG_BOOT_SYSTEM_SETTING_SIZE               0x2
@@ -51,8 +52,9 @@
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
-	#define CONFIG_MXC_UART_BASE				UART4_BASE
-	#define CONFIG_CONSOLE_DEV					"ttymxc3"
+	#define CONFIG_MXC_UART_BASE				UART1_BASE
+	#define CONFIG_CONSOLE_DEV					"ttymxc0"
+	#define CONFIG_CONSOLE_PESUDO_DEV			"ttymxc1"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
 
@@ -100,6 +102,7 @@
 
 	#define CONFIG_IMX_THERMAL
 
+	#define CONFIG_SILENT_CONSOLE
 	#define CONFIG_DISPLAY_CPUINFO
 	#define CONFIG_DISPLAY_BOARDINFO
 
@@ -252,14 +255,14 @@
 		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
-		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
+		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_PESUDO_DEV "\0"	\
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
 		"mmc_num=" CONFIG_UBOOT_MMCNUM "\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
-		"fecmac_val=" CONFIG_DEFAULT_MAC01 "\0" \
+		"mac1_val=" CONFIG_DEFAULT_MAC01 "\0" \
 		"mmcrootpath=" CONFIG_MMCROOTPATH "\0" \
 		"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE) "\0" \
 		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\
@@ -270,6 +273,7 @@
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
+		"silent=1\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 	#define CONFIG_ARP_TIMEOUT     					200UL
