@@ -201,7 +201,7 @@
 		#define EMMC_ENV ""
 	#endif
 
-	#define CONFIG_VERSION_STRING "rtx-a6plus-mx6q"
+	#define CONFIG_VERSION_STRING "rtx-pitx-mx6q"
 
 	/*-----------------------------------------------------------------------
 	 * update and recovery parameter

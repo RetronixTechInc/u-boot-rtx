@@ -165,4 +165,10 @@ config BOOTSEL_FUNC_SCANFILE_SELF
 	help
 	  Uboot scan self magic code funciton.
 
+config SILENT_CONSOLE
+	bool "message silent."
+	default n
+	help
+	  message silent.
+
 endif
