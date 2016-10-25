@@ -164,6 +164,8 @@
 	/* Command definition */
 	#include <config_cmd_default.h>
 
+    #define CONFIG_MXC_SPI
+    #define CONFIG_CMD_SPI
 	#define CONFIG_CMD_BMODE
 	#define CONFIG_CMD_BOOTZ
 	#define CONFIG_CMD_SETEXPR
