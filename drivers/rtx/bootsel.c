@@ -72,26 +72,26 @@ typedef struct __LVDS_PAR__ {
 typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulCheckCode ;
 	unsigned char ubMagicCode[16] ;
-	unsigned char ubMAC01[8] ;
-	unsigned char ubMAC02[8] ;
-	unsigned char ubMAC03[8] ;
-	unsigned char ubMAC04[8] ;
-	unsigned char ubProductName[128] ;
-	unsigned char ubProductSerialNO[64] ;
-	unsigned char ubBSPVersion[32] ;
-	unsigned long ulPasswordLen ;
-	unsigned char ubPassword[32] ;
-	unsigned long ulFunction ;
+	unsigned char ubMAC01[8] ;      //第1組MAC，fec_mac=****
+	unsigned char ubMAC02[8] ;      //第2組MAC,smsc_mac=****
+	unsigned char ubMAC03[8] ;      //第3組MAC
+	unsigned char ubMAC04[8] ;      //第4組MAC
+	unsigned char ubProductName[128] ;  //產品名稱
+	unsigned char ubProductSerialNO[64] ;   //產品序號
+	unsigned char ubBSPVersion[32] ;    //BSP版本
+	unsigned long ulPasswordLen ;       //密碼長度
+	unsigned char ubPassword[32] ;      //密碼
+	unsigned long ulFunction ;          //bootsel command 功能
 	unsigned long ulCmd ;
 	unsigned long ulStatus ;
 	unsigned long ulDataExistInfo ;
-	lvdspar sLVDSVal ;
+	lvdspar sLVDSVal ;           //lvds 參數,lvds_val=****
 	unsigned char ubRecv01[120] ;
-	unsigned char ubProductSerialNO_Vendor[64] ;
-	unsigned char ubMAC01_Vendor[8] ;
-	unsigned char ubMAC02_Vendor[8] ;
-	unsigned char ubMAC03_Vendor[8] ;
-	unsigned char ubMAC04_Vendor[8] ;
+	unsigned char ubProductSerialNO_Vendor[64] ;    //生產，產品序號
+	unsigned char ubMAC01_Vendor[8] ;      //生產，第1組MAC
+	unsigned char ubMAC02_Vendor[8] ;      //生產，第2組MAC
+	unsigned char ubMAC03_Vendor[8] ;      //生產，第3組MAC
+	unsigned char ubMAC04_Vendor[8] ;      //生產，第4組MAC
 	unsigned char ubRecv02[416] ;
 } bootselinfo ;
 
@@ -306,9 +306,9 @@ static void bootsel_set_lvds_par( void )
 	{
 		if (ulcount == bootselinfodata.sLVDSVal.ulchecksum)
 		{
-			sprintf( setstr , "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d" ,
+			sprintf( setstr , "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d" ,
 				bootselinfodata.sLVDSVal.ulrefresh , bootselinfodata.sLVDSVal.ulxres , bootselinfodata.sLVDSVal.ulyres ,
-				bootselinfodata.sLVDSVal.ulleft_margin , bootselinfodata.sLVDSVal.ulright_margin ,
+				bootselinfodata.sLVDSVal.pixclock ,bootselinfodata.sLVDSVal.ulleft_margin , bootselinfodata.sLVDSVal.ulright_margin ,
 				bootselinfodata.sLVDSVal.ulupper_margin , bootselinfodata.sLVDSVal.ullower_margin ,
 				bootselinfodata.sLVDSVal.ulhsync_len , bootselinfodata.sLVDSVal.ulvsync_len ,
 				bootselinfodata.sLVDSVal.ulsync , bootselinfodata.sLVDSVal.ulvmode
@@ -1218,7 +1218,7 @@ U_BOOT_CMD(
 	"    menu android_recovery\n"
 	"    menu password_change\n"
 	"** lvds class **\n"
-	"    lvds parameter <00,0000,0000,00,00,00,00,00,00,00,0>\n"
+	"    lvds parameter <refresh,xres,yres,pixclock,left_margin,right_margin,up_margin,low_margin,hsync_len,vsync_len,sync,vmode>\n"
 );
 
 #ifdef CONFIG_BOOT_CMD_RESET_ENV
