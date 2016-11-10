@@ -11,7 +11,7 @@ export ARCH=arm
 # =====================================
 #CROSS_COMPILE_PATH=/home/artie/JOB-Area/Android
 #CROSS_COMPILE_PATH=/opt/freescale/usr/local
-CROSS_COMPILE_PATH=/media/tom/ext1t/freescale/cross-compile
+#CROSS_COMPILE_PATH=/media/tom/ext1t/freescale/cross-compile
 if [ -z $CROSS_COMPILE_PATH ];then
 CROSS_COMPILE_PATH=/opt/cross
 fi
@@ -44,10 +44,10 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.19-hf-64bits/ar
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_mfg_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_android_defconfig
-U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 
 #ADLINK Board
-#U_BOOT_DEFAULT_CONFIG=rtx_adlink_mx6dl_micro1g_dtb_rtx_all_linux_defconfig
+U_BOOT_DEFAULT_CONFIG=rtx_adlink_mx6dl_micro1g_dtb_rtx_all_linux_defconfig
 
 #Q7 Board
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig

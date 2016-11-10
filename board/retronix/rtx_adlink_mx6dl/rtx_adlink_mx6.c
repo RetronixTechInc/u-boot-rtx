@@ -1060,7 +1060,7 @@ static const struct boot_mode board_boot_modes[] = {
 
 int board_late_init(void)
 {
-#if defined(CONFIG_TARGET_RTX_ADLINK_MX6DL_MFG) && defined(CONFIG_MCU_WDOG_BUS)
+#if defined(CONFIG_MCU_WDOG_BUS)
 	disable_efm32_watchdog( ) ;
 #endif
 
