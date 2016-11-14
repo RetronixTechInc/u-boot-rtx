@@ -190,6 +190,8 @@ static int bootsel_write_setting_data( void )
 	close( g_mmcblk0_fd );
 	g_mmcblk0_fd = 0;
 	
+    sync();
+    
 	return val;
 }
 

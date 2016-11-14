@@ -272,6 +272,8 @@
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
+        "fdt_high=0xffffffff\0" \
+        "initrd_high=0xffffffff\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 	#define CONFIG_ARP_TIMEOUT     					200UL

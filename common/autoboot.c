@@ -181,8 +181,8 @@ static int abortboot_normal(int bootdelay)
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
-			if (tstc()) {	/* we got a key press	*/
-				abort  = 1;	/* don't auto boot	*/
+			if (tstc() && getc() == '\t') {	/* we got a key press	*/
+				abort  = 1;	/* don't auto boot	*/  
 				bootdelay = 0;	/* no more delay	*/
 # ifdef CONFIG_MENUKEY
 				menukey = getc();
