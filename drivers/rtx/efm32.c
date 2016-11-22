@@ -9,13 +9,25 @@
 #include <common.h>
 #include <i2c.h>
 
-void disable_efm32_watchdog( void )
+void vSet_efm32_watchdog( unsigned long sec )
 {
 #ifdef CONFIG_MCU_WDOG_BUS
-	unsigned char const ubSentBuf[8] = { 5 , 0x8E , 0 , 0 , 0x93 } ;
+	unsigned char ubSentBuf[8] = { 0 } ;
 	unsigned char ubRecvBuf[8] = { 0 } ;
 	unsigned int iBus = i2c_get_bus_num() ;
-		
+    int i ;
+    
+    ubSentBuf[0] = 5 ;
+    ubSentBuf[1] = 0x8E ;
+    ubSentBuf[2] = (unsigned char)( sec >> 8 & 0xFF ) ;
+    ubSentBuf[3] = (unsigned char)( sec >> 0 & 0xFF ) ;
+    ubSentBuf[4] = 0 ;
+    
+    for ( i = 0; i < ubSentBuf[0] - 1; i++ )
+    {
+        ubSentBuf[ubSentBuf[0] - 1] += ubSentBuf[i] ;
+    }
+    
 	if ( i2c_set_bus_num( CONFIG_MCU_WDOG_BUS ) ) 
 	{
 		printf("unable to set i2c bus\n");
@@ -52,36 +64,5 @@ void disable_efm32_watchdog( void )
 	/* reset the i2c bus */
 	i2c_set_bus_num( iBus ) ;
 #endif
-}
-
-
-void vEFM32_SetTimeout( void )
-{
-	unsigned char buf[4] = { 0 } ;
-	unsigned int bus = i2c_get_bus_num() ;
-		
-	if ( i2c_set_bus_num( 1 ) ) 
-	{
-		printf("unable to set i2c bus\n");
-	}
-	else
-	{
-		if ( !i2c_probe( 0xc ) )
-		{
-			buf[0] = 0x00 ;
-			if ( i2c_read( 0xc , 0xEB0000 , 3 , buf , 1 ) ) 
-			//if ( i2c_read( 0xc , 0xEB01FF , 3 , buf , 1 ) ) 
-			{
-				printf("%s:i2c_write:error\n", __func__);
-			}
-			
-		}
-		else
-		{
-			printf("unable to probe efm32\n");
-		}
-	}
-	/* reset the i2c bus */
-	i2c_set_bus_num(bus);
 }
 

@@ -99,7 +99,7 @@ void main_loop(void)
 	
 	bootsel_password();
 
-	disable_efm32_watchdog( ) ;
+	vSet_efm32_watchdog( 0 ) ;
 
 	cli_loop();
 }

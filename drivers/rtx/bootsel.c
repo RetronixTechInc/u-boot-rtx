@@ -28,6 +28,7 @@
 #include <libfdt.h>
 #include <image.h>
 #include <environment.h>
+#include <rtx/efm32.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -86,7 +87,8 @@ typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulStatus ;
 	unsigned long ulDataExistInfo ;
 	lvdspar sLVDSVal ;           //lvds 參數,lvds_val=****
-	unsigned char ubRecv01[120] ;
+    unsigned long ulMcuWatchDog ; //MCU watch dog time. 0 is disable.
+	unsigned char ubRecv01[116] ;
 	unsigned char ubProductSerialNO_Vendor[64] ;    //生產，產品序號
 	unsigned char ubMAC01_Vendor[8] ;      //生產，第1組MAC
 	unsigned char ubMAC02_Vendor[8] ;      //生產，第2組MAC
@@ -254,19 +256,26 @@ static void bootsel_set_fec_mac( void )
 	int loop ;
 	char macnum[32] = { 0 };
 	char setstr[512] = { 0 };
-
-	for ( loop = 0 ; loop < 4 ; loop ++ )
+    unsigned char *pMac = NULL;
+    
+	for ( loop = 0 ; loop < 4 ; loop++ )
 	{
+        
+        switch( loop )
+		{
+			case 0 : pMac = &bootselinfodata.ubMAC01[0] ; break ;
+			case 1 : pMac = &bootselinfodata.ubMAC02[0] ; break ;
+			case 2 : pMac = &bootselinfodata.ubMAC03[0] ; break ;
+			case 3 : pMac = &bootselinfodata.ubMAC04[0] ; break ;
+			default :
+				pMac = NULL ;
+		}
 		macnum[0] = 0 ; 
 		setstr[0] = 0 ; 
-		printf("bootselinfodata.ubMAC01[6+loop*8]=%d\n", bootselinfodata.ubMAC01[6+loop*8]);
-		if ( bootselinfodata.ubMAC01[6+loop*8] )
+		if ( pMac[6] && pMac != NULL)
 		{
 			sprintf( setstr , "%02x:%02x:%02x:%02x:%02x:%02x" ,
-				bootselinfodata.ubMAC01[0+loop*8] , bootselinfodata.ubMAC01[1+loop*8] ,
-				bootselinfodata.ubMAC01[2+loop*8] , bootselinfodata.ubMAC01[3+loop*8] ,
-				bootselinfodata.ubMAC01[4+loop*8] , bootselinfodata.ubMAC01[5+loop*8]
-				) ;
+				pMac[0] , pMac[1] , pMac[2] , pMac[3] , pMac[4] , pMac[5] ) ;
 			sprintf( macnum , "mac%d_val", loop+1 ) ;
 			setenv( macnum , setstr ) ;
 		}
@@ -307,11 +316,11 @@ static void bootsel_set_lvds_par( void )
 		if (ulcount == bootselinfodata.sLVDSVal.ulchecksum)
 		{
 			sprintf( setstr , "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d" ,
-				bootselinfodata.sLVDSVal.ulrefresh , bootselinfodata.sLVDSVal.ulxres , bootselinfodata.sLVDSVal.ulyres ,
-				bootselinfodata.sLVDSVal.pixclock ,bootselinfodata.sLVDSVal.ulleft_margin , bootselinfodata.sLVDSVal.ulright_margin ,
-				bootselinfodata.sLVDSVal.ulupper_margin , bootselinfodata.sLVDSVal.ullower_margin ,
-				bootselinfodata.sLVDSVal.ulhsync_len , bootselinfodata.sLVDSVal.ulvsync_len ,
-				bootselinfodata.sLVDSVal.ulsync , bootselinfodata.sLVDSVal.ulvmode
+				(int)bootselinfodata.sLVDSVal.ulrefresh , (int)bootselinfodata.sLVDSVal.ulxres , (int)bootselinfodata.sLVDSVal.ulyres ,
+				(int)bootselinfodata.sLVDSVal.pixclock ,(int)bootselinfodata.sLVDSVal.ulleft_margin , (int)bootselinfodata.sLVDSVal.ulright_margin ,
+				(int)bootselinfodata.sLVDSVal.ulupper_margin , (int)bootselinfodata.sLVDSVal.ullower_margin ,
+				(int)bootselinfodata.sLVDSVal.ulhsync_len , (int)bootselinfodata.sLVDSVal.ulvsync_len ,
+				(int)bootselinfodata.sLVDSVal.ulsync , (int)bootselinfodata.sLVDSVal.ulvmode
 				) ;
 			setenv( "lvds_val" , setstr ) ;
 		}
@@ -324,7 +333,7 @@ static void bootsel_adjust_bootargs( void )
 	bootsel_set_lvds_par( ) ;
 }
 
-static void vbootsel_def_func()
+static void vbootsel_def_func( void )
 {
 	bootselinfodata.ulFunction = 0 ;
 	#ifdef CONFIG_BOOTSEL_FUNC_PASSWORD
@@ -348,6 +357,9 @@ static void vbootsel_def_func()
 	#ifdef CONFIG_BOOTSEL_FUNC_SCANFILE_SELF
 	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_SCANFILE_SELF ;
 	#endif
+    
+    bootselinfodata.ulMcuWatchDog = ( unsigned long ) (CONFIG_MCU_WATCHDOG_TIME & 0xFFFF);
+
 }
 
 void bootsel_init( void )
@@ -397,6 +409,8 @@ void bootsel_init( void )
 	bootselnewpasswordlen     = 0 ;
 	bootselconfirmpasswordlen = 0 ;
 	bootsel_adjust_bootargs( ) ;
+    
+    vSet_efm32_watchdog( bootselinfodata.ulMcuWatchDog ) ;
 }
 
 static int bootsel_load( int fstype , const char *ifname , const char *dev_part_str , const char *filename , int pos , int size , unsigned long addr )
@@ -845,6 +859,7 @@ static void bootsel_getpassword( int *len , char *passwd )
 	}	
 }
 
+extern void bootsel_menu( int sel );
 void bootsel_password( void )
 {
 	int times ;
@@ -1042,12 +1057,13 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 {
 	int loop ;
 	int value = 0;
+	unsigned long ulval = 0 ;
 	int ch ;
 	unsigned char * pMac ;
 	lvdspar lvds_temp ;
 	unsigned long* ullvds ;
 	unsigned long* ullvds_temp ;
-	
+
 	if ( argc < 3 )
 	{
 		return CMD_RET_USAGE ;
@@ -1189,6 +1205,47 @@ static int do_set_bootsel_setting(cmd_tbl_t *cmdtp, int flag, int argc,
 			return CMD_RET_SUCCESS;
 		}
 	}
+	else if ( strcmp( argv[1] , "watchdog" ) == 0 )
+	{
+		if ( argc < 4 )
+		{
+			return CMD_RET_USAGE ;
+		}
+		if ( strcmp( argv[2] , "time" ) == 0 )
+		{
+            if(strlen(argv[3]) < 6)
+            {
+                for(loop = 0 ; loop < strlen(argv[3]) ; loop ++)
+                {
+                    if ( argv[3][loop] >= '0' && argv[3][loop] <= '9' )
+                    {
+                        ch =  argv[3][loop] - '0' ;
+                        ulval *= 10 ;
+                        ulval += ch ;
+                    }
+                    else
+                    {
+                        return CMD_RET_USAGE ;
+                    }	
+                }
+            }
+            else
+            {
+                return CMD_RET_USAGE ;
+            }
+            
+            if(ulval <= 0xFFFF)
+            {
+                bootselinfodata.ulMcuWatchDog = ulval ;
+                bootsel_write_setting_data( ) ;	
+                return CMD_RET_SUCCESS;
+            }
+            else
+            {
+                return CMD_RET_USAGE ;
+            }
+		}
+	}
 	
 	return CMD_RET_USAGE;
 }
@@ -1219,6 +1276,8 @@ U_BOOT_CMD(
 	"    menu password_change\n"
 	"** lvds class **\n"
 	"    lvds parameter <refresh,xres,yres,pixclock,left_margin,right_margin,up_margin,low_margin,hsync_len,vsync_len,sync,vmode>\n"
+	"** watchdog class **\n"
+	"    watchdog time 0(max 65535 seconds.)\n"
 );
 
 #ifdef CONFIG_BOOT_CMD_RESET_ENV
@@ -1370,13 +1429,17 @@ static int do_show_setting_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	{
 		if ( loop == (sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long))-1 )
 		{
-			printf( "%d" , *ulval++ ) ;
+			printf( "%d" , (int)*ulval++ ) ;
 		}
 		else
 		{
-			printf( "%d," , *ulval++ ) ;
+			printf( "%d," , (int)*ulval++ ) ;
 		}
 	}
+	printf( "\n" ) ;
+
+	printf( "McuWatchDog seconds:" ) ;
+    printf( "%d" , (unsigned int)(bootselinfodata.ulMcuWatchDog & 0xFFFF) ) ;
 	printf( "\n" ) ;
 
 	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )

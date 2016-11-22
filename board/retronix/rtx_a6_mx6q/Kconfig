@@ -171,4 +171,11 @@ config SILENT_CONSOLE
 	help
 	  message silent.
 
+config MCU_WATCHDOG_TIME
+	hex "uboot to os start-up time."
+	default "0"
+	help
+	  uboot to os start-up time.disable if set is 0.
+
+
 endif

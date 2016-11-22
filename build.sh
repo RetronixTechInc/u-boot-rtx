@@ -30,7 +30,6 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.19-hf-64bits/ar
 # Configue file select
 # =====================================
 # A6 PLUS board
-#U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_roymark_tv_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_roymark_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_all_linux_defconfig

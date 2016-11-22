@@ -416,7 +416,7 @@ static void setup_pcie(void)
 {
 	imx_iomux_v3_setup_multiple_pads(pcie_pads, ARRAY_SIZE(pcie_pads));
 	// init gpio pcie
-	gpio_direction_output(IMX_GPIO_NR(1, 8) , 1);
+	gpio_direction_input(IMX_GPIO_NR(1, 8));
 	gpio_direction_output(IMX_GPIO_NR(7, 11) , 0);
 	gpio_direction_output(IMX_GPIO_NR(3, 18) , 0);
 	gpio_direction_output(IMX_GPIO_NR(7, 1) , 0);
@@ -1061,7 +1061,7 @@ int overwrite_console(void)
 int board_eth_init(bd_t *bis)
 {
 	setup_iomux_enet();
-	//setup_pcie();
+	setup_pcie();
 	setup_iomux_usb();
 	setup_ui_define();
 
@@ -1376,7 +1376,7 @@ static const struct boot_mode board_boot_modes[] = {
 int board_late_init(void)
 {
 #if defined(CONFIG_TARGET_RTX_A6PLUS_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
-	disable_efm32_watchdog( ) ;
+	vSet_efm32_watchdog( 0 ) ;
 #endif
 
 #ifdef CONFIG_BOOT_SYSTEM
@@ -1501,7 +1501,7 @@ void board_recovery_setup(void)
 	}
 
 	#ifdef CONFIG_MCU_WDOG_BUS
-		disable_efm32_watchdog( ) ;
+		vSet_efm32_watchdog( 0 ) ;
 	#endif
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");
