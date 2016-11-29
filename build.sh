@@ -9,7 +9,7 @@ export ARCH=arm
 # Cross compile tools path define 
 # default path is /opt/cross if not define CROSS_COMPILE_PATH
 # =====================================
-#CROSS_COMPILE_PATH=/home/artie/JOB-Area/Android
+CROSS_COMPILE_PATH=/home/artie/JOB-Area/Android
 #CROSS_COMPILE_PATH=/opt/freescale/usr/local
 #CROSS_COMPILE_PATH=/media/tom/ext1t/freescale/cross-compile
 if [ -z $CROSS_COMPILE_PATH ];then
@@ -20,11 +20,11 @@ fi
 # Cross compile tools version
 # =====================================
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/gcc-4.8.5-glibc-2.23/arm-fsl-linux-gnueabi/bin/arm-fsl-linux-gnueabi-
-export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.19-hf-64bits/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
+#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.19-hf-64bits/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.23-hf-64bits/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
-#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
-#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf- 
+#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
+export CROSS_COMPILE=${CROSS_COMPILE_PATH}/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
 
 # =====================================
 # Configue file select
@@ -48,8 +48,17 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.19-hf-64bits/ar
 
 #Q7 Board
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig
-U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_mfg_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_mfg_defconfig
 
+#Volar111Plus Board
+#U_BOOT_DEFAULT_CONFIG=rtx_volar111plus_mx6dl_samsung1g_dtb_rtx_all_mfg_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_volar111plus_mx6dl_samsung1g_dtb_rtx_all_linux_defconfig
+U_BOOT_DEFAULT_CONFIG=rtx_volar111plus_mx6dl_samsung1g_null_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_volar111plus_mx6dl_samsung1g_dtb_rtx_all_android_defconfig
+
+#TreadMill Board
+#U_BOOT_DEFAULT_CONFIG=rtx_treadmill_mx6q_samsung2g_dtb_rtx_all_android_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_treadmill_mx6q_samsung2g_dtb_rtx_all_mfg_defconfig
 
 # Get Host Number of CPUs
 CPUS=`cat /proc/cpuinfo | grep processor | wc -l`
@@ -61,7 +70,7 @@ fi
 case "${1}" in
 	"all")
 		#rm -rf out
-		mkdir -p out
+		#mkdir -p out
 		make ${U_BOOT_DEFAULT_CONFIG}
 		make -j${CPUS}
 		cp -f u-boot.imx out/.
@@ -77,7 +86,7 @@ case "${1}" in
 		;;
 	"distclean")
 		make distclean
-		rm -rf out/u*
+		#rm -rf out/u*
 		;;
 	"tools")
 		cd RTX/tools
