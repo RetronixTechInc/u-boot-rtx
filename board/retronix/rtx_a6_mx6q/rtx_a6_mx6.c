@@ -1214,7 +1214,7 @@ static const struct boot_mode board_boot_modes[] = {
 int board_late_init(void)
 {
 #if defined(CONFIG_TARGET_RTX_A6_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
-	disable_efm32_watchdog( ) ;
+	vSet_efm32_watchdog( 0 ) ;
 #endif
 
 #ifdef CONFIG_BOOT_SYSTEM
@@ -1339,7 +1339,7 @@ void board_recovery_setup(void)
 	}
 
 	#ifdef CONFIG_MCU_WDOG_BUS
-		disable_efm32_watchdog( ) ;
+		vSet_efm32_watchdog( 0 ) ;
 	#endif
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");

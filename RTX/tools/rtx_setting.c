@@ -29,6 +29,7 @@ static void show_usage(){
 	printf("        -write function menu <enable/disable> \n");
 	printf("        -write function storage <enable/disable> \n");
 	printf("        -write function selfmagic <enable/disable> \n");
+	printf("        -write watchdog time 0(max 65535 seconds.) \n");
 }
 
 typedef struct __LVDS_PAR__ {
@@ -65,7 +66,8 @@ typedef struct __BOOTSEL_INFO__ {
 	unsigned long ulStatus ;
 	unsigned long ulDataExistInfo ;
 	lvdspar sLVDSVal ;
-	unsigned char ubRecv01[120] ;
+    unsigned long ulMcuWatchDog ; //MCU watch dog time. 0 is disable.
+	unsigned char ubRecv01[116] ;
 	unsigned char ubProductSerialNO_Vendor[64] ;
 	unsigned char ubMAC01_Vendor[8] ;
 	unsigned char ubMAC02_Vendor[8] ;
@@ -190,6 +192,8 @@ static int bootsel_write_setting_data( void )
 	close( g_mmcblk0_fd );
 	g_mmcblk0_fd = 0;
 	
+    sync();
+    
 	return val;
 }
 
@@ -198,6 +202,7 @@ static int do_show_setting_info( )
 	int loop = 0 ;
 	int loop1 = 0 ;
 	unsigned long * ulval ;
+    unsigned char  *pMac = NULL ;
 	
 	printf( "ulCheckCode:%08X\n" , (unsigned int)bootselinfodata.ulCheckCode ) ;
 	printf( "ubMagicCode:" ) ;
@@ -216,17 +221,40 @@ static int do_show_setting_info( )
 	
 	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
 	{
+        switch( loop1 )
+        {
+            case 0 : pMac = &bootselinfodata.ubMAC01[0] ; break ;
+            case 1 : pMac = &bootselinfodata.ubMAC02[0] ; break ;
+            case 2 : pMac = &bootselinfodata.ubMAC03[0] ; break ;
+            case 3 : pMac = &bootselinfodata.ubMAC04[0] ; break ;
+			default :
+				pMac = NULL ;
+        }
 		printf( "ubMAC0%d:" , loop1 ) ;
 		for ( loop = 0 ; loop < 8 ; loop ++ )
 		{
-			if ( loop == 7 )
-			{
-				printf( "%02X" , bootselinfodata.ubMAC01[loop+loop1*8] ) ;
-			}
-			else
-			{
-				printf( "%02X:" , bootselinfodata.ubMAC01[loop+loop1*8] ) ;
-			}
+            if( pMac == NULL )
+            {
+                if ( loop == 7 )
+                {
+                    printf( "00" ) ;
+                }
+                else
+                {
+                    printf( "00:" ) ;
+                }            
+            }
+            else
+            {
+                if ( loop == 7 )
+                {
+                    printf( "%02X" , pMac[loop] ) ;
+                }
+                else
+                {
+                    printf( "%02X:" , pMac[loop] ) ;
+                }
+            }
 		}
 		printf( "\n" ) ;
 	}
@@ -303,28 +331,55 @@ static int do_show_setting_info( )
 	{
 		if ( loop == (sizeof(bootselinfodata.sLVDSVal)/sizeof(unsigned long))-1 )
 		{
-			printf( "%d" , *ulval++ ) ;
+			printf( "%d" , (unsigned int)*ulval++ ) ;
 		}
 		else
 		{
-			printf( "%d," , *ulval++ ) ;
+			printf( "%d," , (unsigned int)*ulval++ ) ;
 		}
 	}
 	printf( "\n" ) ;
 
+	printf( "McuWatchDog seconds:" ) ;
+    printf( "%d" , (unsigned int)(bootselinfodata.ulMcuWatchDog & 0xFFFF) ) ;
+	printf( "\n" ) ;
+
 	for ( loop1 = 0 ; loop1 < 4 ; loop1 ++ )
 	{
+        switch( loop1 )
+        {
+            case 0 : pMac = &bootselinfodata.ubMAC01_Vendor[0] ; break ;
+            case 1 : pMac = &bootselinfodata.ubMAC02_Vendor[0] ; break ;
+            case 2 : pMac = &bootselinfodata.ubMAC03_Vendor[0] ; break ;
+            case 3 : pMac = &bootselinfodata.ubMAC04_Vendor[0] ; break ;
+			default :
+				pMac = NULL ;
+        }
 		printf( "ubMAC0%d_Vendor:" , loop1 ) ;
 		for ( loop = 0 ; loop < 8 ; loop ++ )
 		{
-			if ( loop == 7 )
-			{
-				printf( "%02X" , bootselinfodata.ubMAC01_Vendor[loop+loop1*8] ) ;
-			}
-			else
-			{
-				printf( "%02X:" , bootselinfodata.ubMAC01_Vendor[loop+loop1*8] ) ;
-			}
+            if( pMac == NULL )
+            {
+                if ( loop == 7 )
+                {
+                    printf( "00" ) ;
+                }
+                else
+                {
+                    printf( "00:" ) ;
+                }            
+            }
+            else
+            {
+                if ( loop == 7 )
+                {
+                    printf( "%02X" , pMac[loop] ) ;
+                }
+                else
+                {
+                    printf( "%02X:" , pMac[loop] ) ;
+                }
+            }
 		}
 		printf( "\n" ) ;
 	}
@@ -361,6 +416,7 @@ static int do_set_bootsel_setting(int argc, char * const arg[])
 {
 	int loop ;
 	int value = 0 ;
+    unsigned long ulval = 0 ;
 	int ch ;
 	unsigned char * pMac ;
 	unsigned char * pMac_ven ;
@@ -541,6 +597,47 @@ static int do_set_bootsel_setting(int argc, char * const arg[])
 			//bootsel_set lvds parameter 60,1280,720,12345,100,10,50,20,10,10,0,1
 			bootsel_write_setting_data( ) ;	
 			return CMD_RET_SUCCESS;
+		}
+	}
+	else if ( strcmp( argv[1] , "watchdog" ) == 0 )
+	{
+		if ( argc < 5 )
+		{
+			return CMD_RET_USAGE ;
+		}
+		if ( strcmp( argv[2] , "time" ) == 0 )
+		{
+            if(strlen(argv[3]) < 6)
+            {
+                for(loop = 0 ; loop < strlen(argv[3]) ; loop ++)
+                {
+                    if ( argv[3][loop] >= '0' && argv[3][loop] <= '9' )
+                    {
+                        ch =  argv[3][loop] - '0' ;
+                        ulval *= 10 ;
+                        ulval += ch ;
+                    }
+                    else
+                    {
+                        return CMD_RET_USAGE ;
+                    }	
+                }
+            }
+            else
+            {
+                return CMD_RET_USAGE ;
+            }
+            
+            if(ulval <= 0xFFFF)
+            {
+                bootselinfodata.ulMcuWatchDog = ulval ;
+                bootsel_write_setting_data( ) ;	
+                return CMD_RET_SUCCESS;
+            }
+            else
+            {
+                return CMD_RET_USAGE ;
+            }
 		}
 	}
 

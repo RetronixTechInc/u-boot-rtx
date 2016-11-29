@@ -229,7 +229,10 @@ static iomux_v3_cfg_t const usdhc4_pads[] = {
 
 #ifdef CONFIG_MXC_SPI
 static iomux_v3_cfg_t const ecspi1_pads[] = {
-	MX6_PAD_DISP0_DAT4__GPIO4_IO25 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_DISP0_DAT0__ECSPI3_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6_PAD_DISP0_DAT1__ECSPI3_MOSI | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6_PAD_DISP0_DAT2__ECSPI3_MISO | MUX_PAD_CTRL(SPI_PAD_CTRL),
+	MX6_PAD_DISP0_DAT3__ECSPI3_SS0 | MUX_PAD_CTRL(SPI_PAD_CTRL),
 };
 
 static void setup_spi(void)
@@ -300,7 +303,7 @@ static void setup_pcie(void)
 {
 	imx_iomux_v3_setup_multiple_pads(pcie_pads, ARRAY_SIZE(pcie_pads));
 	// init gpio pcie
-	gpio_direction_output(IMX_GPIO_NR(5, 20) , 1);
+	gpio_direction_output(IMX_GPIO_NR(5, 20) , 0);
 	gpio_direction_output(IMX_GPIO_NR(7, 11) , 0);
 	gpio_direction_output(IMX_GPIO_NR(7, 12) , 0);
 }
@@ -398,7 +401,7 @@ int mmc_get_env_devno(void)
 int mmc_map_to_kernel_blk(int dev_no)
 {
 	int kernel_no = 0 ;
-	//printf("Tom========%s[%d]========dev_no=%d\n",__func__, __LINE__, dev_no);
+
 	switch(dev_no)
 	{
 	case 0:
@@ -758,7 +761,8 @@ int board_eth_init(bd_t *bis)
 #define UCTRL_PWR_POL		(1 << 9)
 
 static iomux_v3_cfg_t const usb_otg_pads[] = {
-	MX6_PAD_EIM_D22__USB_OTG_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_EIM_D21__USB_OTG_OC | MUX_PAD_CTRL(NO_PAD_CTRL),
+	//GPIO_19__GPIO4_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	MX6_PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
 };
 
@@ -1061,7 +1065,7 @@ static const struct boot_mode board_boot_modes[] = {
 int board_late_init(void)
 {
 #if defined(CONFIG_TARGET_RTX_PITX_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
-	disable_efm32_watchdog( ) ;
+	vSet_efm32_watchdog( 0 ) ;
 #endif
 
 #ifdef CONFIG_BOOT_SYSTEM
@@ -1186,7 +1190,7 @@ void board_recovery_setup(void)
 	}
 
 	#ifdef CONFIG_MCU_WDOG_BUS
-		disable_efm32_watchdog( ) ;
+		vSet_efm32_watchdog( 0 ) ;
 	#endif
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");

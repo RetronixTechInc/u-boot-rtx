@@ -1,7 +1,7 @@
-if TARGET_RTX_PITX_MX6Q
+if TARGET_RTX_ADLINK_MX6DL
 
 config SYS_BOARD
-	default "rtx_pitx_mx6q"
+	default "rtx_adlink_mx6dl"
 
 config SYS_VENDOR
 	default "retronix"
@@ -9,15 +9,15 @@ config SYS_VENDOR
 config SYS_SOC
 	default "mx6"
 
-config TARGET_RTX_PITX_MX6Q_MFG
+config TARGET_RTX_ADLINK_MX6DL_MFG
 	bool "Uboot is MFG mode."
 	default n
 	help
 	  Uboot is MFG mode.
 	  
 config SYS_CONFIG_NAME
-	default "retronix/rtx_pitx_mx6q"     if !TARGET_RTX_PITX_MX6Q_MFG
-	default "retronix/rtx_pitx_mx6q_mfg" if TARGET_RTX_PITX_MX6Q_MFG
+	default "retronix/rtx_adlink_mx6dl"     if !TARGET_RTX_ADLINK_MX6DL_MFG
+	default "retronix/rtx_adlink_mx6dl_mfg" if TARGET_RTX_ADLINK_MX6DL_MFG
 
 config EXTRA_ENV_USE_DTB
 	bool "kernel is dtb type."
@@ -93,19 +93,19 @@ config VGA_VIDEO
 
 config DEF_LOADADDR
 	hex "loadaddr"
-	default "0x10800000"
+	default "0x10880000"
 	help
 	  loadaddr.
 
 config DTB_LOADADDR
 	hex "dtb_loadaddr"
-	default "0x11C00000"
+	default "0x10800000"
 	help
 	  dtb_loadaddr.
 
 config RD_LOADADDR
 	hex "rd_loadaddr"
-	default "0x11D00000"
+	default "0x11400000"
 	help
 	  rd_loadaddr.
 

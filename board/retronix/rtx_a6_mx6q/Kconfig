@@ -165,4 +165,17 @@ config BOOTSEL_FUNC_SCANFILE_SELF
 	help
 	  Uboot scan self magic code funciton.
 
+config SILENT_CONSOLE
+	bool "message silent."
+	default n
+	help
+	  message silent.
+
+config MCU_WATCHDOG_TIME
+	hex "uboot to os start-up time."
+	default "0"
+	help
+	  uboot to os start-up time.disable if set is 0.
+
+
 endif

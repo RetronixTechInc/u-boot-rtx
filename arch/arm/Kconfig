@@ -61,6 +61,10 @@ config SEMIHOSTING
 choice
 	prompt "Target select"
 
+config TARGET_RTX_ADLINK_MX6DL
+	bool "Support Retronix ADLINK Board (imx6dl SOC)"
+	select CPU_V7
+	
 config TARGET_RTX_A6PLUS_MX6Q
 	bool "Support Retronix A6Plus Board (imx6q SOC)"
 	select CPU_V7
@@ -927,6 +931,7 @@ source "board/palmtreo680/Kconfig"
 source "board/phytec/pcm051/Kconfig"
 source "board/ppcag/bg0900/Kconfig"
 source "board/pxa255_idp/Kconfig"
+source "board/retronix/rtx_adlink_mx6dl/Kconfig"
 source "board/retronix/rtx_a6plus_mx6q/Kconfig"
 source "board/retronix/rtx_a6_mx6q/Kconfig"
 source "board/retronix/rtx_pitx_mx6q/Kconfig"
