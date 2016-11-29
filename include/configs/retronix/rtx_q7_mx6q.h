@@ -210,9 +210,9 @@
 	#define CONFIG_ENG_BOOTARGS \
 		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_UPDATEROOT
 	#define CONFIG_ENG_BOOTCMD  \
-		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr}"
+		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR)
 	#define CONFIG_ENG_DTB_BOOTCMD  \
-		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR) " "  __stringify(CONFIG_DTB_LOADADDR)
 
 	/* recovery mode parameter 'r' or 'R' key*/
 	#define CONFIG_ANDROID_RECOVERY_BOOTARGS \

@@ -93,19 +93,19 @@ config VGA_VIDEO
 
 config DEF_LOADADDR
 	hex "loadaddr"
-	default "0x10880000"
+	default "0x10800000"
 	help
 	  loadaddr.
 
 config DTB_LOADADDR
 	hex "dtb_loadaddr"
-	default "0x10800000"
+	default "0x11C00000"
 	help
 	  dtb_loadaddr.
 
 config RD_LOADADDR
 	hex "rd_loadaddr"
-	default "0x11400000"
+	default "0x11D00000"
 	help
 	  rd_loadaddr.
 
