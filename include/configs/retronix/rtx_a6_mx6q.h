@@ -53,7 +53,7 @@
 	#define CONFIG_MACH_TYPE					3980
 	#define CONFIG_MXC_UART_BASE				UART1_BASE
 	#define CONFIG_CONSOLE_DEV					"ttymxc0"
-	#define CONFIG_CONSOLE_PESUDO_DEV			"ttymxc1"
+	#define CONFIG_CONSOLE_ANDROID			    "ttymxc1"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
 
@@ -235,28 +235,35 @@
 
 	#if defined(CONFIG_ANDROID_SUPPORT)
 		#ifdef CONFIG_EXTRA_ENV_USE_DTB
-			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb r_ramdisk; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
+			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_android bootargs_gen ;run storage r_kernel r_dtb r_ramdisk; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
 		#else
-			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_ramdisk; bootm ${loadaddr} ${rd_loadaddr}\0"
+			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_android bootargs_gen ;run storage r_kernel r_ramdisk; bootm ${loadaddr} ${rd_loadaddr}\0"
 		#endif
+        #define CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "bootargs_android=setenv bootargs ${bootargs} androidboot.hardware=freescale androidboot.console=" CONFIG_CONSOLE_ANDROID "\0"
 	#else
 		#ifdef CONFIG_EXTRA_ENV_USE_DTB
 			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"
 		#else
 			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel; bootm\0"
+        #define CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "\0"
 		#endif
 	#endif
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
-		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
+		"bootargs_base=setenv bootargs no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
-		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_PESUDO_DEV "\0"	\
+		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) "\0"	\
 		"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0"	\
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
+		CONFIG_BOOTARGS_UI_VAR01 \
+		CONFIG_BOOTARGS_UI_VAR02 \
+		CONFIG_BOOTARGS_UI_VAR03 \
+		CONFIG_BOOTARGS_UI_VAR04 \
+		CONFIG_BOOTARGS_UI_VAR05 \
 		"mmc_num=" CONFIG_UBOOT_MMCNUM "\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
 		"mac1_val=" CONFIG_DEFAULT_MAC01 "\0" \
@@ -265,6 +272,7 @@
 		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\
 		"r_ramdisk=mmc read ${rd_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE) "\0" \
 		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
+		CONFIG_EXTRA_ENV_BOOTARGS_ANDROID	\
 		"splashpos=m,m\0"	  \
 		"def_video=" CONFIG_VGA_VIDEO "\0" \
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
