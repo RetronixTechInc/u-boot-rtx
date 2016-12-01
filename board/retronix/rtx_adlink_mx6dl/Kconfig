@@ -67,6 +67,36 @@ config BOOTARGS_DUAL_HDMI
 	help
 	  GUI port dual-hdmi.
 
+config BOOTARGS_UI_VAR01
+	string "project ui port 01"
+	default "\0"
+	help
+	  GUI port by project.
+
+config BOOTARGS_UI_VAR02
+	string "project ui port 02"
+	default "\0"
+	help
+	  GUI port by project.
+
+config BOOTARGS_UI_VAR03
+	string "project ui port 03"
+	default "\0"
+	help
+	  GUI port by project.
+
+config BOOTARGS_UI_VAR04
+	string "project ui port 04"
+	default "\0"
+	help
+	  GUI port by project.
+
+config BOOTARGS_UI_VAR05
+	string "project ui port 05"
+	default "\0"
+	help
+	  GUI port by project.
+
 config BOOTARGS_GUIMEM
 	string "FB GPU memory"
 	default "fbmem=28M,28M gpumem=176M vmalloc=400M"
