@@ -249,7 +249,7 @@
 		#else
 			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel; bootm\0"
 		#endif
-        #define CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "\0"
+        #define CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "bootargs_linux\0"
 	#endif
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
