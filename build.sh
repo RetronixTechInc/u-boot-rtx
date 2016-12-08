@@ -29,6 +29,9 @@ fi
 # =====================================
 # Configue file select
 # =====================================
+#ADLINK Board
+#U_BOOT_DEFAULT_CONFIG=rtx_adlink_mx6dl_micro1g_dtb_rtx_all_linux_defconfig
+
 # A6 PLUS board
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_roymark_tv_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_roymark_box_android_defconfig
