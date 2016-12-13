@@ -259,11 +259,11 @@
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
-		CONFIG_BOOTARGS_UI_VAR01 \
-		CONFIG_BOOTARGS_UI_VAR02 \
-		CONFIG_BOOTARGS_UI_VAR03 \
-		CONFIG_BOOTARGS_UI_VAR04 \
-		CONFIG_BOOTARGS_UI_VAR05 \
+		CONFIG_BOOTARGS_UI_VAR01 "\0" \
+		CONFIG_BOOTARGS_UI_VAR02 "\0" \
+		CONFIG_BOOTARGS_UI_VAR03 "\0" \
+		CONFIG_BOOTARGS_UI_VAR04 "\0" \
+		CONFIG_BOOTARGS_UI_VAR05 "\0" \
 		"mmc_num=" CONFIG_UBOOT_MMCNUM "\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
 		"mac1_val=" CONFIG_DEFAULT_MAC01 "\0" \
