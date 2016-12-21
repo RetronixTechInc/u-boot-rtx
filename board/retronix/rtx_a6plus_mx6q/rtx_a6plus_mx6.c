@@ -407,7 +407,7 @@ static struct i2c_pads_info i2c_pad_info2 = {
 iomux_v3_cfg_t const pcie_pads[] = {
 	// pcie
 	MX6_PAD_GPIO_8__GPIO1_IO08 | MUX_PAD_CTRL(NO_PAD_CTRL), /* PCIE_WAKE_B */
-	MX6_PAD_GPIO_16__GPIO7_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL), /* PCIE_RST */
+	MX6_PAD_GPIO_16__GPIO7_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL), /* PCIE_RST_B */
 	MX6_PAD_EIM_D18__GPIO3_IO18 | MUX_PAD_CTRL(NO_PAD_CTRL), /* PCIE_PWR_EN */
 	MX6_PAD_SD3_DAT4__GPIO7_IO01 | MUX_PAD_CTRL(NO_PAD_CTRL), /* PCIE_DIS_B */
 };
@@ -418,9 +418,10 @@ static void setup_pcie(void)
 	// init gpio pcie
 	gpio_direction_input(IMX_GPIO_NR(1, 8));
 	gpio_direction_output(IMX_GPIO_NR(7, 11) , 0);
-	gpio_direction_output(IMX_GPIO_NR(3, 18) , 0);
-	gpio_direction_output(IMX_GPIO_NR(7, 1) , 0);
-
+	gpio_direction_output(IMX_GPIO_NR(3, 18) , 1);
+	gpio_direction_output(IMX_GPIO_NR(7, 1) , 1);
+    udelay(50000);
+    gpio_set_value(IMX_GPIO_NR(7, 11), 1);
 }
 
 iomux_v3_cfg_t const di0_pads[] = {

@@ -124,7 +124,9 @@ void set_default_env(const char *s)
 
 	gd->flags |= GD_FLG_ENV_READY;
 
+#ifdef CONFIG_CMD_MMC
 	saveenv();
+#endif
 }
 
 

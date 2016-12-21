@@ -131,7 +131,9 @@
 	#define CONFIG_SYS_FSL_ESDHC_ADDR      		0
 
 	#define CONFIG_MMC
-	#define CONFIG_CMD_MMC
+	#ifndef CONFIG_TARGET_RTX_A6_MX6Q_MFG
+		#define CONFIG_CMD_MMC
+	#endif
 	#define CONFIG_GENERIC_MMC
 	#define CONFIG_BOUNCE_BUFFER
 	#define CONFIG_CMD_EXT2
@@ -265,6 +267,8 @@
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
+        "fdt_high=0xffffffff\0" \
+        "initrd_high=0xffffffff\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 	#define CONFIG_ARP_TIMEOUT     					200UL

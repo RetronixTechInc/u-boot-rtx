@@ -130,7 +130,9 @@
 	#define CONFIG_SYS_FSL_ESDHC_ADDR      		0
 
 	#define CONFIG_MMC
-	#define CONFIG_CMD_MMC
+	#ifndef CONFIG_TARGET_RTX_PITX_MX6Q_MFG
+        #define CONFIG_CMD_MMC
+	#endif
 	#define CONFIG_GENERIC_MMC
 	#define CONFIG_BOUNCE_BUFFER
 	#define CONFIG_CMD_EXT2

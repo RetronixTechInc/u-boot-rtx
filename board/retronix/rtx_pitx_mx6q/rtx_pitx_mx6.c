@@ -303,9 +303,11 @@ static void setup_pcie(void)
 {
 	imx_iomux_v3_setup_multiple_pads(pcie_pads, ARRAY_SIZE(pcie_pads));
 	// init gpio pcie
-	gpio_direction_output(IMX_GPIO_NR(5, 20) , 0);
-	gpio_direction_output(IMX_GPIO_NR(7, 11) , 0);
+    gpio_direction_input(IMX_GPIO_NR(5, 20));
+	gpio_direction_output(IMX_GPIO_NR(7, 11) , 1);
 	gpio_direction_output(IMX_GPIO_NR(7, 12) , 0);
+    udelay(50000);
+	gpio_set_value(IMX_GPIO_NR(7, 12), 1);
 }
 
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)

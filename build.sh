@@ -11,7 +11,7 @@ export ARCH=arm
 # =====================================
 #CROSS_COMPILE_PATH=/home/artie/JOB-Area/Android
 #CROSS_COMPILE_PATH=/opt/freescale/usr/local
-#CROSS_COMPILE_PATH=/media/tom/ext1t/freescale/cross-compile
+#CROSS_COMPILE_PATH=/media/tom/ext2t/freescale/cross-compile
 if [ -z $CROSS_COMPILE_PATH ];then
 CROSS_COMPILE_PATH=/opt/cross
 fi
@@ -33,22 +33,23 @@ fi
 #U_BOOT_DEFAULT_CONFIG=rtx_adlink_mx6dl_micro1g_dtb_rtx_all_linux_defconfig
 
 # A6 PLUS board
-#U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_roymark_tv_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_roymark_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_rtx_all_mfg_defconfig
 
 #A6 Board
 #U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_null_roymark_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_dtb_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_null_rtx_all_mfg_defconfig
 
 #PITX Board
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_mfg_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_null_rtx_all_mfg_defconfig
 
 #Q7 Board
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig

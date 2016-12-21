@@ -19,6 +19,7 @@
 	#ifdef CONFIG_BOOT_SYSTEM
 		#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 		#define CONFIG_BOOT_CMD_RESET_ENV
+		#define CONFIG_BOOT_CMD_RESET_SETTING
 
 		#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
 		#define CONFIG_BOOT_SYSTEM_SETTING_SIZE               0x2
@@ -51,8 +52,8 @@
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
-	#define CONFIG_MXC_UART_BASE				UART4_BASE
-	#define CONFIG_CONSOLE_DEV					"ttymxc3"
+	#define CONFIG_MXC_UART_BASE				UART1_BASE
+	#define CONFIG_CONSOLE_DEV					"ttymxc0"
 
 	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
 
@@ -130,7 +131,9 @@
 	#define CONFIG_SYS_FSL_ESDHC_ADDR      		0
 
 	#define CONFIG_MMC
-	#define CONFIG_CMD_MMC
+	#ifndef CONFIG_TARGET_RTX_A6PLUS_MX6Q_MFG
+		#define CONFIG_CMD_MMC
+	#endif
 	#define CONFIG_GENERIC_MMC
 	#define CONFIG_BOUNCE_BUFFER
 	#define CONFIG_CMD_EXT2
@@ -264,6 +267,8 @@
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
+        "fdt_high=0xffffffff\0" \
+        "initrd_high=0xffffffff\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 
