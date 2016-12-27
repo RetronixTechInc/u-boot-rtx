@@ -782,7 +782,10 @@ static void bootsel_checkstorage_usb( void )
 		return ;
 	}
 
-	usbid = usb_stor_scan(1) ;
+	if (usb_init() < 0)
+		return;
+	else
+		usbid = usb_stor_scan(1) ;
 	bootsel_load_system_from_usb( usbid ) ;
 	
 #endif	

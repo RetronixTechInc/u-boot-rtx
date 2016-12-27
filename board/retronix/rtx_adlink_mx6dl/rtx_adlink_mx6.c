@@ -126,11 +126,11 @@ static void setup_iomux_gpio_init(void)
 	imx_iomux_v3_setup_multiple_pads(gpio_pads_init, ARRAY_SIZE(gpio_pads_init));
 
 	//init gpio audio
-	gpio_direction_output(IMX_GPIO_NR(1, 0) , 0);
-	gpio_direction_output(IMX_GPIO_NR(4, 10) , 0);
+	gpio_direction_output(IMX_GPIO_NR(1, 0) , 0);		//GPIO_0_CLKOGPIO_0_CLKO
+	gpio_direction_output(IMX_GPIO_NR(4, 10) , 0);		//AUD_AMP_STBY_B
 	// init gpio lcd
-	gpio_direction_output(IMX_GPIO_NR(1, 21) , 0);
-	gpio_direction_output(IMX_GPIO_NR(1, 19) , 0);
+	gpio_direction_output(IMX_GPIO_NR(1, 21) , 0);		//LVDS0_BLT_CTRL (pwm)
+	gpio_direction_output(IMX_GPIO_NR(1, 19) , 0);		//LVDS1_BLT_CTRL (pwm)
 	reg &= ~(IOMUXC_GPR2_LVDS_CH0_MODE_MASK | IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
 	writel(reg, &iomux->gpr[2]);
 	// init gpio usb
@@ -168,7 +168,7 @@ static iomux_v3_cfg_t const uart5_pads[] = {
 	MX6_PAD_NANDF_ALE__GPIO6_IO08 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	MX6_PAD_NANDF_CLE__GPIO6_IO07 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	/* enable  */
-	MX6_PAD_GPIO_19__GPIO4_IO05		| MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_NANDF_CS3__GPIO6_IO16 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 
 static iomux_v3_cfg_t const enet_pads[] = {
@@ -361,7 +361,7 @@ static void setup_iomux_uart(void)
 	//uart5 ic mode
 	gpio_direction_output(IMX_GPIO_NR(6, 8) , 0);
 	gpio_direction_output(IMX_GPIO_NR(6, 7) , 0);
-	gpio_direction_output(IMX_GPIO_NR(4, 5) , 0);
+	gpio_direction_output(IMX_GPIO_NR(6, 16) , 0);
 }
 
 #ifdef CONFIG_FSL_ESDHC
@@ -758,12 +758,12 @@ int board_eth_init(bd_t *bis)
 #define UCTRL_PWR_POL		(1 << 9)
 
 static iomux_v3_cfg_t const usb_otg_pads[] = {
-	MX6_PAD_EIM_D22__USB_OTG_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_GPIO_19__GPIO4_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	MX6_PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
 };
 
 static iomux_v3_cfg_t const usb_hc1_pads[] = {
-	MX6_PAD_ENET_TXD1__GPIO1_IO29 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_ENET_TXD0__GPIO1_IO30 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 
 static void setup_usb(void)
@@ -800,12 +800,17 @@ int board_ehci_power(int port, int on)
 {
 	switch (port) {
 	case 0:
+		if (on){
+			gpio_direction_output(IMX_GPIO_NR(4, 5), 1);
+		}else{
+			gpio_direction_output(IMX_GPIO_NR(4, 5), 0);
+		}
 		break;
 	case 1:
 		if (on)
-			gpio_direction_output(IMX_GPIO_NR(1, 29), 1);
+			gpio_direction_output(IMX_GPIO_NR(1, 30), 1);
 		else
-			gpio_direction_output(IMX_GPIO_NR(1, 29), 0);
+			gpio_direction_output(IMX_GPIO_NR(1, 30), 0);
 		break;
 	default:
 		printf("MXC USB port %d not yet supported\n", port);
