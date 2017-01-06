@@ -188,9 +188,11 @@ static void usb_oc_config(int index)
 #endif
 	__raw_writel(val, ctrl);
 
+#if !defined(CONFIG_TARGET_RTX_ADLINK_MX6DL)
 	val = __raw_readl(ctrl);
 	val |= UCTRL_OVER_CUR_DIS;
 	__raw_writel(val, ctrl);
+#endif
 }
 
 int usb_phy_mode(int port)
