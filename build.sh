@@ -54,6 +54,7 @@ fi
 #Q7 Board
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_mfg_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_linux_defconfig
 
 #Volar111Plus Board
 #U_BOOT_DEFAULT_CONFIG=rtx_volar111plus_mx6dl_samsung1g_dtb_rtx_all_mfg_defconfig
