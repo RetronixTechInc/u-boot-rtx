@@ -133,6 +133,9 @@ static void setup_iomux_enet(void)
 	udelay(500);
 	gpio_set_value(IMX_GPIO_NR(1, 25), 1);
 }
+static iomux_v3_cfg_t const usdhc1_pads[] = {
+
+};
 
 static iomux_v3_cfg_t const usdhc2_pads[] = {
 	MX6_PAD_SD2_CLK__SD2_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -335,7 +338,9 @@ static void setup_iomux_uart(void)
 
 #ifdef CONFIG_FSL_ESDHC
 struct fsl_esdhc_cfg usdhc_cfg[CONFIG_SYS_FSL_USDHC_NUM] = {
+//	{USDHC1_BASE_ADDR},
 	{USDHC2_BASE_ADDR},
+//	{USDHC3_BASE_ADDR},
 	{USDHC4_BASE_ADDR},
 };
 
@@ -359,6 +364,10 @@ int mmc_get_env_devno(void)
 	 */
 
 	//dev_no--;
+	if(dev_no==1)//SD2
+		dev_no = 0;
+	else if(dev_no==3)//eMMC
+		dev_no = 1;
 
 	return dev_no;
 }
@@ -373,19 +382,19 @@ int mmc_map_to_kernel_blk(int dev_no)
 		kernel_no = 2 ;
 		break ;
 	case 1:
-		kernel_no = 1 ;
-		break ;
-	case 2:
 		kernel_no = 0 ;
+		break ;
+/*	case 2:
+		kernel_no = 1 ;
 		break ;
 	case 3:
 		kernel_no = 0 ;
-		break ;
+		break ;*/
 	}
 	return kernel_no;
 }
 
-#define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
+#define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 0)
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -393,11 +402,13 @@ int board_mmc_getcd(struct mmc *mmc)
 	int ret = 0;
 
 	switch (cfg->esdhc_base) {
-	case USDHC2_BASE_ADDR:
+	case USDHC1_BASE_ADDR:
 		ret = 0;
+	case USDHC2_BASE_ADDR:
+		ret = !gpio_get_value(USDHC2_CD_GPIO);
 		break;
 	case USDHC3_BASE_ADDR:
-		ret = !gpio_get_value(USDHC3_CD_GPIO);
+		ret = 0;
 		break;
 	case USDHC4_BASE_ADDR:
 		ret = 1; /* eMMC/uSDHC4 is always present */
@@ -416,18 +427,33 @@ int board_mmc_init(bd_t *bis)
 	/*
 	 * According to the board_mmc_init() the following map is done:
 	 * (U-boot device node)    (Physical Port)
-	 * mmc0                    SD2
-	 * (mmc1                    SD3)
-	 * mmc1                    eMMC
+	 * //mmc0                    SD1
+	 * mmc1                    SD2
+	 * //mmc2                    SD3
+	 * mmc3                    eMMC
 	 */
 	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
 		switch (i) {
+/*		case 0:
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc1_pads, ARRAY_SIZE(usdhc1_pads));
+			gpio_direction_input(USDHC1_CD_GPIO);
+			usdhc_cfg[i].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
+			break;
+		case 1:*/
 		case 0:
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
-			//gpio_direction_input(USDHC2_CD_GPIO);
+			gpio_direction_input(USDHC2_CD_GPIO);
 			usdhc_cfg[i].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 			break;
+/*		case 2:
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+			gpio_direction_input(USDHC3_CD_GPIO);
+			usdhc_cfg[i].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
+			break;
+		case 3:*/
 		case 1:
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
@@ -1204,7 +1230,9 @@ void ldo_mode_set(int ldo_bypass)
 #ifdef CONFIG_CMD_BMODE
 static const struct boot_mode board_boot_modes[] = {
 	/* 4 bit bus width */
+//	{"sd1",	 MAKE_CFGVAL(0x40, 0x20, 0x00, 0x00)},
 	{"sd2",	 MAKE_CFGVAL(0x40, 0x28, 0x00, 0x00)},
+//	{"sd3",	 MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
 	/* 8 bit bus width */
 	{"emmc", MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},
 	{NULL,	 0},
@@ -1213,8 +1241,8 @@ static const struct boot_mode board_boot_modes[] = {
 
 int board_late_init(void)
 {
-#if defined(CONFIG_TARGET_RTX_A6_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
-	disable_efm32_watchdog( ) ;
+#if defined(CONFIG_TARGET_RTX_TREADMILL_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
+	vSet_efm32_watchdog( 0 ) ;
 #endif
 
 #ifdef CONFIG_BOOT_SYSTEM
@@ -1339,7 +1367,7 @@ void board_recovery_setup(void)
 	}
 
 	#ifdef CONFIG_MCU_WDOG_BUS
-		disable_efm32_watchdog( ) ;
+		vSet_efm32_watchdog( 0 ) ;
 	#endif
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");

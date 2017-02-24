@@ -123,19 +123,19 @@ config VGA_VIDEO
 
 config DEF_LOADADDR
 	hex "loadaddr"
-	default "0x10880000"
+	default "0x11690000"
 	help
 	  loadaddr.
 
 config DTB_LOADADDR
 	hex "dtb_loadaddr"
-	default "0x10800000"
+	default "0x11610000"
 	help
 	  dtb_loadaddr.
 
 config RD_LOADADDR
 	hex "rd_loadaddr"
-	default "0x11400000"
+	default "0x12410000"
 	help
 	  rd_loadaddr.
 
@@ -194,5 +194,11 @@ config BOOTSEL_FUNC_SCANFILE_SELF
 	default n
 	help
 	  Uboot scan self magic code funciton.
+
+config MCU_WATCHDOG_TIME
+	hex "uboot to os start-up time."
+	default "0"
+	help
+	  uboot to os start-up time.disable if set is 0.
 
 endif
