@@ -19,6 +19,7 @@
 	#ifdef CONFIG_BOOT_SYSTEM
 		#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 		#define CONFIG_BOOT_CMD_RESET_ENV
+		#define CONFIG_BOOT_CMD_RESET_SETTING
 
 		#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
 		#define CONFIG_BOOT_SYSTEM_SETTING_SIZE               0x2
@@ -248,7 +249,7 @@
 
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
-		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
+		"bootargs_base=setenv bootargs no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
 		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
