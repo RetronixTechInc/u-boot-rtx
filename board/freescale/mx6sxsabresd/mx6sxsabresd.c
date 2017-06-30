@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
  *
@@ -463,7 +463,8 @@ struct i2c_pads_info i2c_pad_info2 = {
 static struct pmic *pfuze;
 int power_init_board(void)
 {
-	unsigned int reg, ret;
+	unsigned int reg;
+	int ret;
 
 	pfuze = pfuze_common_init(I2C_PMIC);
 	if (!pfuze)
@@ -969,8 +970,9 @@ int check_recovery_cmd_file(void)
 	int button_pressed = 0;
 	int recovery_mode = 0;
 
-	recovery_mode = recovery_check_and_clean_flag();
-
+#ifdef CONFIG_BCB_SUPPORT
+	recovery_mode = recovery_check_and_clean_command();
+#endif
 	/* Check Recovery Combo Button press or not. */
 	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
 		ARRAY_SIZE(recovery_key_pads));

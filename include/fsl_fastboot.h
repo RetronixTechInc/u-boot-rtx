@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -7,6 +7,7 @@
 #ifndef FSL_FASTBOOT_H
 #define FSL_FASTBOOT_H
 
+#include <common.h>
 #define FASTBOOT_PTENTRY_FLAGS_REPEAT(n)              (n & 0x0f)
 #define FASTBOOT_PTENTRY_FLAGS_REPEAT_MASK            0x0000000F
 
@@ -33,11 +34,38 @@
 #define FASTBOOT_MMC_USER_PARTITION_ID  0
 #define FASTBOOT_MMC_NONE_PARTITION_ID -1
 
+#ifdef CONFIG_BRILLO_SUPPORT
+#define FASTBOOT_PARTITION_BOOT_A "boot_a"
+#define FASTBOOT_PARTITION_RECOVERY "recovery"
+#define FASTBOOT_PARTITION_SYSTEM_A "system_a"
+#define FASTBOOT_PARTITION_BOOTLOADER "bootloader"
+#define FASTBOOT_PARTITION_DATA "data"
+#define FASTBOOT_PARTITION_BOOT_B "boot_b"
+#define FASTBOOT_PARTITION_SYSTEM_B "system_b"
+#define FASTBOOT_PARTITION_MISC "misc"
+
+#define FASTBOOT_PARTITION_BOOT_FS		"emmc"
+#define FASTBOOT_PARTITION_RECOVERY_FS		"emmc"
+#define FASTBOOT_PARTITION_SYSTEM_FS		"ext4"
+#define FASTBOOT_PARTITION_BOOTLOADER_FS 	"emmc"
+#define FASTBOOT_PARTITION_DATA_FS 		"ext4"
+#define FASTBOOT_PARTITION_MISC_FS 		"emmc"
+
+#else
 #define FASTBOOT_PARTITION_BOOT "boot"
 #define FASTBOOT_PARTITION_RECOVERY "recovery"
 #define FASTBOOT_PARTITION_SYSTEM "system"
 #define FASTBOOT_PARTITION_BOOTLOADER "bootloader"
 #define FASTBOOT_PARTITION_DATA "data"
+
+#define FASTBOOT_PARTITION_BOOT_FS		"emmc"
+#define FASTBOOT_PARTITION_RECOVERY_FS		"emmc"
+#define FASTBOOT_PARTITION_SYSTEM_FS		"ext4"
+#define FASTBOOT_PARTITION_BOOTLOADER_FS 	"emmc"
+#define FASTBOOT_PARTITION_DATA_FS 		"ext4"
+#define FASTBOOT_PARTITION_MISC_FS 		"emmc"
+
+#endif
 
 enum {
     DEV_SATA,
@@ -120,6 +148,8 @@ struct fastboot_ptentry {
 	unsigned int partition_id;
 	/* partition number in block device */
 	unsigned int partition_index;
+	/* partition file system type in string */
+	char fstype[16];
 };
 
 struct fastboot_device_info {
@@ -146,10 +176,10 @@ void fastboot_flash_dump_ptn(void);
 
 
 /* Check the board special boot mode reboot to fastboot mode. */
-int fastboot_check_and_clean_flag(void);
+bool fastboot_check_and_clean_command(void);
 
 /* Set the flag which reboot to fastboot mode*/
-void fastboot_enable_flag(void);
+void fastboot_enable_command(void);
 
 /*check if fastboot mode is requested by user*/
 void check_fastboot(void);
@@ -168,5 +198,7 @@ void save_parts_values(struct fastboot_ptentry *ptn,
   */
 int check_parts_values(struct fastboot_ptentry *ptn);
 #endif /*CONFIG_FASTBOOT_STORAGE_NAND*/
+
+int fastboot_tx_write_str(const char *buffer);
 
 #endif /* FSL_FASTBOOT_H */

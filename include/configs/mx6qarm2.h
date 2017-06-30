@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2016 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6Q Armadillo2 board.
  *
@@ -28,6 +28,7 @@
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
 
+#include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
 
 #define CONFIG_CMDLINE_TAG
@@ -91,11 +92,17 @@
 #define CONFIG_LOADADDR			0x12000000
 #define CONFIG_SYS_TEXT_BASE		0x17800000
 
+#if defined(CONFIG_MX6DQ_POP_LPDDR2)
+#define CONFIG_DEFAULT_FDT_FILE "imx6q-pop-arm2.dtb"
+#else
+#define CONFIG_DEFAULT_FDT_FILE "imx6q-arm2.dtb"
+#endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"image=zImage\0" \
 	"console=ttymxc3\0" \
-	"fdt_file=imx6q-arm2.dtb\0" \
+	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"fdt_addr=0x18000000\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
@@ -189,7 +196,13 @@
 #define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */
+#if defined(CONFIG_MX6DQ_POP_LPDDR2)
+#define CONFIG_NR_DRAM_BANKS		2
+#define PHYS_SDRAM_0			MMDC0_ARB_BASE_ADDR
+#define PHYS_SDRAM_1			MMDC1_ARB_BASE_ADDR
+#else
 #define CONFIG_NR_DRAM_BANKS		1
+#endif
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
@@ -204,7 +217,7 @@
 /* FLASH and environment organization */
 #define CONFIG_SYS_NO_FLASH
 
-#define CONFIG_ENV_OFFSET		(8 * 64 * 1024)
+#define CONFIG_ENV_OFFSET		(12 * SZ_64K)
 #define CONFIG_ENV_SIZE			(8 * 1024)
 #define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		1
@@ -228,4 +241,37 @@
 #define CONFIG_USB_MAX_CONTROLLER_COUNT	1
 #endif
 
-#endif				/* __CONFIG_H */
+#ifdef CONFIG_MX6DQ_POP_LPDDR2
+/* I2C Configs */
+#define CONFIG_CMD_I2C
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_SPEED            100000
+/* MAX7310 configs */
+#define CONFIG_MAX7310_IOEXP
+#define CONFIG_IOEXP_DEVICES_NUM	2
+#define CONFIG_IOEXP_DEV_PINS_NUM	8
+
+#define CONFIG_VIDEO
+#define CONFIG_VIDEO_IPUV3
+#define CONFIG_CFB_CONSOLE
+#define CONFIG_VGA_AS_SINGLE_DEVICE
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV
+#define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
+#define CONFIG_VIDEO_BMP_RLE8
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN
+#define CONFIG_BMP_16BPP
+#define CONFIG_VIDEO_LOGO
+#define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_IPUV3_CLK 198000000
+#define CONFIG_IMX_HDMI
+#define CONFIG_IMX_VIDEO_SKIP
+
+#endif
+
+#if defined(CONFIG_ANDROID_SUPPORT)
+#include "mx6qarm2_android.h"
+#endif
+
+#endif                         /* __CONFIG_H */

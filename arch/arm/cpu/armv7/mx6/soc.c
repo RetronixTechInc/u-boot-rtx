@@ -2,7 +2,7 @@
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
  *
- * (C) Copyright 2009-2015 Freescale Semiconductor, Inc.
+ * (C) Copyright 2009-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -110,13 +110,13 @@ u32 __weak get_board_rev(void)
 void init_aips(void)
 {
 	struct aipstz_regs *aips1, *aips2;
-#ifdef CONFIG_MX6SX
+#if defined(CONFIG_MX6SX) || defined(CONFIG_MX6ULL)
 	struct aipstz_regs *aips3;
 #endif
 
 	aips1 = (struct aipstz_regs *)AIPS1_BASE_ADDR;
 	aips2 = (struct aipstz_regs *)AIPS2_BASE_ADDR;
-#ifdef CONFIG_MX6SX
+#if defined(CONFIG_MX6SX) || defined(CONFIG_MX6ULL)
 	aips3 = (struct aipstz_regs *)AIPS3_CONFIG_BASE_ADDR;
 #endif
 
@@ -145,7 +145,7 @@ void init_aips(void)
 	writel(0x00000000, &aips2->opacr3);
 	writel(0x00000000, &aips2->opacr4);
 
-#ifdef CONFIG_MX6SX
+#if defined(CONFIG_MX6SX) || defined(CONFIG_MX6ULL)
 	/*
 	 * Set all MPROTx to be non-bufferable, trusted for R/W,
 	 * not forced to user-mode.
@@ -269,7 +269,10 @@ static void clear_mmdc_ch_mask(void)
 	reg = readl(&mxc_ccm->ccdr);
 
 	/* Clear MMDC channel mask */
-	reg &= ~(MXC_CCM_CCDR_MMDC_CH1_HS_MASK | MXC_CCM_CCDR_MMDC_CH0_HS_MASK);
+	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL) || is_cpu_type(MXC_CPU_MX6SL))
+		reg &= ~(MXC_CCM_CCDR_MMDC_CH1_HS_MASK);
+	else
+		reg &= ~(MXC_CCM_CCDR_MMDC_CH1_HS_MASK | MXC_CCM_CCDR_MMDC_CH0_HS_MASK);
 	writel(reg, &mxc_ccm->ccdr);
 }
 
@@ -444,17 +447,6 @@ int arch_cpu_init(void)
 	}
 #endif
 
-#if defined(CONFIG_HW_OC)
-	/* 
-	 * Modify USB OTG Control Register for schematic
-	 * bit9 : OTG Power Polarity, 
-	 *	1 Power switch has an active-high enable input
-	 * bit8 : OTG Polarity of Overcurrent
-	 *	1 Low active
-	 */
-	writel(0x00001300, OTG_BASE_ADDR + 0x800);
-#endif
-
 	init_aips();
 
 	/* Need to clear MMDC_CHx_MASK to make warm reset work. */
@@ -477,13 +469,37 @@ int arch_cpu_init(void)
 		set_ahb_rate(132000000);
 #endif
 
-#if defined(CONFIG_MX6UL)
+#if !defined(CONFIG_MX6ULL) && defined(CONFIG_MX6UL)
+	if (is_soc_rev(CHIP_REV_1_0) == 0) {
+		/*
+		 * According to the design team's requirement on i.MX6UL,
+		 * the PMIC_STBY_REQ PAD should be configured as open
+		 * drain 100K (0x0000b8a0).
+		 */
+		writel(0x0000b8a0, IOMUXC_BASE_ADDR + 0x29c);
+	} else {
+		/*
+		 * From TO1.1, SNVS adds internal pull up control for POR_B,
+		 * the register filed is GPBIT[1:0], after system boot up,
+		 * it can be set to 2b'01 to disable internal pull up.
+		 * It can save about 30uA power in SNVS mode.
+		 */
+		writel((readl(SNVS_LP_BASE_ADDR + 0x10) & (~0x1400)) | 0x400,
+			SNVS_LP_BASE_ADDR + 0x10);
+	}
+#endif
+
+#ifdef CONFIG_MX6ULL
 	/*
-	 * According to the design team's requirement on i.MX6UL,
-	 * the PMIC_STBY_REQ PAD should be configured as open
-	 * drain 100K (0x0000b8a0).
+	 * GPBIT[1:0] is suggested to set to 2'b11:
+	 * 2'b00 : always PUP100K
+	 * 2'b01 : PUP100K when PMIC_ON_REQ or SOC_NOT_FAIL
+	 * 2'b10 : always disable PUP100K
+	 * 2'b11 : PDN100K when SOC_FAIL, PUP100K when SOC_NOT_FAIL
+	 * register offset is different from i.MX6UL, since
+	 * i.MX6UL is fixed by ECO.
 	 */
-	writel(0x0000b8a0, IOMUXC_BASE_ADDR + 0x29c);
+	writel(readl(SNVS_LP_BASE_ADDR) | 0x3, SNVS_LP_BASE_ADDR);
 #endif
 
 	/* Set perclk to source from OSC 24MHz */
@@ -738,7 +754,8 @@ void s_init(void)
 	u32 mask528;
 	u32 reg, periph1, periph2;
 
-	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL))
+	if (is_cpu_type(MXC_CPU_MX6SX) || is_cpu_type(MXC_CPU_MX6UL) ||
+	    is_cpu_type(MXC_CPU_MX6ULL))
 		return;
 
 	/* Due to hardware limitation, on MX6Q we need to gate/ungate all PFDs
@@ -1038,53 +1055,23 @@ void v7_outer_cache_disable(void)
 #endif /* !CONFIG_SYS_L2CACHE_OFF */
 
 #ifdef CONFIG_FSL_FASTBOOT
-
-#ifdef CONFIG_ANDROID_RECOVERY
-#define ANDROID_RECOVERY_BOOT  (1 << 7)
-/* check if the recovery bit is set by kernel, it can be set by kernel
- * issue a command '# reboot recovery' */
-int recovery_check_and_clean_flag(void)
+#ifdef CONFIG_RESET_CAUSE
+#define ANDROID_NORMAL_BOOT     6
+#define ANDROID_BOOT_REASON_OFFSET  6
+int read_boot_reason()
 {
-	int flag_set = 0;
 	u32 reg;
 	reg = readl(SNVS_BASE_ADDR + SNVS_LPGPR);
-
-	flag_set = !!(reg & ANDROID_RECOVERY_BOOT);
-    printf("check_and_clean: reg %x, flag_set %d\n", reg, flag_set);
-	/* clean it in case looping infinite here.... */
-	if (flag_set) {
-		reg &= ~ANDROID_RECOVERY_BOOT;
-		writel(reg, SNVS_BASE_ADDR + SNVS_LPGPR);
-	}
-
-	return flag_set;
+	if (reg & (1 << ANDROID_NORMAL_BOOT))
+		return ANDROID_NORMAL_BOOT;
+	return 0;
 }
-#endif /*CONFIG_ANDROID_RECOVERY*/
 
-#define ANDROID_FASTBOOT_BOOT  (1 << 8)
-/* check if the recovery bit is set by kernel, it can be set by kernel
- * issue a command '# reboot fastboot' */
-int fastboot_check_and_clean_flag(void)
+void clear_boot_reason()
 {
-	int flag_set = 0;
 	u32 reg;
-
-	reg = readl(SNVS_BASE_ADDR + SNVS_LPGPR);
-
-	flag_set = !!(reg & ANDROID_FASTBOOT_BOOT);
-
-	/* clean it in case looping infinite here.... */
-	if (flag_set) {
-		reg &= ~ANDROID_FASTBOOT_BOOT;
-		writel(reg, SNVS_BASE_ADDR + SNVS_LPGPR);
-	}
-
-	return flag_set;
+	reg &= ~(1 << ANDROID_BOOT_REASON_OFFSET);
+	writel(reg, SNVS_BASE_ADDR + SNVS_LPGPR);
 }
-
-void fastboot_enable_flag(void)
-{
-	setbits_le32(SNVS_BASE_ADDR + SNVS_LPGPR,
-		ANDROID_FASTBOOT_BOOT);
-}
+#endif
 #endif /*CONFIG_FSL_FASTBOOT*/

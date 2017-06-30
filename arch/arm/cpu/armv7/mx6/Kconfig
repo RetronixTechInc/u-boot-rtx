@@ -28,8 +28,17 @@ config MX6SX
 config MX6UL
 	bool
 
+config MX6ULL
+	bool
+	select MX6UL
+
 choice
 	prompt "MX6 board select"
+
+config TARGET_MX6ULL_DDR3_ARM2
+	bool "Support mx6ull_ddr3_arm2"
+	select CPU_V7
+	select MX6ULL
 
 config TARGET_SECOMX6
 	bool "Support secomx6 boards"
@@ -41,5 +50,6 @@ config SYS_SOC
 	default "mx6"
 
 source "board/seco/Kconfig"
+source "board/freescale/mx6ull_ddr3_arm2/Kconfig"
 
 endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -97,7 +97,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define IOX_SDI IMX_GPIO_NR(5, 10)
 #define IOX_STCP IMX_GPIO_NR(5, 7)
 #define IOX_SHCP IMX_GPIO_NR(5, 11)
-#define IOX_OE IMX_GPIO_NR(5, 18)
+#define IOX_OE IMX_GPIO_NR(5, 8)
 
 static iomux_v3_cfg_t const iox_pads[] = {
 	/* IOX_SDI */
@@ -148,7 +148,7 @@ static enum qn_level seq[3][2] = {
 
 static enum qn_func qn_output[8] = {
 	qn_reset, qn_reset, qn_reset, qn_enable, qn_disable, qn_reset, qn_disable,
-	qn_enable
+	qn_disable
 };
 
 void iox74lv_init(void)
@@ -185,15 +185,11 @@ void iox74lv_init(void)
 	  * shift register will be output to pins
 	  */
 	gpio_direction_output(IOX_STCP, 1);
-
-	gpio_direction_output(IOX_OE, 1);
 };
 
 void iox74lv_set(int index)
 {
 	int i;
-
-	gpio_direction_output(IOX_OE, 0);
 
 	for (i = 7; i >= 0; i--) {
 		gpio_direction_output(IOX_SHCP, 0);
@@ -228,8 +224,6 @@ void iox74lv_set(int index)
 	  * shift register will be output to pins
 	  */
 	gpio_direction_output(IOX_STCP, 1);
-
-	gpio_direction_output(IOX_OE, 1);
 };
 
 
@@ -488,11 +482,17 @@ int mmc_get_env_devno(void)
 	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
 	dev_no = (soc_sbmr & 0x00001800) >> 11;
 
+	if (dev_no == 1 && mx6_esdhc_fused(USDHC1_BASE_ADDR))
+		dev_no = 0;
+
 	return dev_no;
 }
 
 int mmc_map_to_kernel_blk(int dev_no)
 {
+	if (dev_no == 0 && mx6_esdhc_fused(USDHC1_BASE_ADDR))
+		dev_no = 1;
+
 	return dev_no;
 }
 
@@ -553,8 +553,10 @@ int board_mmc_init(bd_t *bis)
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc2_emmc_pads, ARRAY_SIZE(usdhc2_emmc_pads));
 #else
+# ifndef CONFIG_SYS_USE_NAND
 			imx_iomux_v3_setup_multiple_pads(
 				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
+#endif
 #endif
 			gpio_direction_output(USDHC2_PWR_GPIO, 0);
 			udelay(500);
@@ -570,7 +572,6 @@ int board_mmc_init(bd_t *bis)
 			ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
 			if (ret) {
 				printf("Warning: failed to initialize mmc dev %d\n", i);
-				return ret;
 			}
 	}
 
@@ -750,10 +751,16 @@ static int setup_fec(int fec_id)
 	int ret;
 
 	if (0 == fec_id) {
+		if (check_module_fused(MX6_MODULE_ENET1))
+			return -1;
+
 		/* Use 50M anatop loopback REF_CLK1 for ENET1, clear gpr1[13], set gpr1[17]*/
 		clrsetbits_le32(&iomuxc_gpr_regs->gpr[1], IOMUX_GPR1_FEC1_MASK,
 				IOMUX_GPR1_FEC1_CLOCK_MUX1_SEL_MASK);
 	} else {
+		if (check_module_fused(MX6_MODULE_ENET2))
+			return -1;
+
 		/* Use 50M anatop loopback REF_CLK2 for ENET2, clear gpr1[14], set gpr1[18]*/
 		clrsetbits_le32(&iomuxc_gpr_regs->gpr[1], IOMUX_GPR1_FEC2_MASK,
 				IOMUX_GPR1_FEC2_CLOCK_MUX1_SEL_MASK);

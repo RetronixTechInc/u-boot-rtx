@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2011 Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  *
+ * Copyright (C) 2016 Freescale Semiconductor, Inc.
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -13,6 +15,18 @@
 
 static char andr_tmp_str[ANDR_BOOT_ARGS_SIZE + 1];
 
+#ifdef CONFIG_BRILLO_SUPPORT
+#include <linux/usb/ch9.h>
+#include <linux/usb/gadget.h>
+#include "../drivers/usb/gadget/bootctrl.h"
+#endif
+#ifdef CONFIG_RESET_CAUSE
+#include <asm/arch-imx/cpu.h>
+#include <recovery.h>
+#define POR_NUM1 0x1
+#define POR_NUM2 0x11
+#define ANDROID_NORMAL_BOOT     6
+#endif
 /**
  * android_image_get_kernel() - processes kernel part of Android boot images
  * @hdr:	Pointer to image header, which is at the start
@@ -36,6 +50,9 @@ int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 	 * sha1 (or anything) so we don't check it. It is not obvious that the
 	 * string is null terminated so we take care of this.
 	 */
+#ifdef CONFIG_RESET_CAUSE
+	u32 reset_cause_sw,reset_cause_hw;
+#endif
 	strncpy(andr_tmp_str, hdr->name, ANDR_BOOT_NAME_SIZE);
 	andr_tmp_str[ANDR_BOOT_NAME_SIZE] = '\0';
 	if (strlen(andr_tmp_str))
@@ -77,10 +94,32 @@ int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 					newbootargs,
 					serialnr.high,
 					serialnr.low);
+	newbootargs = commandline;
+#endif
+#ifdef CONFIG_RESET_CAUSE
+	reset_cause_sw = read_boot_reason();
+	clear_boot_reason();
+	reset_cause_hw = get_imx_reset_cause();
+	if (ANDROID_NORMAL_BOOT == reset_cause_sw)
+		sprintf(commandline,
+				"%s androidboot.bootreason=Reboot",
+				newbootargs);
+	else if (POR_NUM1==reset_cause_hw || POR_NUM2 == reset_cause_hw)
+		sprintf(commandline,
+				"%s androidboot.bootreason=normal",
+				newbootargs);
+	else
+		sprintf(commandline,
+				"%s androidboot.bootreason=unknown",
+				newbootargs);
 #endif
 
+#ifdef CONFIG_BRILLO_SUPPORT
+	char suffixStr[64];
+	sprintf(suffixStr, " androidboot.slot_suffix=%s", get_slot_suffix());
+	strcat(commandline, suffixStr);
+#endif
 	setenv("bootargs", commandline);
-
 	if (os_data) {
 		*os_data = (ulong)hdr;
 		*os_data += hdr->page_size;

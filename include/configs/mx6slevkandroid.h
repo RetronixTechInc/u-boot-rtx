@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2013-2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2013-2016 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -25,6 +25,8 @@
 #define CONFIG_G_DNL_MANUFACTURER	"FSL"
 
 #define CONFIG_CMD_FASTBOOT
+#define CONFIG_CMD_READ
+#define CONFIG_BCB_SUPPORT
 #define CONFIG_ANDROID_BOOT_IMAGE
 #define CONFIG_FASTBOOT_FLASH
 
@@ -39,10 +41,12 @@
 #define CONFIG_ANDROID_RECOVERY_PARTITION_MMC 2
 #define CONFIG_ANDROID_CACHE_PARTITION_MMC 6
 #define CONFIG_ANDROID_DATA_PARTITION_MMC 4
+#define CONFIG_ANDROID_MISC_PARTITION_MMC 8
 
 #define CONFIG_CMD_BOOTA
 #define CONFIG_SUPPORT_RAW_INITRD
 #define CONFIG_SERIAL_TAG
+#define CONFIG_RESET_CAUSE
 
 /*keyboard mapping*/
 #define CONFIG_VOL_DOWN_KEY     KEY_BACK
@@ -68,6 +72,9 @@
 	"initrd_high=0xffffffff\0" \
 
 #define CONFIG_USB_FASTBOOT_BUF_ADDR   CONFIG_SYS_LOAD_ADDR
+#ifdef CONFIG_FASTBOOT_STORAGE_NAND
+#define CONFIG_USB_FASTBOOT_BUF_SIZE   0x32000000
+#else
 #define CONFIG_USB_FASTBOOT_BUF_SIZE   0x19000000
-
+#endif
 #endif

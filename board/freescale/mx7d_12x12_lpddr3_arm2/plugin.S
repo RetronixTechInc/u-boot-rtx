@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -7,6 +7,28 @@
 #include <config.h>
 
 /* DDR script */
+.macro imx7d_ddrphy_latency_setting
+	ldr r2, =ANATOP_BASE_ADDR
+	ldr r3, [r2, #0x800]
+	and r3, r3, #0xFF
+	cmp r3, #0x11
+	bne TUNE_END
+
+	/*TO 1.1*/
+	ldr r1, =0x1c1c1c1c
+	str r1, [r0, #0x7c]
+	ldr r1, =0x1c1c1c1c
+	str r1, [r0, #0x80]
+	ldr r1, =0x30301c1c
+	str r1, [r0, #0x84]
+	ldr r1, =0x00000030
+	str r1, [r0, #0x88]
+	ldr r1, =0x30303030
+	str r1, [r0, #0x6c]
+
+TUNE_END:
+.endm
+
 .macro imx7d_12x12_lpddr3_arm2_setting
 
 	/* check whether it is a LPSR resume */
@@ -63,15 +85,12 @@
 
 	/* turn on ddr power */
 	ldr	r7, =(0x1 << 29)
-	str	r7, [r1, #0x380]
+	str	r7, [r1, #0x388]
 
 	ldr	r6, =50
 1:
 	subs	r6, r6, #0x1
 	bne	1b
-
-	ldr	r7, =0x0
-	str	r7, [r1, #0x380]
 
 	/* clear ddr_phy reset */
 	ldr	r6, =0x1000
@@ -132,7 +151,7 @@
 	str	r7, [r3, r6]
 
 	ldr	r6, =0x108
-	ldr	r7, =0x03060707
+	ldr	r7, =0x03060708
 	str	r7, [r3, r6]
 
 	ldr	r6, =0x10c
@@ -152,6 +171,10 @@
 	str	r7, [r3, r6]
 
 	ldr	r6, =0x11c
+	ldr	r7, =0x00000202
+	str	r7, [r3, r6]
+
+	ldr	r6, =0x120
 	ldr	r7, =0x00000202
 	str	r7, [r3, r6]
 
@@ -177,6 +200,10 @@
 
 	ldr	r6, =0x204
 	ldr	r7, =0x00171717
+	str	r7, [r3, r6]
+
+	ldr	r6, =0x210
+	ldr	r7, =0xF00
 	str	r7, [r3, r6]
 
 	ldr	r6, =0x214
@@ -206,14 +233,30 @@
 	bic	r7, r7, #0x2
 	str	r7, [r2, r6]
 
+	ldr	r7, [r1, #0x800]
+	and	r7, r7, #0xFF
+	cmp	r7, #0x11
+	bne	2f
+
+	/* for TO1.1 */
+	ldr	r7, [r11]
+	bic	r7, r7, #(1 << 27)
+	str	r7, [r11]
+	ldr	r7, [r11]
+	bic	r7, r7, #(1 << 29)
+	str	r7, [r11]
+2:
+	/* clear/set bit30 of SNVS_MISC_CTRL to ensure exit from ddr retention */
 	ldr	r7, =(0x1 << 30)
-	str	r7, [r1, #0x380]
+	str	r7, [r1, #0x388]
+	ldr	r7, =(0x1 << 30)
+	str	r7, [r1, #0x384]
 
 	/* need to delay ~5mS */
-	ldr	r6, =0x1000000
-2:
+	ldr	r6, =0x100000
+3:
 	subs	r6, r6, #0x1
-	bne	2b
+	bne	3b
 
 	/* restore DDR PHY */
 	ldr	r6, =0x0
@@ -232,6 +275,36 @@
 	ldr	r7, =0x0007080C
 	str	r7, [r4, r6]
 
+	ldr	r6, =0xb0
+	ldr	r7, =0x1010007e
+	str	r7, [r4, r6]
+
+	ldr     r7, [r1, #0x800]
+	and     r7, r7, #0xFF
+	cmp     r7, #0x11
+	bne     4f
+
+	ldr	r6, =0x7c
+	ldr	r7, =0x1c1c1c1c
+	str	r7, [r4, r6]
+
+	ldr	r6, =0x80
+	ldr	r7, =0x1c1c1c1c
+	str	r7, [r4, r6]
+
+	ldr	r6, =0x84
+	ldr	r7, =0x30301c1c
+	str	r7, [r4, r6]
+
+	ldr	r6, =0x88
+	ldr	r7, =0x00000030
+	str	r7, [r4, r6]
+
+	ldr	r6, =0x6c
+	ldr	r7, =0x30303030
+	str	r7, [r4, r6]
+
+4:
 	ldr	r6, =0x1c
 	ldr	r7, =0x01010000
 	str	r7, [r4, r6]
@@ -344,6 +417,12 @@
 	ldr r1, =0x4f400005
 	str r1, [r0, #0x4]
 
+	/* clear/set bit30 of SNVS_MISC_CTRL to ensure exit from ddr retention */
+	ldr r0, =ANATOP_BASE_ADDR
+	ldr r1, =(0x1 << 30)
+	str r1, [r0, #0x388]
+	str r1, [r0, #0x384]
+
 	ldr r0, =SRC_BASE_ADDR
 	ldr r1, =0x2
 	ldr r2, =0x1000
@@ -429,6 +508,7 @@
 	str r1, [r0, #0x8]
 	ldr r1, =0x0007080c
 	str r1, [r0, #0x10]
+	imx7d_ddrphy_latency_setting
 	ldr r1, =0x1010007e
 	str r1, [r0, #0xb0]
 	ldr r1, =0x01010000

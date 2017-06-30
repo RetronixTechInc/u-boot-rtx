@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2012-2016 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
  *
@@ -865,6 +865,16 @@ int overwrite_console(void)
 
 int board_eth_init(bd_t *bis)
 {
+	if (is_mx6dqp()) {
+		int ret;
+
+		/* select ENET MAC0 TX clock from PLL */
+		imx_iomux_set_gpr_register(5, 9, 1, 1);
+		ret = enable_fec_anatop_clock(0, ENET_125MHZ);
+		if (ret)
+		    printf("Error fec anatop clock settings!\n");
+	}
+
 	setup_iomux_enet();
 	setup_pcie();
 
@@ -972,7 +982,8 @@ int board_init(void)
 static struct pmic *pfuze;
 int power_init_board(void)
 {
-	unsigned int reg, ret;
+	unsigned int reg;
+	int ret;
 
 	pfuze = pfuze_common_init(I2C_PMIC);
 	if (!pfuze)
@@ -1168,7 +1179,7 @@ static const struct boot_mode board_boot_modes[] = {
 	{"sd2",	 MAKE_CFGVAL(0x40, 0x28, 0x00, 0x00)},
 	{"sd3",	 MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
 	/* 8 bit bus width */
-	{"emmc", MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},
+	{"emmc", MAKE_CFGVAL(0x60, 0x58, 0x00, 0x00)},
 	{NULL,	 0},
 };
 #endif
@@ -1245,8 +1256,9 @@ int check_recovery_cmd_file(void)
     int button_pressed = 0;
     int recovery_mode = 0;
 
-    recovery_mode = recovery_check_and_clean_flag();
-
+#ifdef CONFIG_BCB_SUPPORT
+    recovery_mode = recovery_check_and_clean_command();
+#endif
     /* Check Recovery Combo Button press or not. */
 	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
 			ARRAY_SIZE(recovery_key_pads));
