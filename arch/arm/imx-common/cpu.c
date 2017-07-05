@@ -16,10 +16,10 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/crm_regs.h>
+#include <imx_thermal.h>
 #include <ipu_pixfmt.h>
 #include <thermal.h>
 #include <sata.h>
-#include <mxsfb.h>
 
 #ifdef CONFIG_VIDEO_GIS
 #include <gis.h>
@@ -29,6 +29,7 @@
 #include <fsl_esdhc.h>
 #endif
 
+#if defined(CONFIG_DISPLAY_CPUINFO)
 static u32 reset_cause = -1;
 
 static char *get_reset_cause(void)
@@ -49,7 +50,7 @@ static char *get_reset_cause(void)
 	case 0x00008:
 		return "IPP USER";
 	case 0x00010:
-#ifdef CONFIG_MX7
+#ifdef	CONFIG_MX7
 		return "WDOG1";
 #else
 		return "WDOG";
@@ -58,14 +59,16 @@ static char *get_reset_cause(void)
 		return "JTAG HIGH-Z";
 	case 0x00040:
 		return "JTAG SW";
-#ifdef CONFIG_MX7
-	case 0x0080:
+	case 0x00080:
 		return "WDOG3";
-	case 0x0100:
+#ifdef CONFIG_MX7
+	case 0x00100:
 		return "WDOG4";
-	case 0x0200:
+	case 0x00200:
 		return "TEMPSENSE";
 #else
+	case 0x00100:
+		return "TEMPSENSE";
 	case 0x10000:
 		return "WARM BOOT";
 #endif
@@ -78,6 +81,7 @@ u32 get_imx_reset_cause(void)
 {
 	return reset_cause;
 }
+#endif
 
 #if defined(CONFIG_MX53) || defined(CONFIG_MX6)
 #if defined(CONFIG_MX53)
@@ -139,6 +143,10 @@ const char *get_imx_type(u32 imxtype)
 	switch (imxtype) {
 	case MXC_CPU_MX7D:
 		return "7D";	/* Dual-core version of the mx7 */
+	case MXC_CPU_MX6QP:
+		return "6QP";	/* Quad-Plus version of the mx6 */
+	case MXC_CPU_MX6DP:
+		return "6DP";	/* Dual-Plus version of the mx6 */
 	case MXC_CPU_MX6Q:
 		return "6Q";	/* Quad-core version of the mx6 */
 	case MXC_CPU_MX6D:
@@ -147,12 +155,14 @@ const char *get_imx_type(u32 imxtype)
 		return "6DL";	/* Dual Lite version of the mx6 */
 	case MXC_CPU_MX6SOLO:
 		return "6SOLO";	/* Solo version of the mx6 */
+	case MXC_CPU_MX6SLL:
+		return "6SLL";	/* Solo-Lite-Lite version of the mx6 */
 	case MXC_CPU_MX6SL:
 		return "6SL";	/* Solo-Lite version of the mx6 */
 	case MXC_CPU_MX6SX:
 		return "6SX";   /* SoloX version of the mx6 */
 	case MXC_CPU_MX6UL:
-		return "6UL";	/* UL version of the mx6 */
+		return "6UL";   /* Ultra-Lite version of the mx6 */
 	case MXC_CPU_MX6ULL:
 		return "6ULL";	/* ULL version of the mx6 */
 	case MXC_CPU_MX51:
@@ -167,47 +177,64 @@ const char *get_imx_type(u32 imxtype)
 int print_cpuinfo(void)
 {
 	u32 cpurev;
+	__maybe_unused u32 max_freq;
 #if defined(CONFIG_DBG_MONITOR)
 	struct dbg_monitor_regs *dbg =
 		(struct dbg_monitor_regs *)DEBUG_MONITOR_BASE_ADDR;
 #endif
 
-#if defined(CONFIG_IMX_THERMAL)
-	struct udevice *thermal_dev;
-	int cpu_tmp, ret;
-#endif
-
 	cpurev = get_cpu_rev();
 
-#if defined(CONFIG_MX6)
-	if (is_mx6dqp()) {
-		printf("CPU:   Freescale i.MX%sP rev%d.%d at %d MHz\n",
-			get_imx_type((cpurev & 0xFF000) >> 12),
-			((cpurev & 0x000F0) >> 4) - 1,
-			(cpurev & 0x0000F) >> 0,
-			mxc_get_clock(MXC_ARM_CLK) / 1000000);
+#if defined(CONFIG_IMX_THERMAL)
+	struct udevice *thermal_dev;
+	int cpu_tmp, minc, maxc, ret;
 
-	} else
-#endif
-	{
-		printf("CPU:   Freescale i.MX%s rev%d.%d at %d MHz\n",
-			get_imx_type((cpurev & 0xFF000) >> 12),
-			(cpurev & 0x000F0) >> 4,
-			(cpurev & 0x0000F) >> 0,
-			mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	printf("CPU:   Freescale i.MX%s rev%d.%d",
+	       get_imx_type((cpurev & 0xFF000) >> 12),
+	       (cpurev & 0x000F0) >> 4,
+	       (cpurev & 0x0000F) >> 0);
+	max_freq = get_cpu_speed_grade_hz();
+	if (!max_freq || max_freq == mxc_get_clock(MXC_ARM_CLK)) {
+		printf(" at %dMHz\n", mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	} else {
+		printf(" %d MHz (running at %d MHz)\n", max_freq / 1000000,
+		       mxc_get_clock(MXC_ARM_CLK) / 1000000);
 	}
+#else
+	printf("CPU:   Freescale i.MX%s rev%d.%d at %d MHz\n",
+		get_imx_type((cpurev & 0xFF000) >> 12),
+		(cpurev & 0x000F0) >> 4,
+		(cpurev & 0x0000F) >> 0,
+		mxc_get_clock(MXC_ARM_CLK) / 1000000);
+#endif
 
 #if defined(CONFIG_IMX_THERMAL)
+	puts("CPU:   ");
+	switch (get_cpu_temp_grade(&minc, &maxc)) {
+	case TEMP_AUTOMOTIVE:
+		puts("Automotive temperature grade ");
+		break;
+	case TEMP_INDUSTRIAL:
+		puts("Industrial temperature grade ");
+		break;
+	case TEMP_EXTCOMMERCIAL:
+		puts("Extended Commercial temperature grade ");
+		break;
+	default:
+		puts("Commercial temperature grade ");
+		break;
+	}
+	printf("(%dC to %dC)", minc, maxc);
 	ret = uclass_get_device(UCLASS_THERMAL, 0, &thermal_dev);
 	if (!ret) {
 		ret = thermal_get_temp(thermal_dev, &cpu_tmp);
 
 		if (!ret)
-			printf("CPU:   Temperature %d C\n", cpu_tmp);
+			printf(" at %dC\n", cpu_tmp);
 		else
-			printf("CPU:   Temperature: invalid sensor data\n");
+			debug(" - invalid sensor data\n");
 	} else {
-		printf("CPU:   Temperature: Can't find sensor device\n");
+		debug(" - invalid sensor device\n");
 	}
 #endif
 
@@ -279,7 +306,7 @@ void arch_preboot_os(void)
 	/* Entry for GIS */
 	mxc_disable_gis();
 #endif
-#ifdef CONFIG_VIDEO_MXS
+#if defined(CONFIG_VIDEO_MXS)
 	lcdif_power_down();
 #endif
 }

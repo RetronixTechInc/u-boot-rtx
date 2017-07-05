@@ -11,12 +11,10 @@
 #ifndef __T2080RDB_H
 #define __T2080RDB_H
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_T2080RDB
 #define CONFIG_ICS307_REFCLK_HZ 25000000  /* ICS307 ref clk freq */
 #define CONFIG_MMC
-#define CONFIG_SPI_FLASH
 #define CONFIG_USB_EHCI
 #define CONFIG_FSL_SATA_V2
 
@@ -139,6 +137,11 @@
 #define CONFIG_ECC_INIT_VIA_DDRCONTROLLER
 #define CONFIG_MEM_INIT_VALUE		0xdeadbeef
 #endif
+
+#define CONFIG_CMD_MEMTEST
+#define CONFIG_SYS_MEMTEST_START	0x00200000 /* memtest works on */
+#define CONFIG_SYS_MEMTEST_END		0x00400000
+#define CONFIG_SYS_ALT_MEMTEST
 
 #ifndef CONFIG_SYS_NO_FLASH
 #define CONFIG_FLASH_CFI_DRIVER
@@ -386,7 +389,7 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xfdd00000 /* Initial L1 address */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH	0xf
-#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe0ec000
+#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe03c000
 /* The assembler doesn't like typecast */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS \
 			((CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH * 1ull << 32) | \
@@ -402,7 +405,6 @@ unsigned long get_board_ddr_clk(void);
  * Serial Port
  */
 #define CONFIG_CONS_INDEX		1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(get_bus_freq(0)/2)
@@ -448,6 +450,17 @@ unsigned long get_board_ddr_clk(void);
 #define I2C_MUX_PCA_ADDR_SEC2	0x76 /* I2C bus multiplexer,secondary 2 */
 #define I2C_MUX_CH_DEFAULT	0x8
 
+#define I2C_MUX_CH_VOL_MONITOR	0xa
+
+#define CONFIG_VID_FLS_ENV		"t208xrdb_vdd_mv"
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_VID
+#endif
+#define CONFIG_VOL_MONITOR_IR36021_SET
+#define CONFIG_VOL_MONITOR_IR36021_READ
+/* The lowest and highest voltage allowed for T208xRDB */
+#define VDD_MV_MIN			819
+#define VDD_MV_MAX			1212
 
 /*
  * RapidIO
@@ -491,8 +504,6 @@ unsigned long get_board_ddr_clk(void);
  * eSPI - Enhanced SPI
  */
 #ifdef CONFIG_SPI_FLASH
-#define CONFIG_FSL_ESPI
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_SPI_FLASH_BAR
 #define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED	 10000000
@@ -552,8 +563,6 @@ unsigned long get_board_ddr_clk(void);
 #ifdef CONFIG_PCI
 #define CONFIG_PCI_INDIRECT_BRIDGE
 #define CONFIG_FSL_PCIE_RESET           /* need PCIe reset errata LSZ ADD */
-#define CONFIG_NET_MULTI
-#define CONFIG_E1000
 #define CONFIG_PCI_PNP		/* do pci plug-and-play */
 #define CONFIG_PCI_SCAN_SHOW	/* show pci devices on startup */
 #define CONFIG_DOS_PARTITION
@@ -646,8 +655,8 @@ unsigned long get_board_ddr_clk(void);
 #ifdef CONFIG_SYS_DPAA_FMAN
 #define CONFIG_FMAN_ENET
 #define CONFIG_PHYLIB_10G
+#define CONFIG_PHY_AQUANTIA
 #define CONFIG_PHY_CORTINA
-#define CONFIG_PHY_AQ1202
 #define CONFIG_PHY_REALTEK
 #define CONFIG_CORTINA_FW_LENGTH	0x40000
 #define RGMII_PHY1_ADDR		0x01  /* RealTek RTL8211E */
@@ -734,22 +743,15 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_ERRATA
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_PING
-#define CONFIG_CMD_ECHO
-#define CONFIG_CMD_SETEXPR
 #define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_BDI
 
 #ifdef CONFIG_PCI
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_NET
 #endif
 
 /* Hash command with SHA acceleration supported in hardware */
@@ -887,10 +889,6 @@ unsigned long get_board_ddr_clk(void);
 
 #define CONFIG_BOOTCOMMAND		CONFIG_LINUX
 
-#ifdef CONFIG_SECURE_BOOT
 #include <asm/fsl_secure_boot.h>
-#define CONFIG_CMD_BLOB
-#undef CONFIG_CMD_USB
-#endif
 
 #endif	/* __T2080RDB_H */

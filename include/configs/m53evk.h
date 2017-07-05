@@ -9,7 +9,6 @@
 #define __M53EVK_CONFIG_H__
 
 #define CONFIG_MX53
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_MXC_GPIO
 
 #include <asm/arch/imx-regs.h>
@@ -18,6 +17,7 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_REVISION_TAG
 #define CONFIG_SYS_NO_FLASH
+#define CONFIG_SYS_FSL_CLK
 
 #define CONFIG_FIT
 
@@ -26,7 +26,6 @@
 /*
  * U-Boot Commands
  */
-#include <config_cmd_default.h>
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_DOS_PARTITION
 #define CONFIG_FAT_WRITE
@@ -44,14 +43,11 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_MMC
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SATA
-#define CONFIG_CMD_SETEXPR
 #define CONFIG_CMD_USB
 #define CONFIG_VIDEO
 
-#define CONFIG_REGEX			/* Enable regular expression support */
 
 /*
  * Memory configurations
@@ -176,6 +172,9 @@
 #ifdef CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_RTC_BUS_NUM		1 /* I2C2 */
 #endif
 

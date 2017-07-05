@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2013 - 2016 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
  *
@@ -7,10 +7,10 @@
  */
 
 #include <asm/arch/clock.h>
-#include <asm/arch/crm_regs.h>
 #include <asm/arch/iomux.h>
-#include <asm/arch/imx-regs.h>
 #include <asm/arch/crm_regs.h>
+#include <asm/arch/imx-regs.h>
+#include <asm/arch/mx6-ddr.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
@@ -74,7 +74,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define EPDC_PAD_CTRL    (PAD_CTL_PKE | PAD_CTL_SPEED_MED |	\
 	PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
 
-#define ETH_PHY_RESET	IMX_GPIO_NR(4, 21)
+#define ETH_PHY_POWER	IMX_GPIO_NR(4, 21)
 
 int dram_init(void)
 {
@@ -223,10 +223,9 @@ static void setup_iomux_fec(void)
 {
 	imx_iomux_v3_setup_multiple_pads(fec_pads, ARRAY_SIZE(fec_pads));
 
-	/* Reset LAN8720 PHY */
-	gpio_direction_output(ETH_PHY_RESET , 0);
-	udelay(1000);
-	gpio_set_value(ETH_PHY_RESET, 1);
+	/* Power up LAN8720 PHY */
+	gpio_direction_output(ETH_PHY_POWER , 1);
+	udelay(15000);
 }
 
 #define USDHC1_CD_GPIO	IMX_GPIO_NR(4, 7)
@@ -239,29 +238,10 @@ static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC3_BASE_ADDR, 0, 4},
 };
 
-int mmc_get_env_devno(void)
+int board_mmc_get_env_dev(int devno)
 {
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	return dev_no;
+	return devno;
 }
-
-int mmc_map_to_kernel_blk(int dev_no)
-{
-	return dev_no;
-}
-
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -285,11 +265,12 @@ int board_mmc_getcd(struct mmc *mmc)
 
 int board_mmc_init(bd_t *bis)
 {
+#ifndef CONFIG_SPL_BUILD
 	int i, ret;
 
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    USDHC1
 	 * mmc1                    USDHC2
 	 * mmc2                    USDHC3
@@ -329,38 +310,44 @@ int board_mmc_init(bd_t *bis)
 	}
 
 	return 0;
-}
+#else
+	struct src *src_regs = (struct src *)SRC_BASE_ADDR;
+	u32 val;
+	u32 port;
 
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
+	val = readl(&src_regs->sbmr1);
 
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
+	/* Boot from USDHC */
+	port = (val >> 11) & 0x3;
+	switch (port) {
+	case 0:
+		imx_iomux_v3_setup_multiple_pads(usdhc1_pads,
+						 ARRAY_SIZE(usdhc1_pads));
+		gpio_direction_input(USDHC1_CD_GPIO);
+		usdhc_cfg[0].esdhc_base = USDHC1_BASE_ADDR;
+		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
+		break;
+	case 1:
+		imx_iomux_v3_setup_multiple_pads(usdhc2_pads,
+						 ARRAY_SIZE(usdhc2_pads));
+		gpio_direction_input(USDHC2_CD_GPIO);
+		usdhc_cfg[0].esdhc_base = USDHC2_BASE_ADDR;
+		usdhc_cfg[0].max_bus_width = 4;
+		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
+		break;
+	case 2:
+		imx_iomux_v3_setup_multiple_pads(usdhc3_pads,
+						 ARRAY_SIZE(usdhc3_pads));
+		gpio_direction_input(USDHC3_CD_GPIO);
+		usdhc_cfg[0].esdhc_base = USDHC3_BASE_ADDR;
+		usdhc_cfg[0].max_bus_width = 4;
+		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
+		break;
 	}
 
-	return 0;
-}
-
-void board_late_mmc_env_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
+	gd->arch.sdhc_clk = usdhc_cfg[0].sdhc_clk;
+	return fsl_esdhc_initialize(bis, &usdhc_cfg[0]);
+#endif
 }
 
 #ifdef CONFIG_SYS_I2C_MXC
@@ -379,9 +366,9 @@ struct i2c_pads_info i2c_pad_info1 = {
 	},
 };
 
-static struct pmic *pfuze;
 int power_init_board(void)
 {
+	struct pmic *pfuze;
 	unsigned int reg;
 	int ret;
 
@@ -425,7 +412,7 @@ void ldo_mode_set(int ldo_bypass)
 {
 	u32 value;
 	int is_400M;
-	struct pmic *p = pfuze;
+	struct pmic *p = pmic_get("PFUZE100");
 
 	if (!p) {
 		printf("No pmic!\n");
@@ -473,6 +460,7 @@ void ldo_mode_set(int ldo_bypass)
 	}
 }
 #endif
+
 #endif
 
 #ifdef CONFIG_FEC_MXC
@@ -551,6 +539,7 @@ vidinfo_t panel_info = {
 	.vl_refresh = 85,
 	.vl_col = 800,
 	.vl_row = 600,
+	.vl_rot = 0,
 	.vl_pixclock = 26666667,
 	.vl_left_margin = 8,
 	.vl_right_margin = 100,
@@ -802,11 +791,6 @@ int board_late_init(void)
 	return 0;
 }
 
-u32 get_board_rev(void)
-{
-	return get_cpu_rev();
-}
-
 int checkboard(void)
 {
 	puts("Board: MX6SLEVK\n");
@@ -839,7 +823,6 @@ int setup_mxc_kpd(void)
 #endif /*CONFIG_MXC_KPD*/
 
 #ifdef CONFIG_FSL_FASTBOOT
-
 void board_fastboot_setup(void)
 {
 	switch (get_boot_device()) {
@@ -876,11 +859,7 @@ void board_fastboot_setup(void)
 #ifdef CONFIG_ANDROID_RECOVERY
 int check_recovery_cmd_file(void)
 {
-#ifdef CONFIG_BCB_SUPPORT
-	return recovery_check_and_clean_command();
-#else
-	return 0;
-#endif
+    return recovery_check_and_clean_flag();
 }
 
 void board_recovery_setup(void)
@@ -922,3 +901,123 @@ void board_recovery_setup(void)
 #endif /*CONFIG_ANDROID_RECOVERY*/
 
 #endif /*CONFIG_FSL_FASTBOOT*/
+
+
+#ifdef CONFIG_SPL_BUILD
+#include <spl.h>
+#include <libfdt.h>
+
+const struct mx6sl_iomux_ddr_regs mx6_ddr_ioregs = {
+	.dram_sdqs0 = 0x00003030,
+	.dram_sdqs1 = 0x00003030,
+	.dram_sdqs2 = 0x00003030,
+	.dram_sdqs3 = 0x00003030,
+	.dram_dqm0 = 0x00000030,
+	.dram_dqm1 = 0x00000030,
+	.dram_dqm2 = 0x00000030,
+	.dram_dqm3 = 0x00000030,
+	.dram_cas  = 0x00000030,
+	.dram_ras  = 0x00000030,
+	.dram_sdclk_0 = 0x00000028,
+	.dram_reset = 0x00000030,
+	.dram_sdba2 = 0x00000000,
+	.dram_odt0 = 0x00000008,
+	.dram_odt1 = 0x00000008,
+};
+
+const struct mx6sl_iomux_grp_regs mx6_grp_ioregs = {
+	.grp_b0ds = 0x00000030,
+	.grp_b1ds = 0x00000030,
+	.grp_b2ds = 0x00000030,
+	.grp_b3ds = 0x00000030,
+	.grp_addds = 0x00000030,
+	.grp_ctlds = 0x00000030,
+	.grp_ddrmode_ctl = 0x00020000,
+	.grp_ddrpke = 0x00000000,
+	.grp_ddrmode = 0x00020000,
+	.grp_ddr_type = 0x00080000,
+};
+
+const struct mx6_mmdc_calibration mx6_mmcd_calib = {
+	.p0_mpdgctrl0 =  0x20000000,
+	.p0_mpdgctrl1 =  0x00000000,
+	.p0_mprddlctl =  0x4241444a,
+	.p0_mpwrdlctl =  0x3030312b,
+	.mpzqlp2ctl = 0x1b4700c7,
+};
+
+static struct mx6_lpddr2_cfg mem_ddr = {
+	.mem_speed = 800,
+	.density = 4,
+	.width = 32,
+	.banks = 8,
+	.rowaddr = 14,
+	.coladdr = 10,
+	.trcd_lp = 2000,
+	.trppb_lp = 2000,
+	.trpab_lp = 2250,
+	.trasmin = 4200,
+};
+
+static void ccgr_init(void)
+{
+	struct mxc_ccm_reg *ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
+
+	writel(0xFFFFFFFF, &ccm->CCGR0);
+	writel(0xFFFFFFFF, &ccm->CCGR1);
+	writel(0xFFFFFFFF, &ccm->CCGR2);
+	writel(0xFFFFFFFF, &ccm->CCGR3);
+	writel(0xFFFFFFFF, &ccm->CCGR4);
+	writel(0xFFFFFFFF, &ccm->CCGR5);
+	writel(0xFFFFFFFF, &ccm->CCGR6);
+
+	writel(0x00260324, &ccm->cbcmr);
+}
+
+static void spl_dram_init(void)
+{
+	struct mx6_ddr_sysinfo sysinfo = {
+		.dsize = mem_ddr.width / 32,
+		.cs_density = 20,
+		.ncs = 2,
+		.cs1_mirror = 0,
+		.walat = 0,
+		.ralat = 2,
+		.mif3_mode = 3,
+		.bi_on = 1,
+		.rtt_wr = 0,        /* LPDDR2 does not need rtt_wr rtt_nom */
+		.rtt_nom = 0,
+		.sde_to_rst = 0,    /* LPDDR2 does not need this field */
+		.rst_to_cke = 0x10, /* JEDEC value for LPDDR2: 200us */
+		.ddr_type = DDR_TYPE_LPDDR2,
+	};
+	mx6sl_dram_iocfg(32, &mx6_ddr_ioregs, &mx6_grp_ioregs);
+	mx6_dram_cfg(&sysinfo, &mx6_mmcd_calib, &mem_ddr);
+}
+
+void board_init_f(ulong dummy)
+{
+	/* setup AIPS and disable watchdog */
+	arch_cpu_init();
+
+	ccgr_init();
+
+	/* iomux and setup of i2c */
+	board_early_init_f();
+
+	/* setup GP timer */
+	timer_init();
+
+	/* UART clocks enabled and gd valid - init serial console */
+	preloader_console_init();
+
+	/* DDR initialization */
+	spl_dram_init();
+
+	/* Clear the BSS. */
+	memset(__bss_start, 0, __bss_end - __bss_start);
+
+	/* load/boot image from boot device */
+	board_init_r(NULL, 0);
+}
+#endif

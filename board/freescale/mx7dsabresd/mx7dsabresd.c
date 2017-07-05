@@ -19,22 +19,18 @@
 #include <miiphy.h>
 #include <netdev.h>
 #include <power/pmic.h>
-#include <power/pfuze300_pmic.h>
+#include <power/pfuze3000_pmic.h>
 #include "../common/pfuze.h"
-#ifdef CONFIG_SYS_I2C_MXC
 #include <i2c.h>
 #include <asm/imx-common/mxc_i2c.h>
-#endif
+#include <asm/arch/crm_regs.h>
+#include <usb.h>
+#include <usb/ehci-fsl.h>
 #if defined(CONFIG_MXC_EPDC)
 #include <lcd.h>
 #include <mxc_epdc_fb.h>
 #endif
-#include <asm/arch/crm_regs.h>
-
-#ifdef CONFIG_VIDEO_MXS
-#include <linux/fb.h>
-#include <mxsfb.h>
-#endif
+#include <asm/imx-common/video.h>
 
 #ifdef CONFIG_FSL_FASTBOOT
 #include <fsl_fastboot.h>
@@ -42,7 +38,6 @@
 #include <recovery.h>
 #endif
 #endif /*CONFIG_FSL_FASTBOOT*/
-
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -79,7 +74,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #ifdef CONFIG_SYS_I2C_MXC
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
 /* I2C1 for PMIC */
-struct i2c_pads_info i2c_pad_info1 = {
+static struct i2c_pads_info i2c_pad_info1 = {
 	.scl = {
 		.i2c_mode = MX7D_PAD_I2C1_SCL__I2C1_SCL | PC,
 		.gpio_mode = MX7D_PAD_I2C1_SCL__GPIO4_IO8 | PC,
@@ -93,7 +88,7 @@ struct i2c_pads_info i2c_pad_info1 = {
 };
 
 /* I2C3 */
-struct i2c_pads_info i2c_pad_info3 = {
+static struct i2c_pads_info i2c_pad_info3 = {
 	.scl = {
 		.i2c_mode = MX7D_PAD_I2C3_SCL__I2C3_SCL | PC,
 		.gpio_mode = MX7D_PAD_I2C3_SCL__GPIO4_IO12 | PC,
@@ -205,7 +200,7 @@ static enum qn_func qn_output[8] = {
 	qn_disable
 };
 
-void iox74lv_init(void)
+static void iox74lv_init(void)
 {
 	int i;
 
@@ -308,9 +303,9 @@ static int mx7sabre_rev(void)
 		}
 	} else {
 		/* If the gp1 fuse is not burn, we have to use TO rev for the board rev */
-		if (0 == is_soc_rev(CHIP_REV_1_0))
+		if (is_soc_rev(CHIP_REV_1_0))
 			ret = BOARD_REV_A;
-		else if (0 == is_soc_rev(CHIP_REV_1_1))
+		else if (is_soc_rev(CHIP_REV_1_1))
 			ret = BOARD_REV_B;
 		else
 			ret = BOARD_REV_C;
@@ -326,8 +321,7 @@ u32 get_board_rev(void)
 	return (get_cpu_rev() & ~(0xF << 8)) | rev;
 }
 
-
-#ifdef CONFIG_SYS_USE_NAND
+#ifdef CONFIG_NAND_MXS
 static iomux_v3_cfg_t const gpmi_pads[] = {
 	MX7D_PAD_SD3_DATA0__NAND_DATA00 | MUX_PAD_CTRL(NAND_PAD_CTRL),
 	MX7D_PAD_SD3_DATA1__NAND_DATA01 | MUX_PAD_CTRL(NAND_PAD_CTRL),
@@ -354,17 +348,8 @@ static void setup_gpmi_nand(void)
 {
 	imx_iomux_v3_setup_multiple_pads(gpmi_pads, ARRAY_SIZE(gpmi_pads));
 
-	/*
-	 * NAND_USDHC_BUS_CLK is set in rom
-	 */
-
+	/* NAND_USDHC_BUS_CLK is set in rom */
 	set_clk_nand();
-
-	/*
-	 * APBH clock root is set in init_esdhc, USDHC3_CLK.
-	 * There is no clk gate for APBHDMA.
-	 * No touch here.
-	 */
 }
 #endif
 
@@ -407,14 +392,7 @@ static iomux_v3_cfg_t const pwm_pads[] = {
 	MX7D_PAD_GPIO1_IO01__GPIO1_IO1 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 
-struct lcd_panel_info_t {
-	unsigned int lcdif_base_addr;
-	int depth;
-	void	(*enable)(struct lcd_panel_info_t const *dev);
-	struct fb_videomode mode;
-};
-
-void do_enable_parallel_lcd(struct lcd_panel_info_t const *dev)
+void do_enable_parallel_lcd(struct display_info_t const *dev)
 {
 	imx_iomux_v3_setup_multiple_pads(lcd_pads, ARRAY_SIZE(lcd_pads));
 
@@ -429,9 +407,11 @@ void do_enable_parallel_lcd(struct lcd_panel_info_t const *dev)
 	gpio_direction_output(IMX_GPIO_NR(1, 1) , 1);
 }
 
-static struct lcd_panel_info_t const displays[] = {{
-	.lcdif_base_addr = ELCDIF1_IPS_BASE_ADDR,
-	.depth = 24,
+struct display_info_t const displays[] = {{
+	.bus = ELCDIF1_IPS_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 24,
+	.detect = NULL,
 	.enable	= do_enable_parallel_lcd,
 	.mode	= {
 		.name			= "TFT43AB",
@@ -447,70 +427,13 @@ static struct lcd_panel_info_t const displays[] = {{
 		.sync           = 0,
 		.vmode          = FB_VMODE_NONINTERLACED
 } } };
-
-int board_video_skip(void)
-{
-	int i;
-	int ret;
-	char const *panel = getenv("panel");
-	if (!panel) {
-		panel = displays[0].mode.name;
-		printf("No panel detected: default to %s\n", panel);
-		i = 0;
-	} else {
-		for (i = 0; i < ARRAY_SIZE(displays); i++) {
-			if (!strcmp(panel, displays[i].mode.name))
-				break;
-		}
-	}
-	if (i < ARRAY_SIZE(displays)) {
-		ret = mxs_lcd_panel_setup(displays[i].mode, displays[i].depth,
-				    displays[i].lcdif_base_addr);
-		if (!ret) {
-			if (displays[i].enable)
-				displays[i].enable(displays+i);
-			printf("Display: %s (%ux%u)\n",
-			       displays[i].mode.name,
-			       displays[i].mode.xres,
-			       displays[i].mode.yres);
-		} else
-			printf("LCD %s cannot be configured: %d\n",
-			       displays[i].mode.name, ret);
-	} else {
-		printf("unsupported panel %s\n", panel);
-		return -EINVAL;
-	}
-
-	return 0;
-}
+size_t display_count = ARRAY_SIZE(displays);
 #endif
 
 static void setup_iomux_uart(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
 }
-
-#ifdef CONFIG_FSL_QSPI
-static iomux_v3_cfg_t const quadspi_pads[] = {
-	MX7D_PAD_EPDC_DATA00__QSPI_A_DATA0 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
-	MX7D_PAD_EPDC_DATA01__QSPI_A_DATA1 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
-	MX7D_PAD_EPDC_DATA02__QSPI_A_DATA2 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
-	MX7D_PAD_EPDC_DATA03__QSPI_A_DATA3 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
-	MX7D_PAD_EPDC_DATA05__QSPI_A_SCLK  | MUX_PAD_CTRL(QSPI_PAD_CTRL),
-	MX7D_PAD_EPDC_DATA06__QSPI_A_SS0_B | MUX_PAD_CTRL(QSPI_PAD_CTRL),
-};
-
-int board_qspi_init(void)
-{
-	/* Set the iomux */
-	imx_iomux_v3_setup_multiple_pads(quadspi_pads, ARRAY_SIZE(quadspi_pads));
-
-	/* Set the clock */
-	set_clk_qspi();
-
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_FSL_ESDHC
 
@@ -523,27 +446,17 @@ static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC3_BASE_ADDR},
 };
 
-int mmc_get_env_devno(void)
+int board_mmc_get_env_dev(int devno)
 {
-	struct bootrom_sw_info **p =
-		(struct bootrom_sw_info **)ROM_SW_INFO_ADDR;
+	if (devno == 2)
+		devno--;
 
-	u8 boot_type = (*p)->boot_dev_type;
-	u8 dev_no = (*p)->boot_dev_instance;
-
-	/* If not boot from sd/mmc, use default value */
-	if ((boot_type != BOOT_TYPE_SD) && (boot_type != BOOT_TYPE_MMC))
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	if (2 == dev_no)
-		dev_no--;
-
-	return dev_no;
+	return devno;
 }
 
 int mmc_map_to_kernel_blk(int dev_no)
 {
-	if (1 == dev_no)
+	if (dev_no == 1)
 		dev_no++;
 
 	return dev_no;
@@ -571,7 +484,7 @@ int board_mmc_init(bd_t *bis)
 	int i, ret;
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    USDHC1
 	 * mmc2                    USDHC3 (eMMC)
 	 */
@@ -600,7 +513,7 @@ int board_mmc_init(bd_t *bis)
 		default:
 			printf("Warning: you configured more USDHC controllers"
 				"(%d) than supported by the board\n", i + 1);
-			return 0;
+			return -EINVAL;
 			}
 
 			ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
@@ -610,45 +523,11 @@ int board_mmc_init(bd_t *bis)
 
 	return 0;
 }
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
-
 #endif
 
 iomux_v3_cfg_t const fec2_en_pads[] = {
 	MX7D_PAD_GPIO1_IO04__GPIO1_IO4 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
-
 #ifdef CONFIG_FEC_MXC
 static iomux_v3_cfg_t const fec1_pads[] = {
 	MX7D_PAD_ENET1_RGMII_RX_CTL__ENET1_RGMII_RX_CTL | MUX_PAD_CTRL(ENET_RX_PAD_CTRL),
@@ -690,10 +569,10 @@ static void setup_iomux_fec(void)
 		imx_iomux_v3_setup_multiple_pads(fec1_pads, ARRAY_SIZE(fec1_pads));
 	} else {
 		if (mx7sabre_rev() >= BOARD_REV_B) {
-			/*  On RevB, GPIO1_IO04 is used for ENET2 EN, 
-			*  so set its output to low to enable ENET2 signals 
+			/*  On RevB, GPIO1_IO04 is used for ENET2 EN,
+			*  so set its output to low to enable ENET2 signals
 			*/
-			imx_iomux_v3_setup_multiple_pads(fec2_en_pads, 
+			imx_iomux_v3_setup_multiple_pads(fec2_en_pads,
 				ARRAY_SIZE(fec2_en_pads));
 			gpio_direction_output(IMX_GPIO_NR(1, 4), 0);
 		}
@@ -719,7 +598,6 @@ static int setup_fec(int fec_id)
 {
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
 		= (struct iomuxc_gpr_base_regs *) IOMUXC_GPR_BASE_ADDR;
-	int ret;
 
 	if (0 == fec_id) {
 		/* Use 125M anatop REF_CLK1 for ENET1, clear gpr1[13], gpr1[17]*/
@@ -733,11 +611,8 @@ static int setup_fec(int fec_id)
 			 IOMUXC_GPR_GPR1_GPR_ENET2_CLK_DIR_MASK), 0);
 	}
 
-	ret = set_clk_enet(ENET_125MHz);
-	if (ret)
-		return ret;
+	return set_clk_enet(ENET_125MHz);
 
-	return 0;
 }
 
 
@@ -751,6 +626,29 @@ int board_phy_config(struct phy_device *phydev)
 
 	if (phydev->drv->config)
 		phydev->drv->config(phydev);
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_FSL_QSPI
+static iomux_v3_cfg_t const quadspi_pads[] = {
+	MX7D_PAD_EPDC_DATA00__QSPI_A_DATA0 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
+	MX7D_PAD_EPDC_DATA01__QSPI_A_DATA1 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
+	MX7D_PAD_EPDC_DATA02__QSPI_A_DATA2 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
+	MX7D_PAD_EPDC_DATA03__QSPI_A_DATA3 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
+	MX7D_PAD_EPDC_DATA05__QSPI_A_SCLK  | MUX_PAD_CTRL(QSPI_PAD_CTRL),
+	MX7D_PAD_EPDC_DATA06__QSPI_A_SS0_B | MUX_PAD_CTRL(QSPI_PAD_CTRL),
+};
+
+int board_qspi_init(void)
+{
+	/* Set the iomux */
+	imx_iomux_v3_setup_multiple_pads(quadspi_pads,
+					 ARRAY_SIZE(quadspi_pads));
+
+	/* Set the clock */
+	set_clk_qspi();
+
 	return 0;
 }
 #endif
@@ -962,6 +860,42 @@ void epdc_power_off(void)
 }
 #endif
 
+#ifdef CONFIG_USB_EHCI_MX7
+static iomux_v3_cfg_t const usb_otg1_pads[] = {
+	MX7D_PAD_GPIO1_IO05__USB_OTG1_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+static iomux_v3_cfg_t const usb_otg2_pads[] = {
+	MX7D_PAD_UART3_CTS_B__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+/* On RevB board, the GPIO_IO07 is muxed for OTG2 PWR */
+iomux_v3_cfg_t const usb_otg2_revB_pads[] = {
+	MX7D_PAD_GPIO1_IO07__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+static void setup_usb(void)
+{
+	imx_iomux_v3_setup_multiple_pads(usb_otg1_pads,
+						 ARRAY_SIZE(usb_otg1_pads));
+
+	if (mx7sabre_rev() >= BOARD_REV_B)
+		imx_iomux_v3_setup_multiple_pads(usb_otg2_revB_pads,
+						 ARRAY_SIZE(usb_otg2_revB_pads));
+	else
+		imx_iomux_v3_setup_multiple_pads(usb_otg2_pads,
+						 ARRAY_SIZE(usb_otg2_pads));
+}
+
+int board_usb_phy_mode(int port)
+{
+	if (port == 0)
+		return usb_phy_mode(port);
+	else
+		return USB_INIT_HOST;
+}
+#endif
+
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
@@ -969,6 +903,10 @@ int board_early_init_f(void)
 #ifdef CONFIG_SYS_I2C_MXC
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
 	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info3);
+#endif
+
+#ifdef CONFIG_USB_EHCI_MX7
+	setup_usb();
 #endif
 
 	return 0;
@@ -987,7 +925,7 @@ int board_init(void)
 	setup_fec(CONFIG_FEC_ENET_DEV);
 #endif
 
-#ifdef CONFIG_SYS_USE_NAND
+#ifdef CONFIG_NAND_MXS
 	setup_gpmi_nand();
 #endif
 
@@ -995,12 +933,12 @@ int board_init(void)
 	board_qspi_init();
 #endif
 
-#ifdef	CONFIG_MXC_EPDC
+#ifdef CONFIG_MXC_EPDC
 	if (mx7sabre_rev() >= BOARD_REV_B) {
-		/*  On RevB, GPIO1_IO04 is used for ENET2 EN, 
-		*  so set its output to high to isolate the ENET2 signals for EPDC 
+		/*  On RevB, GPIO1_IO04 is used for ENET2 EN,
+		*  so set its output to high to isolate the ENET2 signals for EPDC
 		*/
-		imx_iomux_v3_setup_multiple_pads(fec2_en_pads, 
+		imx_iomux_v3_setup_multiple_pads(fec2_en_pads,
 			ARRAY_SIZE(fec2_en_pads));
 		gpio_direction_output(IMX_GPIO_NR(1, 4), 1);
 	} else {
@@ -1032,39 +970,39 @@ int power_init_board(void)
 	int ret;
 	unsigned int reg, rev_id;
 
-	ret = power_pfuze300_init(I2C_PMIC);
+	ret = power_pfuze3000_init(I2C_PMIC);
 	if (ret)
 		return ret;
 
-	p = pmic_get("PFUZE300");
+	p = pmic_get("PFUZE3000");
 	ret = pmic_probe(p);
 	if (ret)
 		return ret;
 
-	pmic_reg_read(p, PFUZE300_DEVICEID, &reg);
-	pmic_reg_read(p, PFUZE300_REVID, &rev_id);
-	printf("PMIC: PFUZE300 DEV_ID=0x%x REV_ID=0x%x\n", reg, rev_id);
+	pmic_reg_read(p, PFUZE3000_DEVICEID, &reg);
+	pmic_reg_read(p, PFUZE3000_REVID, &rev_id);
+	printf("PMIC: PFUZE3000 DEV_ID=0x%x REV_ID=0x%x\n", reg, rev_id);
 
 	/* disable Low Power Mode during standby mode */
-	pmic_reg_read(p, PFUZE300_LDOGCTL, &reg);
+	pmic_reg_read(p, PFUZE3000_LDOGCTL, &reg);
 	reg |= 0x1;
-	pmic_reg_write(p, PFUZE300_LDOGCTL, reg);
+	pmic_reg_write(p, PFUZE3000_LDOGCTL, reg);
 
 	/* SW1A/1B mode set to APS/APS */
 	reg = 0x8;
-	pmic_reg_write(p, PFUZE300_SW1AMODE, reg);
-	pmic_reg_write(p, PFUZE300_SW1BMODE, reg);
+	pmic_reg_write(p, PFUZE3000_SW1AMODE, reg);
+	pmic_reg_write(p, PFUZE3000_SW1BMODE, reg);
 
 	/* SW1A/1B standby voltage set to 0.975V */
 	reg = 0xb;
-	pmic_reg_write(p, PFUZE300_SW1ASTBY, reg);
-	pmic_reg_write(p, PFUZE300_SW1BSTBY, reg);
+	pmic_reg_write(p, PFUZE3000_SW1ASTBY, reg);
+	pmic_reg_write(p, PFUZE3000_SW1BSTBY, reg);
 
-	/* set SW1B normal voltage to 0.975V */
-	pmic_reg_read(p, PFUZE300_SW1BVOLT, &reg);
+	/* decrease SW1B normal voltage to 0.975V */
+	pmic_reg_read(p, PFUZE3000_SW1BVOLT, &reg);
 	reg &= ~0x1f;
-	reg |= PFUZE300_SW1AB_SETP(975);
-	pmic_reg_write(p, PFUZE300_SW1BVOLT, reg);
+	reg |= PFUZE3000_SW1AB_SETP(975);
+	pmic_reg_write(p, PFUZE3000_SW1BVOLT, reg);
 
 	return 0;
 }
@@ -1072,17 +1010,18 @@ int power_init_board(void)
 
 int board_late_init(void)
 {
+	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
 #ifdef CONFIG_CMD_BMODE
 	add_board_boot_modes(board_boot_modes);
 #endif
 
 #ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_init();
+	board_late_mmc_env_init();
 #endif
 
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
 
-	set_wdog_reset((struct wdog_regs *)WDOG1_BASE_ADDR);
+	set_wdog_reset(wdog);
 
 	return 0;
 }
@@ -1110,45 +1049,7 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_USB_EHCI_MX7
-iomux_v3_cfg_t const usb_otg1_pads[] = {
-	MX7D_PAD_GPIO1_IO05__USB_OTG1_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-iomux_v3_cfg_t const usb_otg2_pads[] = {
-	MX7D_PAD_UART3_CTS_B__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-/* On RevB board, the GPIO_IO07 is muxed for OTG2 PWR */
-iomux_v3_cfg_t const usb_otg2_revB_pads[] = {
-	MX7D_PAD_GPIO1_IO07__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-int board_ehci_hcd_init(int port)
-{
-	switch (port) {
-	case 0:
-		imx_iomux_v3_setup_multiple_pads(usb_otg1_pads,
-						 ARRAY_SIZE(usb_otg1_pads));
-		break;
-	case 1:
-		if (mx7sabre_rev() >= BOARD_REV_B)
-			imx_iomux_v3_setup_multiple_pads(usb_otg2_revB_pads,
-						 ARRAY_SIZE(usb_otg2_revB_pads));
-		else
-			imx_iomux_v3_setup_multiple_pads(usb_otg2_pads,
-							 ARRAY_SIZE(usb_otg2_pads));
-		break;
-	default:
-		printf("MXC USB port %d not yet supported\n", port);
-		return 1;
-	}
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_FSL_FASTBOOT
-
 void board_fastboot_setup(void)
 {
 	switch (get_boot_device()) {
@@ -1187,9 +1088,8 @@ int check_recovery_cmd_file(void)
 	int button_pressed = 0;
 	int recovery_mode = 0;
 
-#ifdef CONFIG_BCB_SUPPORT
-	recovery_mode = recovery_check_and_clean_command();
-#endif
+	recovery_mode = recovery_check_and_clean_flag();
+
 	/* Check Recovery Combo Button press or not. */
 	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
 		ARRAY_SIZE(recovery_key_pads));
@@ -1233,3 +1133,4 @@ void board_recovery_setup(void)
 #endif /*CONFIG_ANDROID_RECOVERY*/
 
 #endif /*CONFIG_FSL_FASTBOOT*/
+

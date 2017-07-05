@@ -40,26 +40,21 @@
 #define CONFIG_SYS_DEFAULT_LPDDR2_TIMINGS
 #endif
 
-#ifndef CONFIG_SPL_BUILD
 #define CONFIG_PALMAS_POWER
-#endif
 
 #include <asm/arch/cpu.h>
 #include <asm/arch/omap.h>
 
-#include <configs/ti_armv7_common.h>
+#include <configs/ti_armv7_omap.h>
 
 /*
  * Hardware drivers
  */
-#define CONFIG_SYS_NS16550
+#define CONFIG_SYS_NS16550_CLK		48000000
+#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_DM_SERIAL)
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
-#define CONFIG_SYS_NS16550_CLK		48000000
-
-/* Per-SoC commands */
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
+#endif
 
 /*
  * Environment setup
@@ -68,9 +63,15 @@
 #define PARTS_DEFAULT
 #endif
 
+#ifndef DFUARGS
+#define DFUARGS
+#endif
+
+#ifndef CONFIG_SPL_BUILD
 #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
+	DEFAULT_MMC_TI_ARGS \
 	"console=" CONSOLEDEV ",115200n8\0" \
 	"fdtfile=undefined\0" \
 	"bootpart=0:2\0" \
@@ -80,19 +81,7 @@
 	"vram=16M\0" \
 	"partitions=" PARTS_DEFAULT "\0" \
 	"optargs=\0" \
-	"mmcdev=0\0" \
-	"mmcroot=/dev/mmcblk0p2 rw\0" \
-	"mmcrootfstype=ext4 rootwait\0" \
-	"mmcargs=setenv bootargs console=${console} " \
-		"${optargs} " \
-		"vram=${vram} " \
-		"root=${mmcroot} " \
-		"rootfstype=${mmcrootfstype}\0" \
-	"netargs=setenv bootargs console=${console} " \
-		"${optargs} " \
-		"root=/dev/nfs " \
-		"nfsroot=${serverip}:${rootpath},${nfsopts} rw " \
-		"ip=dhcp\0" \
+	"dofastboot=0\0" \
 	"loadbootscript=fatload mmc ${mmcdev} ${loadaddr} boot.scr\0" \
 	"bootscript=echo Running bootscript from mmc${mmcdev} ...; " \
 		"source ${loadaddr}\0" \
@@ -115,17 +104,10 @@
 			"if run loadimage; then " \
 				"run loadfdt; " \
 				"echo Booting from mmc${mmcdev} ...; " \
-				"run mmcargs; " \
+				"run args_mmc; " \
 				"bootz ${loadaddr} - ${fdtaddr}; " \
 			"fi;" \
 		"fi;\0" \
-	"netboot=echo Booting from network ...; " \
-		"set env autoload no; " \
-		"dhcp; " \
-		"tftp ${loadaddr} ${bootfile}; " \
-		"tftp ${fdtaddr} ${fdtfile}; " \
-		"run netargs; " \
-		"bootz ${loadaddr} - ${fdtaddr}\0" \
 	"findfdt="\
 		"if test $board_name = omap5_uevm; then " \
 			"setenv fdtfile omap5-uevm.dtb; fi; " \
@@ -138,14 +120,24 @@
 		"if test $fdtfile = undefined; then " \
 			"echo WARNING: Could not determine device tree to use; fi; \0" \
 	"loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}/${fdtfile};\0" \
+	DFUARGS \
+	NETARGS \
+
 
 #define CONFIG_BOOTCOMMAND \
+	"if test ${dofastboot} -eq 1; then " \
+		"echo Boot fastboot requested, resetting dofastboot ...;" \
+		"setenv dofastboot 0; saveenv;" \
+		"echo Booting into fastboot ...; fastboot 0;" \
+	"fi;" \
 	"run findfdt; " \
 	"run mmcboot;" \
 	"setenv mmcdev 1; " \
 	"setenv bootpart 1:2; " \
 	"setenv mmcroot /dev/mmcblk0p2 rw; " \
 	"run mmcboot;" \
+	""
+#endif
 
 
 /*
@@ -164,6 +156,15 @@
 
 #ifdef CONFIG_NAND
 #define CONFIG_SPL_NAND_AM33XX_BCH	/* ELM support */
+#endif
+
+/*
+ * Disable MMC DM for SPL build and can be re-enabled after adding
+ * DM support in SPL
+ */
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_DM_MMC
+#undef CONFIG_TIMER
 #endif
 
 #endif /* __CONFIG_TI_OMAP5_COMMON_H */

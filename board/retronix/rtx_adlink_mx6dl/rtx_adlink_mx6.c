@@ -808,9 +808,9 @@ int board_ehci_power(int port, int on)
 		break;
 	case 1:
 		if (on)
-			gpio_direction_output(IMX_GPIO_NR(1, 30), 1);
+			gpio_direction_output(IMX_GPIO_NR(4, 6), 1);
 		else
-			gpio_direction_output(IMX_GPIO_NR(1, 30), 0);
+			gpio_direction_output(IMX_GPIO_NR(4, 6), 0);
 		break;
 	default:
 		printf("MXC USB port %d not yet supported\n", port);

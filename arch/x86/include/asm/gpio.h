@@ -7,7 +7,6 @@
 #define _X86_GPIO_H_
 
 #include <linux/compiler.h>
-#include <asm/arch/gpio.h>
 #include <asm-generic/gpio.h>
 
 struct ich6_bank_platdata {
@@ -147,6 +146,7 @@ struct pch_gpio_map {
 	} set3;
 };
 
+int gpio_ich6_pinctrl_init(void);
 void setup_pch_gpios(u16 gpiobase, const struct pch_gpio_map *gpio);
 void ich_gpio_set_gpio_map(const struct pch_gpio_map *map);
 

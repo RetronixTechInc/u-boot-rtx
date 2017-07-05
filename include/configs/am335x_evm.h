@@ -54,12 +54,12 @@
 		"${optargs} " \
 		"root=${nandroot} " \
 		"rootfstype=${nandrootfstype}\0" \
-	"nandroot=ubi0:rootfs rw ubi.mtd=9,2048\0" \
+	"nandroot=ubi0:rootfs rw ubi.mtd=NAND.file-system,2048\0" \
 	"nandrootfstype=ubifs rootwait=1\0" \
 	"nandboot=echo Booting from nand ...; " \
 		"run nandargs; " \
-		"nand read ${fdtaddr} u-boot-spl-os; " \
-		"nand read ${loadaddr} kernel; " \
+		"nand read ${fdtaddr} NAND.u-boot-spl-os; " \
+		"nand read ${loadaddr} NAND.kernel; " \
 		"bootz ${loadaddr} - ${fdtaddr}\0"
 #else
 #define NANDARGS ""
@@ -67,9 +67,41 @@
 
 #define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 
+#define BOOTENV_DEV_LEGACY_MMC(devtypeu, devtypel, instance) \
+	"bootcmd_" #devtypel #instance "=" \
+	"setenv mmcdev " #instance"; "\
+	"setenv bootpart " #instance":2 ; "\
+	"run mmcboot\0"
+
+#define BOOTENV_DEV_NAME_LEGACY_MMC(devtypeu, devtypel, instance) \
+	#devtypel #instance " "
+
+#define BOOTENV_DEV_NAND(devtypeu, devtypel, instance) \
+	"bootcmd_" #devtypel "=" \
+	"run nandboot\0"
+
+#define BOOTENV_DEV_NAME_NAND(devtypeu, devtypel, instance) \
+	#devtypel #instance " "
+
+#define BOOT_TARGET_DEVICES(func) \
+	func(MMC, mmc, 0) \
+	func(LEGACY_MMC, legacy_mmc, 0) \
+	func(MMC, mmc, 1) \
+	func(LEGACY_MMC, legacy_mmc, 1) \
+	func(NAND, nand, 0) \
+	func(PXE, pxe, na) \
+	func(DHCP, dhcp, na)
+
+#define CONFIG_BOOTCOMMAND \
+	"run findfdt; " \
+	"run distro_bootcmd"
+
+#include <config_distro_bootcmd.h>
+
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
+	DEFAULT_MMC_TI_ARGS \
 	"boot_fdt=try\0" \
 	"bootpart=0:2\0" \
 	"bootdir=/boot\0" \
@@ -80,19 +112,8 @@
 		"uuid_disk=${uuid_gpt_disk};" \
 		"name=rootfs,start=2MiB,size=-,uuid=${uuid_gpt_rootfs}\0" \
 	"optargs=\0" \
-	"mmcdev=0\0" \
-	"mmcroot=/dev/mmcblk0p2 ro\0" \
-	"mmcrootfstype=ext4 rootwait\0" \
-	"rootpath=/export/rootfs\0" \
-	"nfsopts=nolock\0" \
-	"static_ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}" \
-		"::off\0" \
 	"ramroot=/dev/ram0 rw\0" \
 	"ramrootfstype=ext2\0" \
-	"mmcargs=setenv bootargs console=${console} " \
-		"${optargs} " \
-		"root=${mmcroot} " \
-		"rootfstype=${mmcrootfstype}\0" \
 	"spiroot=/dev/mtdblock4 rw\0" \
 	"spirootfstype=jffs2\0" \
 	"spisrcaddr=0xe0000\0" \
@@ -102,11 +123,6 @@
 		"${optargs} " \
 		"root=${spiroot} " \
 		"rootfstype=${spirootfstype}\0" \
-	"netargs=setenv bootargs console=${console} " \
-		"${optargs} " \
-		"root=/dev/nfs " \
-		"nfsroot=${serverip}:${rootpath},${nfsopts} rw " \
-		"ip=dhcp\0" \
 	"bootenv=uEnv.txt\0" \
 	"loadbootscript=load mmc ${mmcdev} ${loadaddr} boot.scr\0" \
 	"bootscript=echo Running bootscript from mmc${mmcdev} ...; " \
@@ -121,7 +137,7 @@
 	"loadramdisk=load mmc ${mmcdev} ${rdaddr} ramdisk.gz\0" \
 	"loadimage=load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootfile}\0" \
 	"loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}/${fdtfile}\0" \
-	"mmcloados=run mmcargs; " \
+	"mmcloados=run args_mmc; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
 			"if run loadfdt; then " \
 				"bootz ${loadaddr} - ${fdtaddr}; " \
@@ -159,13 +175,6 @@
 		"sf probe ${spibusno}:0; " \
 		"sf read ${loadaddr} ${spisrcaddr} ${spiimgsize}; " \
 		"bootz ${loadaddr}\0" \
-	"netboot=echo Booting from network ...; " \
-		"setenv autoload no; " \
-		"dhcp; " \
-		"tftp ${loadaddr} ${bootfile}; " \
-		"tftp ${fdtaddr} ${fdtfile}; " \
-		"run netargs; " \
-		"bootz ${loadaddr} - ${fdtaddr}\0" \
 	"ramboot=echo Booting from ramdisk ...; " \
 		"run ramargs; " \
 		"bootz ${loadaddr} ${rdaddr} ${fdtaddr}\0" \
@@ -173,7 +182,12 @@
 		"if test $board_name = A335BONE; then " \
 			"setenv fdtfile am335x-bone.dtb; fi; " \
 		"if test $board_name = A335BNLT; then " \
-			"setenv fdtfile am335x-boneblack.dtb; fi; " \
+			"if test $board_rev = BBG1; then " \
+				"setenv fdtfile am335x-bonegreen.dtb; " \
+			"else " \
+				"setenv fdtfile am335x-boneblack.dtb; " \
+			"fi; " \
+		"fi; " \
 		"if test $board_name = A33515BB; then " \
 			"setenv fdtfile am335x-evm.dtb; fi; " \
 		"if test $board_name = A335X_SK; then " \
@@ -181,16 +195,11 @@
 		"if test $fdtfile = undefined; then " \
 			"echo WARNING: Could not determine device tree to use; fi; \0" \
 	NANDARGS \
-	DFUARGS
+	NETARGS \
+	DFUARGS \
+	BOOTENV
 #endif
 
-#define CONFIG_BOOTCOMMAND \
-	"run findfdt; " \
-	"run mmcboot;" \
-	"setenv mmcdev 1; " \
-	"setenv bootpart 1:2; " \
-	"run mmcboot;" \
-	"run nandboot;"
 
 /* NS16550 Configuration */
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* Base EVM has UART0 */
@@ -205,7 +214,6 @@
 #define CONFIG_ENV_EEPROM_IS_ON_I2C
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50	/* Main EEPROM */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 
 /* PMIC support */
 #define CONFIG_POWER_TPS65217
@@ -263,7 +271,7 @@
 					"128k(NAND.u-boot-env)," \
 					"128k(NAND.u-boot-env.backup1)," \
 					"8m(NAND.kernel)," \
-					"-(NAND.rootfs)"
+					"-(NAND.file-system)"
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x000c0000
 #undef CONFIG_ENV_IS_NOWHERE
 #define CONFIG_ENV_IS_IN_NAND
@@ -298,14 +306,14 @@
  */
 #define CONFIG_USB_MUSB_DSPS
 #define CONFIG_ARCH_MISC_INIT
-#define CONFIG_MUSB_GADGET
-#define CONFIG_MUSB_PIO_ONLY
-#define CONFIG_MUSB_DISABLE_BULK_COMBINE_SPLIT
+#define CONFIG_USB_MUSB_GADGET
+#define CONFIG_USB_MUSB_PIO_ONLY
+#define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
 #define CONFIG_USB_GADGET
-#define CONFIG_USBDOWNLOAD_GADGET
+#define CONFIG_USB_GADGET_DOWNLOAD
 #define CONFIG_USB_GADGET_DUALSPEED
 #define CONFIG_USB_GADGET_VBUS_DRAW	2
-#define CONFIG_MUSB_HOST
+#define CONFIG_USB_MUSB_HOST
 #define CONFIG_AM335X_USB0
 #define CONFIG_AM335X_USB0_MODE	MUSB_PERIPHERAL
 #define CONFIG_AM335X_USB1
@@ -313,31 +321,44 @@
 
 #ifndef CONFIG_SPL_USBETH_SUPPORT
 /* Fastboot */
+#define CONFIG_USB_FUNCTION_FASTBOOT
 #define CONFIG_CMD_FASTBOOT
 #define CONFIG_ANDROID_BOOT_IMAGE
-#define CONFIG_USB_FASTBOOT_BUF_ADDR	CONFIG_SYS_LOAD_ADDR
-#define CONFIG_USB_FASTBOOT_BUF_SIZE	0x07000000
+#define CONFIG_FASTBOOT_BUF_ADDR	CONFIG_SYS_LOAD_ADDR
+#define CONFIG_FASTBOOT_BUF_SIZE	0x07000000
 
 /* To support eMMC booting */
 #define CONFIG_STORAGE_EMMC
 #define CONFIG_FASTBOOT_FLASH_MMC_DEV   1
 #endif
 
-#ifdef CONFIG_MUSB_HOST
+#ifdef CONFIG_USB_MUSB_HOST
 #define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
 #endif
 
-#ifdef CONFIG_MUSB_GADGET
+#ifdef CONFIG_USB_MUSB_GADGET
+/* Removing USB gadget and can be enabled adter adding support usb DM */
+#ifndef CONFIG_DM_ETH
 #define CONFIG_USB_ETHER
 #define CONFIG_USB_ETH_RNDIS
 #define CONFIG_USBNET_HOST_ADDR	"de:ad:be:af:00:00"
+#endif /* CONFIG_DM_ETH */
 
 /* USB TI's IDs */
 #define CONFIG_G_DNL_VENDOR_NUM 0x0451
 #define CONFIG_G_DNL_PRODUCT_NUM 0xD022
 #define CONFIG_G_DNL_MANUFACTURER "Texas Instruments"
-#endif /* CONFIG_MUSB_GADGET */
+#endif /* CONFIG_USB_MUSB_GADGET */
+
+/*
+ * Disable MMC DM for SPL build and can be re-enabled after adding
+ * DM support in SPL
+ */
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_DM_MMC
+#undef CONFIG_TIMER
+#endif
 
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_USBETH_SUPPORT)
 /* Remove other SPL modes. */
@@ -347,7 +368,7 @@
 #define CONFIG_ENV_IS_NOWHERE
 #undef CONFIG_ENV_IS_IN_NAND
 /* disable host part of MUSB in SPL */
-#undef CONFIG_MUSB_HOST
+#undef CONFIG_USB_MUSB_HOST
 /* disable EFI partitions and partition UUID support */
 #undef CONFIG_PARTITION_UUIDS
 #undef CONFIG_EFI_PARTITION
@@ -359,7 +380,7 @@
 
 /* USB Device Firmware Update support */
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_DFU_FUNCTION
+#define CONFIG_USB_FUNCTION_DFU
 #define CONFIG_DFU_MMC
 #define CONFIG_CMD_DFU
 #define DFU_ALT_INFO_MMC \
@@ -444,8 +465,6 @@
 
 /* SPI flash. */
 #define CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_WINBOND
 #define CONFIG_SF_DEFAULT_SPEED		24000000
 
 /* Network. */
@@ -467,7 +486,6 @@
  */
 #if defined(CONFIG_NOR)
 #undef CONFIG_SYS_NO_FLASH
-#define CONFIG_CMD_FLASH
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #define CONFIG_SYS_FLASH_PROTECTION
 #define CONFIG_SYS_FLASH_CFI

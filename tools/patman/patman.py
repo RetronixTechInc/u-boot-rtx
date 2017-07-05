@@ -14,14 +14,18 @@ import sys
 import unittest
 
 # Our modules
-import checkpatch
-import command
-import gitutil
-import patchstream
-import project
-import settings
-import terminal
-import test
+try:
+    from patman import checkpatch, command, gitutil, patchstream, \
+        project, settings, terminal, test
+except ImportError:
+    import checkpatch
+    import command
+    import gitutil
+    import patchstream
+    import project
+    import settings
+    import terminal
+    import test
 
 
 parser = OptionParser()
@@ -57,6 +61,8 @@ parser.add_option('--no-check', action='store_false', dest='check_patch',
                   help="Don't check for patch compliance")
 parser.add_option('--no-tags', action='store_false', dest='process_tags',
                   default=True, help="Don't process subject tags as aliaes")
+parser.add_option('-T', '--thread', action='store_true', dest='thread',
+                  default=False, help='Create patches as a single thread')
 
 parser.usage += """
 
@@ -70,8 +76,11 @@ specified by tags you place in the commits. Use -n to do a dry run first."""
 settings.Setup(parser, options.project, '')
 (options, args) = parser.parse_args()
 
+if __name__ != "__main__":
+    pass
+
 # Run our meagre tests
-if options.test:
+elif options.test:
     import doctest
 
     sys.argv = [sys.argv[0]]
@@ -154,7 +163,7 @@ else:
     if its_a_go:
         cmd = gitutil.EmailPatches(series, cover_fname, args,
                 options.dry_run, not options.ignore_bad_tags, cc_file,
-                in_reply_to=options.in_reply_to)
+                in_reply_to=options.in_reply_to, thread=options.thread)
     else:
         print col.Color(col.RED, "Not sending emails due to errors/warnings")
 

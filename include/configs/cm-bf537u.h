@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for CM-BF537U board
+ * U-Boot - Configuration file for CM-BF537U board
  */
 
 #ifndef __CONFIG_CM_BF537U_H__
@@ -69,9 +69,6 @@
 #define CONFIG_NETCONSOLE	1
 #endif
 #define CONFIG_HOSTNAME		cm-bf537u
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
-#define CONFIG_LIB_RAND
 
 /*
  * Flash Settings

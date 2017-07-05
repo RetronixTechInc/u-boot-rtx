@@ -2,6 +2,8 @@
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
  *
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -57,7 +59,6 @@ void hab_caam_clock_enable(unsigned char enable);
 void enable_ocotp_clk(unsigned char enable);
 void enable_usboh3_clk(unsigned char enable);
 void enable_uart_clk(unsigned char enable);
-int enable_cspi_clock(unsigned char enable, unsigned spi_num);
 int enable_usdhc_clk(unsigned char enable, unsigned bus_num);
 int enable_sata_clock(void);
 void disable_sata_clock(void);
@@ -67,18 +68,11 @@ int enable_spi_clk(unsigned char enable, unsigned spi_num);
 void enable_ipu_clock(void);
 int enable_fec_anatop_clock(int fec_id, enum enet_freq freq);
 void enable_enet_clk(unsigned char enable);
-#ifdef CONFIG_SECURE_BOOT
-void hab_caam_clock_enable(unsigned char enable);
-#endif
-
-#if defined(CONFIG_MX6SX) || defined(CONFIG_MX6UL)
+int enable_lcdif_clock(u32 base_addr);
+int enable_lvds_bridge(u32 lcd_base_addr);
 void enable_qspi_clk(int qspi_num);
-void mxs_set_lcdclk(uint32_t base_addr, uint32_t freq);
-void enable_lcdif_clock(uint32_t base_addr);
-#endif
-#if defined(CONFIG_MX6SX)
-void enable_lvds(uint32_t lcdif_base);
-void mxs_set_vadcclk(void);
-#endif
 void enable_thermal_clk(void);
+void enable_epdc_clock(void);
+void mxs_set_lcdclk(u32 base_addr, u32 freq);
+void mxs_set_vadcclk(void);
 #endif /* __ASM_ARCH_CLOCK_H */

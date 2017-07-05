@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF548 STAMP board
+ * U-Boot - Configuration file for BF548 STAMP board
  */
 
 #ifndef __CONFIG_BF548_EZKIT_H__
@@ -73,8 +73,6 @@
 #define CONFIG_SMC911X_BASE	0x24000000
 #define CONFIG_SMC911X_16_BIT
 #define CONFIG_HOSTNAME		bf548-ezkit
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
 
 
 /*
@@ -94,8 +92,6 @@
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
 
 
 /*
@@ -166,10 +162,10 @@
  */
 #if !defined(__ADSPBF544__)
 #define CONFIG_USB
-#define CONFIG_MUSB_HCD
+#define CONFIG_USB_MUSB_HCD
 #define CONFIG_USB_BLACKFIN
 #define CONFIG_USB_STORAGE
-#define CONFIG_MUSB_TIMEOUT 100000
+#define CONFIG_USB_MUSB_TIMEOUT 100000
 #endif
 
 

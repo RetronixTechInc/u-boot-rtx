@@ -23,12 +23,22 @@
 #if defined(__arm__) || defined(__aarch64__)
 #define CONFIG_BOOTP_PXE_CLIENTARCH     0x100
 #if defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)
-#define CONFIG_BOOTP_VCI_STRING         "U-boot.armv7"
-#elif defined(__aarch64__)
-#define CONFIG_BOOTP_VCI_STRING         "U-boot.armv8"
-#else
-#define CONFIG_BOOTP_VCI_STRING         "U-boot.arm"
+#if !defined(CONFIG_BOOTP_VCI_STRING)
+#define CONFIG_BOOTP_VCI_STRING         "U-Boot.armv7"
 #endif
+#elif defined(__aarch64__)
+#if !defined(CONFIG_BOOTP_VCI_STRING)
+#define CONFIG_BOOTP_VCI_STRING         "U-Boot.armv8"
+#endif
+#else
+#if !defined(CONFIG_BOOTP_VCI_STRING)
+#define CONFIG_BOOTP_VCI_STRING         "U-Boot.arm"
+#endif
+#endif
+#elif defined(__i386__)
+#define CONFIG_BOOTP_PXE_CLIENTARCH     0x0
+#elif defined(__x86_64__)
+#define CONFIG_BOOTP_PXE_CLIENTARCH     0x9
 #endif
 
 #define CONFIG_OF_LIBFDT
@@ -39,13 +49,11 @@
 #define CONFIG_CMD_BOOTZ
 #endif
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_EXT2
 #define CONFIG_CMD_EXT4
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_FS_GENERIC
 #define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_PXE
 

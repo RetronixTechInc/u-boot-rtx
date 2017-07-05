@@ -3,7 +3,7 @@
  *
  * specific parts for B&R KWB Motherboard
  *
- * Copyright (C) 2013 Hannes Petermaier <oe5hpm@oevsv.at> -
+ * Copyright (C) 2013 Hannes Schmelzer <oe5hpm@oevsv.at> -
  * Bernecker & Rainer Industrieelektronik GmbH - http://www.br-automation.com
  *
  * SPDX-License-Identifier:        GPL-2.0+
@@ -12,6 +12,7 @@
 #ifndef __CONFIG_KWB_H__
 #define __CONFIG_KWB_H__
 
+#include <configs/bur_cfg_common.h>
 #include <configs/bur_am335x_common.h>
 /* ------------------------------------------------------------------------- */
 #define CONFIG_AM335X_LCD
@@ -19,6 +20,17 @@
 #define CONFIG_LCD_NOSTDOUT
 #define CONFIG_SYS_WHITE_ON_BLACK
 #define LCD_BPP				LCD_COLOR32
+
+#define CONFIG_VIDEO_BMP_GZIP
+#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(1366*767*4)
+#define CONFIG_CMD_UNZIP
+#define CONFIG_CMD_BMP
+#define CONFIG_BMP_24BMP
+#define CONFIG_BMP_32BPP
+
+/* memory */
+#define CONFIG_SYS_MALLOC_LEN		(5 * 1024 * 1024)
+
 /* Clock Defines */
 #define V_OSCK				26000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
@@ -49,6 +61,8 @@
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 BUR_COMMON_ENV \
+"bootaddr=0x80001100\0" \
+"bootdev=cpsw(0,0)\0" \
 "vx_romfsbase=0x800E0000\0" \
 "vx_romfssize=0x20000\0" \
 "vx_memtop=0x8FBEF000\0" \
@@ -58,7 +72,7 @@ BUR_COMMON_ENV \
 "logoaddr=0x82000000\0" \
 "defaultARlen=0x8000\0" \
 "loaddefaultAR=mmc read ${loadaddr} 800 ${defaultARlen}\0" \
-"defaultAR=run loadromfs; run loaddefaultAR; go ${loadaddr}\0" \
+"defaultAR=run loadromfs; run loaddefaultAR; bootvx ${loadaddr}\0" \
 "logo0=fatload mmc 0:1 ${logoaddr} SYSTEM/ADDON/Bootlogo/Bootlogo.bmp.gz && " \
 	"bmp display ${logoaddr} 0 0\0" \
 "logo1=fatload mmc 0:1 ${logoaddr} SYSTEM/BASE/Bootlogo/Bootlogo.bmp.gz && " \
@@ -66,16 +80,12 @@ BUR_COMMON_ENV \
 "mmcboot=echo booting AR from eMMC-flash ...; "\
 	"run logo0 || run logo1; " \
 	"run loadromfs; " \
-	"fatload mmc 0:1 ${loadaddr} arimg && go ${loadaddr}; " \
+	"fatload mmc 0:1 ${loadaddr} arimg && bootvx ${loadaddr}; " \
 	"run defaultAR;\0" \
 "netboot=echo booting AR from network ...; " \
 	"run loadromfs; " \
-	"tftp ${loadaddr} arimg && go ${loadaddr}; " \
+	"tftp ${loadaddr} arimg && bootvx ${loadaddr}; " \
 	"puts 'networkboot failed!';\0" \
-"usbupdate=echo updating u-boot from usb ...; " \
-	"usb start; " \
-	"fatload usb 0 0x80000000 updateubootusb.img && source; " \
-	"puts 'usbupdate failed!'\0" \
 "netscript=echo running script from network (tftp) ...; " \
 	"tftp 0x80000000 netscript.img && source; " \
 	"puts 'netscript load failed!'\0" \
@@ -93,14 +103,13 @@ BUR_COMMON_ENV \
 #endif /* !CONFIG_SPL_BUILD*/
 
 #define CONFIG_BOOTCOMMAND \
-	"run usbupdate;"
+	"run usbscript;"
 #define CONFIG_BOOTDELAY		0
 
 /* undefine command which we not need here */
-#undef	CONFIG_BOOTM_NETBSD
-#undef	CONFIG_BOOTM_PLAN9
-#undef	CONFIG_BOOTM_RTEMS
-#undef CONFIG_CMD_CRC32
+#undef CONFIG_BOOTM_NETBSD
+#undef CONFIG_BOOTM_PLAN9
+#undef CONFIG_BOOTM_RTEMS
 
 /* Support both device trees and ATAGs. */
 #define CONFIG_OF_LIBFDT
@@ -112,20 +121,14 @@ BUR_COMMON_ENV \
 /* USB configuration */
 #define CONFIG_USB_MUSB_DSPS
 #define CONFIG_ARCH_MISC_INIT
-#define CONFIG_MUSB_PIO_ONLY
-#define CONFIG_MUSB_DISABLE_BULK_COMBINE_SPLIT
+#define CONFIG_USB_MUSB_PIO_ONLY
+#define CONFIG_USB_MUSB_DISABLE_BULK_COMBINE_SPLIT
 /* attention! not only for gadget, enables also highspeed in hostmode */
 #define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_MUSB_HOST
 #define CONFIG_AM335X_USB0
 #define CONFIG_AM335X_USB0_MODE	MUSB_HOST
 #define CONFIG_AM335X_USB1
 #define CONFIG_AM335X_USB1_MODE	MUSB_HOST
-
-#ifdef CONFIG_MUSB_HOST
-#define CONFIG_CMD_USB
-#define CONFIG_USB_STORAGE
-#endif /* CONFIG_MUSB_HOST */
 
 #undef CONFIG_ENV_IS_NOWHERE
 #define CONFIG_ENV_IS_IN_MMC
@@ -145,4 +148,4 @@ BUR_COMMON_ENV \
 #define CONFIG_CMD_FS_GENERIC
 #endif /* CONFIG_MMC, ... */
 
-#endif	/* ! __CONFIG_TSERIES_H__ */
+#endif	/* __CONFIG_KWB_H__ */

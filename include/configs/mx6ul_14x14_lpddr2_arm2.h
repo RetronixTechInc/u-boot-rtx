@@ -27,7 +27,6 @@
 #define CONFIG_ENV_IS_IN_MMC
 #endif
 
-#define CONFIG_FSL_USDHC
 #define CONFIG_VIDEO
 #ifdef CONFIG_SYS_BOOT_EIMNOR
 /*
@@ -57,7 +56,6 @@
 #define CONFIG_SF_DEFAULT_CS   0
 #endif
 
-#define CONFIG_CMD_NET
 #ifdef CONFIG_CMD_NET
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
@@ -79,7 +77,6 @@
 
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_MICREL
-#define CONFIG_FEC_DMA_MINALIGN		64
 #endif
 
 #endif

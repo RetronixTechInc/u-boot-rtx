@@ -8,7 +8,7 @@
 #ifndef __MX6ULL_DDR3_ARM2_CONFIG_H
 #define __MX6ULL_DDR3_ARM2_CONFIG_H
 
-#define CONFIG_DEFAULT_FDT_FILE  "imx6ull-ddr3-arm2.dtb"
+#define CONFIG_DEFAULT_FDT_FILE  "imx6ull-14x14-ddr3-arm2.dtb"
 
 #ifdef CONFIG_SYS_BOOT_QSPI
 #define CONFIG_SYS_USE_QSPI
@@ -32,7 +32,25 @@
 
 #include "mx6ul_arm2.h"
 
+#define CONFIG_IOMUX_LPSR
+
 #define PHYS_SDRAM_SIZE			SZ_1G
+
+/*
+ * TSC pins conflict with I2C1 bus, so after TSC
+ * hardware rework, need to disable i2c1 bus, also
+ * need to disable PMIC and ldo bypass check.
+ */
+#ifdef CONFIG_MX6ULL_DDR3_ARM2_TSC_REWORK
+#undef CONFIG_LDO_BYPASS_CHECK
+#undef CONFIG_SYS_I2C_MXC
+#undef CONFIG_SYS_I2C
+#undef CONFIG_CMD_I2C
+#undef CONFIG_POWER_PFUZE100_I2C_ADDR
+#undef CONFIG_POWER_PFUZE100
+#undef CONFIG_POWER_I2C
+#undef CONFIG_POWER
+#endif
 
 #ifdef CONFIG_SYS_USE_SPINOR
 #define CONFIG_CMD_SF
@@ -45,7 +63,6 @@
 #define CONFIG_SF_DEFAULT_CS   0
 #endif
 
-#define CONFIG_CMD_NET
 #ifdef CONFIG_CMD_NET
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
@@ -68,6 +85,45 @@
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_MICREL
 #define CONFIG_FEC_DMA_MINALIGN		64
+#endif
+
+#ifdef CONFIG_VIDEO
+#define CONFIG_CFB_CONSOLE
+#define CONFIG_VIDEO_MXS
+#define CONFIG_VIDEO_LOGO
+#define CONFIG_VIDEO_SW_CURSOR
+#define CONFIG_VGA_AS_SINGLE_DEVICE
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN
+#define CONFIG_CMD_BMP
+#define CONFIG_BMP_16BPP
+#define CONFIG_VIDEO_BMP_RLE8
+#define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_IMX_VIDEO_SKIP
+#endif
+
+/* #define CONFIG_SPLASH_SCREEN*/
+/* #define CONFIG_MXC_EPDC*/
+
+/*
+ * SPLASH SCREEN Configs
+ */
+#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_MXC_EPDC)
+/*
+ * Framebuffer and LCD
+ */
+#define	CONFIG_CFB_CONSOLE
+#define CONFIG_CMD_BMP
+#define CONFIG_LCD
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV
+
+#undef LCD_TEST_PATTERN
+/* #define CONFIG_SPLASH_IS_IN_MMC			1 */
+#define LCD_BPP					LCD_MONOCHROME
+/* #define CONFIG_SPLASH_SCREEN_ALIGN		1 */
+
+#define CONFIG_WAVEFORM_BUF_SIZE		0x400000
 #endif
 
 #endif

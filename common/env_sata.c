@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2010-2014 Freescale Semiconductor, Inc.
+ * (C) Copyright 2010-2016 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -72,8 +72,7 @@ inline int write_env(block_dev_desc_t *sata, unsigned long size,
 	blk_start = ALIGN(offset, sata->blksz) / sata->blksz;
 	blk_cnt   = ALIGN(size, sata->blksz) / sata->blksz;
 
-	n = sata->block_write(sata_curr_device, blk_start,
-					blk_cnt, (u_char *)buffer);
+	n = sata->block_write(sata, blk_start, blk_cnt, (u_char *)buffer);
 
 	return (n == blk_cnt) ? 0 : -1;
 }
@@ -126,8 +125,7 @@ inline int read_env(block_dev_desc_t *sata, unsigned long size,
 	blk_start = ALIGN(offset, sata->blksz) / sata->blksz;
 	blk_cnt   = ALIGN(size, sata->blksz) / sata->blksz;
 
-	n = sata->block_read(sata_curr_device, blk_start,
-					blk_cnt, (uchar *)buffer);
+	n = sata->block_read(sata, blk_start, blk_cnt, (uchar *)buffer);
 
 	return (n == blk_cnt) ? 0 : -1;
 }

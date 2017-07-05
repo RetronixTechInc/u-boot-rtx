@@ -1,9 +1,7 @@
 /*
  * Copyright 2007-2011 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
+ * SPDX-License-Identifier:	GPL-2.0
  */
 
 /*
@@ -12,6 +10,8 @@
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
+
+#define CONFIG_DISPLAY_BOARDINFO
 
 /* High Level Configuration Options */
 #define CONFIG_MPC8610		1	/* MPC8610 specific */
@@ -223,7 +223,6 @@
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -294,13 +293,11 @@
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 
-#define CONFIG_CMD_NET
 #define CONFIG_PCI_PNP		/* do pci plug-and-play */
 #define CONFIG_CMD_REGINFO
 
 #define CONFIG_ULI526X
 #ifdef CONFIG_ULI526X
-#define CONFIG_ETHADDR   00:E0:0C:00:00:01
 #endif
 
 /************************************************************
@@ -469,15 +466,9 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
-
-#if defined(CONFIG_SYS_RAMBOOT)
-#undef CONFIG_CMD_SAVEENV
-#endif
 
 #if defined(CONFIG_PCI)
 #define CONFIG_CMD_PCI

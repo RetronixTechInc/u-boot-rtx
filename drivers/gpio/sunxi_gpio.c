@@ -15,12 +15,10 @@
 #include <errno.h>
 #include <fdtdec.h>
 #include <malloc.h>
+#include <asm/arch/gpio.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <dm/device-internal.h>
-#ifdef CONFIG_AXP209_POWER
-#include <axp209.h>
-#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -76,10 +74,6 @@ int gpio_free(unsigned gpio)
 
 int gpio_direction_input(unsigned gpio)
 {
-#ifdef AXP_GPIO
-	if (gpio >= SUNXI_GPIO_AXP0_START)
-		return axp_gpio_direction_input(gpio - SUNXI_GPIO_AXP0_START);
-#endif
 	sunxi_gpio_set_cfgpin(gpio, SUNXI_GPIO_INPUT);
 
 	return 0;
@@ -87,11 +81,6 @@ int gpio_direction_input(unsigned gpio)
 
 int gpio_direction_output(unsigned gpio, int value)
 {
-#ifdef AXP_GPIO
-	if (gpio >= SUNXI_GPIO_AXP0_START)
-		return axp_gpio_direction_output(gpio - SUNXI_GPIO_AXP0_START,
-						 value);
-#endif
 	sunxi_gpio_set_cfgpin(gpio, SUNXI_GPIO_OUTPUT);
 
 	return sunxi_gpio_output(gpio, value);
@@ -99,19 +88,11 @@ int gpio_direction_output(unsigned gpio, int value)
 
 int gpio_get_value(unsigned gpio)
 {
-#ifdef AXP_GPIO
-	if (gpio >= SUNXI_GPIO_AXP0_START)
-		return axp_gpio_get_value(gpio - SUNXI_GPIO_AXP0_START);
-#endif
 	return sunxi_gpio_input(gpio);
 }
 
 int gpio_set_value(unsigned gpio, int value)
 {
-#ifdef AXP_GPIO
-	if (gpio >= SUNXI_GPIO_AXP0_START)
-		return axp_gpio_set_value(gpio - SUNXI_GPIO_AXP0_START, value);
-#endif
 	return sunxi_gpio_output(gpio, value);
 }
 
@@ -122,15 +103,6 @@ int sunxi_name_to_gpio(const char *name)
 	long pin;
 	char *eptr;
 
-#ifdef AXP_GPIO
-	if (strncasecmp(name, "AXP0-", 5) == 0) {
-		name += 5;
-		pin = simple_strtol(name, &eptr, 10);
-		if (!*name || *eptr)
-			return -1;
-		return SUNXI_GPIO_AXP0_START + pin;
-	}
-#endif
 	if (*name == 'P' || *name == 'p')
 		name++;
 	if (*name >= 'A') {
@@ -148,7 +120,44 @@ int sunxi_name_to_gpio(const char *name)
 }
 #endif
 
+int sunxi_name_to_gpio_bank(const char *name)
+{
+	int group = 0;
+
+	if (*name == 'P' || *name == 'p')
+		name++;
+	if (*name >= 'A') {
+		group = *name - (*name > 'a' ? 'a' : 'A');
+		return group;
+	}
+
+	return -1;
+}
+
 #ifdef CONFIG_DM_GPIO
+/* TODO(sjg@chromium.org): Remove this function and use device tree */
+int sunxi_name_to_gpio(const char *name)
+{
+	unsigned int gpio;
+	int ret;
+#if !defined CONFIG_SPL_BUILD && defined CONFIG_AXP_GPIO
+	char lookup[8];
+
+	if (strcasecmp(name, "AXP0-VBUS-DETECT") == 0) {
+		sprintf(lookup, SUNXI_GPIO_AXP0_PREFIX "%d",
+			SUNXI_GPIO_AXP0_VBUS_DETECT);
+		name = lookup;
+	} else if (strcasecmp(name, "AXP0-VBUS-ENABLE") == 0) {
+		sprintf(lookup, SUNXI_GPIO_AXP0_PREFIX "%d",
+			SUNXI_GPIO_AXP0_VBUS_ENABLE);
+		name = lookup;
+	}
+#endif
+	ret = gpio_lookup_name(name, NULL, NULL, &gpio);
+
+	return ret ? ret : gpio;
+}
+
 static int sunxi_gpio_direction_input(struct udevice *dev, unsigned offset)
 {
 	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
@@ -226,10 +235,11 @@ static char *gpio_bank_name(int bank)
 {
 	char *name;
 
-	name = malloc(2);
+	name = malloc(3);
 	if (name) {
-		name[0] = 'A' + bank;
-		name[1] = '\0';
+		name[0] = 'P';
+		name[1] = 'A' + bank;
+		name[2] = '\0';
 	}
 
 	return name;
@@ -238,7 +248,7 @@ static char *gpio_bank_name(int bank)
 static int gpio_sunxi_probe(struct udevice *dev)
 {
 	struct sunxi_gpio_platdata *plat = dev_get_platdata(dev);
-	struct gpio_dev_priv *uc_priv = dev->uclass_priv;
+	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
 	/* Tell the uclass how many GPIOs we have */
 	if (plat) {
@@ -256,16 +266,27 @@ static int gpio_sunxi_bind(struct udevice *parent)
 {
 	struct sunxi_gpio_platdata *plat = parent->platdata;
 	struct sunxi_gpio_reg *ctlr;
-	int bank;
-	int ret;
+	int bank, no_banks, ret, start;
 
 	/* If this is a child device, there is nothing to do here */
 	if (plat)
 		return 0;
 
-	ctlr = (struct sunxi_gpio_reg *)fdtdec_get_addr(gd->fdt_blob,
-						   parent->of_offset, "reg");
-	for (bank = 0; bank < SUNXI_GPIO_BANKS; bank++) {
+	if (fdt_node_check_compatible(gd->fdt_blob, parent->of_offset,
+				"allwinner,sun6i-a31-r-pinctrl") == 0) {
+		start = 'L' - 'A';
+		no_banks = 2; /* L & M */
+	} else if (fdt_node_check_compatible(gd->fdt_blob, parent->of_offset,
+				"allwinner,sun8i-a23-r-pinctrl") == 0) {
+		start = 'L' - 'A';
+		no_banks = 1; /* L only */
+	} else {
+		start = 0;
+		no_banks = SUNXI_GPIO_BANKS;
+	}
+
+	ctlr = (struct sunxi_gpio_reg *)dev_get_addr(parent);
+	for (bank = 0; bank < no_banks; bank++) {
 		struct sunxi_gpio_platdata *plat;
 		struct udevice *dev;
 
@@ -273,7 +294,7 @@ static int gpio_sunxi_bind(struct udevice *parent)
 		if (!plat)
 			return -ENOMEM;
 		plat->regs = &ctlr->gpio_bank[bank];
-		plat->bank_name = gpio_bank_name(bank);
+		plat->bank_name = gpio_bank_name(start + bank);
 		plat->gpio_count = SUNXI_GPIOS_PER_BANK;
 
 		ret = device_bind(parent, parent->driver,
@@ -287,7 +308,17 @@ static int gpio_sunxi_bind(struct udevice *parent)
 }
 
 static const struct udevice_id sunxi_gpio_ids[] = {
+	{ .compatible = "allwinner,sun4i-a10-pinctrl" },
+	{ .compatible = "allwinner,sun5i-a10s-pinctrl" },
+	{ .compatible = "allwinner,sun5i-a13-pinctrl" },
+	{ .compatible = "allwinner,sun6i-a31-pinctrl" },
+	{ .compatible = "allwinner,sun6i-a31s-pinctrl" },
 	{ .compatible = "allwinner,sun7i-a20-pinctrl" },
+	{ .compatible = "allwinner,sun8i-a23-pinctrl" },
+	{ .compatible = "allwinner,sun8i-a33-pinctrl" },
+	{ .compatible = "allwinner,sun9i-a80-pinctrl" },
+	{ .compatible = "allwinner,sun6i-a31-r-pinctrl" },
+	{ .compatible = "allwinner,sun8i-a23-r-pinctrl" },
 	{ }
 };
 

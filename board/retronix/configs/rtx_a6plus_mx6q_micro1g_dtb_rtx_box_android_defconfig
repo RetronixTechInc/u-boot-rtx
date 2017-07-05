@@ -1,0 +1,25 @@
+CONFIG_SYS_EXTRA_OPTIONS="IMX_CONFIG=board/retronix/rtx_a6plus_mx6q/micron_ddr3_mx6q_1g.cfg,MX6Q,ANDROID_SUPPORT"
+CONFIG_ARM=y
+CONFIG_TARGET_RTX_A6PLUS_MX6Q=y
+CONFIG_SYS_MALLOC_F=y
+CONFIG_SYS_MALLOC_F_LEN=0x400
+CONFIG_DM=y
+CONFIG_DM_THERMAL=y
+CONFIG_EXTRA_ENV_USE_DTB=y
+CONFIG_BOOTARGS_GEN="androidboot.selinux=disabled androidboot.dm_verity=disabled init=/init;if test -n ${mac1_val};then setenv bootargs ${bootargs} fec_mac=${mac1_val};fi;"
+CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off fbmem=28M"
+CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off fbmem=18M"
+CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb2:off fbmem=28M,18M"
+CONFIG_BOOTARGS_GUIMEM="gpumem=176M vmalloc=400M"
+CONFIG_GUIPORT="hdmi"
+CONFIG_UBOOT_MMCNUM="2"
+CONFIG_UPDATEROOT="/dev/mmcblk1p1"
+CONFIG_VGA_VIDEO="1024x768@60"
+#CONFIG_BOOTSEL_FUNC_PASSWORD=y
+#CONFIG_BOOTSEL_FUNC_CHANG_PW=y
+CONFIG_BOOTSEL_FUNC_UD_EXTSD=y
+#CONFIG_BOOTSEL_FUNC_UD_USB=y
+CONFIG_BOOTSEL_FUNC_MENU=y
+CONFIG_BOOTSEL_FUNC_CHG_STORAGE=y
+#CONFIG_BOOTSEL_FUNC_SCANFILE_SELF=y
+CONFIG_MCU_WATCHDOG_TIME=0x78

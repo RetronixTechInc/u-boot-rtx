@@ -27,6 +27,7 @@
 #include <asm/arch/mxc_hdmi.h>
 #include <asm/imx-common/video.h>
 #include <asm/arch/crm_regs.h>
+#include <pca953x.h>
 #include <power/pmic.h>
 #include <power/pfuze100_pmic.h>
 #include "../common/pfuze.h"
@@ -41,14 +42,8 @@
 #endif
 #endif /*CONFIG_FSL_FASTBOOT*/
 
-#ifdef CONFIG_MAX7310_IOEXP
-#include <gpio_exp.h>
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
-#define I2C_EXP_RST IMX_GPIO_NR(1, 15)
-#define I2C3_STEER  IMX_GPIO_NR(5, 4)
 #define UART_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
 	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |			\
 	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
@@ -135,6 +130,25 @@ static struct i2c_pads_info i2c_pad_info1 = {
 	}
 };
 
+#ifndef CONFIG_SYS_FLASH_CFI
+/*
+ * I2C3 MLB, Port Expanders (A, B, C), Video ADC, Light Sensor,
+ * Compass Sensor, Accelerometer, Res Touch
+ */
+static struct i2c_pads_info i2c_pad_info2 = {
+	.scl = {
+		.i2c_mode = MX6_PAD_GPIO_3__I2C3_SCL | PC,
+		.gpio_mode = MX6_PAD_GPIO_3__GPIO1_IO03 | PC,
+		.gp = IMX_GPIO_NR(1, 3)
+	},
+	.sda = {
+		.i2c_mode = MX6_PAD_EIM_D18__I2C3_SDA | PC,
+		.gpio_mode = MX6_PAD_EIM_D18__GPIO3_IO18 | PC,
+		.gp = IMX_GPIO_NR(3, 18)
+	}
+};
+#endif
+
 static iomux_v3_cfg_t const i2c3_pads[] = {
 	MX6_PAD_EIM_A24__GPIO5_IO04		| MUX_PAD_CTRL(NO_PAD_CTRL),
 };
@@ -142,6 +156,44 @@ static iomux_v3_cfg_t const i2c3_pads[] = {
 static iomux_v3_cfg_t const port_exp[] = {
 	MX6_PAD_SD2_DAT0__GPIO1_IO15		| MUX_PAD_CTRL(NO_PAD_CTRL),
 };
+
+/*Define for building port exp gpio, pin starts from 0*/
+#define PORTEXP_IO_NR(chip, pin) \
+	((chip << 5) + pin)
+
+/*Get the chip addr from a ioexp gpio*/
+#define PORTEXP_IO_TO_CHIP(gpio_nr) \
+	(gpio_nr >> 5)
+
+/*Get the pin number from a ioexp gpio*/
+#define PORTEXP_IO_TO_PIN(gpio_nr) \
+	(gpio_nr & 0x1f)
+
+static int port_exp_direction_output(unsigned gpio, int value)
+{
+	int ret;
+
+	i2c_set_bus_num(2);
+	ret = i2c_probe(PORTEXP_IO_TO_CHIP(gpio));
+	if (ret)
+		return ret;
+
+	ret = pca953x_set_dir(PORTEXP_IO_TO_CHIP(gpio),
+		(1 << PORTEXP_IO_TO_PIN(gpio)),
+		(PCA953X_DIR_OUT << PORTEXP_IO_TO_PIN(gpio)));
+
+	if (ret)
+		return ret;
+
+	ret = pca953x_set_val(PORTEXP_IO_TO_CHIP(gpio),
+		(1 << PORTEXP_IO_TO_PIN(gpio)),
+		(value << PORTEXP_IO_TO_PIN(gpio)));
+
+	if (ret)
+		return ret;
+
+	return 0;
+}
 
 #ifdef CONFIG_SYS_USE_EIMNOR
 static iomux_v3_cfg_t const eimnor_pads[] = {
@@ -262,36 +314,24 @@ static struct fsl_esdhc_cfg usdhc_cfg[2] = {
 	{USDHC3_BASE_ADDR},
 };
 
-int mmc_get_env_devno(void)
+int board_mmc_get_env_dev(int devno)
 {
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	/* need ubstract 1 to map to the mmc3 device id
+	/*
+	 * need ubstract 1 to map to the mmc3 device id
 	 * see the comments in board_mmc_init function
 	 */
-	if (2 == dev_no)
-		dev_no--;
+	if (devno == 2)
+		devno--;
 
-	return dev_no;
+	return devno;
 }
 
-int mmc_map_to_kernel_blk(int dev_no)
+int mmc_map_to_kernel_blk(int devno)
 {
-	if (1 == dev_no)
-		dev_no = 2;
+	if (devno == 1)
+		devno = 2;
 
-	return dev_no;
+	return devno;
 }
 
 int board_mmc_getcd(struct mmc *mmc)
@@ -348,38 +388,6 @@ int board_mmc_init(bd_t *bis)
 	}
 
 	return 0;
-}
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_env_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
 }
 #endif
 
@@ -452,27 +460,27 @@ int board_phy_config(struct phy_device *phydev)
 	return 0;
 }
 
-static int setup_fec(void)
+static void setup_fec(void)
 {
 	int ret;
 
-#ifdef CONFIG_MX6QP
-	imx_iomux_set_gpr_register(5, 9, 1, 1);
-#else
-	imx_iomux_set_gpr_register(1, 21, 1, 1);
-#endif
+	if (is_mx6dqp()) {
+		/*
+		 * select ENET MAC0 TX clock from PLL
+		 */
+		imx_iomux_set_gpr_register(5, 9, 1, 1);
+	} else {
+		imx_iomux_set_gpr_register(1, 21, 1, 1);
+	}
 
 	ret = enable_fec_anatop_clock(0, ENET_125MHZ);
 	if (ret)
-		return ret;
-
-	return 0;
+		printf("Error fec anatop clock settings!\n");
 }
 
 int board_eth_init(bd_t *bis)
 {
 	setup_iomux_enet();
-	setup_fec();
 
 	return cpu_eth_init(bis);
 }
@@ -519,12 +527,9 @@ static void disable_lvds(struct display_info_t const *dev)
 {
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
 
-	int reg = readl(&iomux->gpr[2]);
-
-	reg &= ~(IOMUXC_GPR2_LVDS_CH0_MODE_MASK |
-		 IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
-
-	writel(reg, &iomux->gpr[2]);
+	clrbits_le32(&iomux->gpr[2],
+		     IOMUXC_GPR2_LVDS_CH0_MODE_MASK |
+		     IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
 }
 
 static void do_enable_hdmi(struct display_info_t const *dev)
@@ -572,7 +577,7 @@ struct display_info_t const displays[] = {{
 		.hsync_len      = 96,
 		.vsync_len      = 2,
 		.sync           = 0,
-		.vmode          = FB_VMODE_NONINTERLACED
+		.vmode          = FB_VMODE_NONINTERLACED,
 } } };
 size_t display_count = ARRAY_SIZE(displays);
 
@@ -615,8 +620,8 @@ static void setup_display(void)
 	writel(reg, &mxc_ccm->cscmr2);
 
 	reg = readl(&mxc_ccm->chsccdr);
-	reg |= (CHSCCDR_CLK_SEL_LDB_DI0 <<
-		MXC_CCM_CHSCCDR_IPU1_DI0_CLK_SEL_OFFSET);
+	reg |= (CHSCCDR_CLK_SEL_LDB_DI0
+		<< MXC_CCM_CHSCCDR_IPU1_DI0_CLK_SEL_OFFSET);
 	reg |= (CHSCCDR_CLK_SEL_LDB_DI0 <<
 		MXC_CCM_CHSCCDR_IPU1_DI1_CLK_SEL_OFFSET);
 	writel(reg, &mxc_ccm->chsccdr);
@@ -651,56 +656,6 @@ int overwrite_console(void)
 	return 1;
 }
 
-#ifdef CONFIG_MAX7310_IOEXP
-/*
- * I2C3 MLB, Port Expanders (A, B, C), Video ADC, Light Sensor,
- * Compass Sensor, Accelerometer, Res Touch
- */
-static struct i2c_pads_info i2c_pad_info2 = {
-	.scl = {
-		.i2c_mode = MX6_PAD_GPIO_3__I2C3_SCL | PC,
-		.gpio_mode = MX6_PAD_GPIO_3__GPIO1_IO03 | PC,
-		.gp = IMX_GPIO_NR(1, 3)
-	},
-	.sda = {
-		.i2c_mode = MX6_PAD_EIM_D18__I2C3_SDA | PC,
-		.gpio_mode = MX6_PAD_EIM_D18__GPIO3_IO18 | PC,
-		.gp = IMX_GPIO_NR(3, 18)
-	}
-};
-
-void reset_max7310(void)
-{
-	gpio_direction_output(I2C_EXP_RST, 1);
-	imx_iomux_v3_setup_multiple_pads(port_exp,
-					 ARRAY_SIZE(port_exp));
-}
-
-int setup_max7310(void)
-{
-#ifdef CONFIG_SYS_I2C_MXC
-	/*
-	 * set steering config to i2c,
-	 * note: this causes pin conflicts with eimnor and spinor
-	 */
-	gpio_direction_output(IMX_GPIO_NR(5, 4), 1);
-	imx_iomux_v3_setup_multiple_pads(i2c3_pads,
-					ARRAY_SIZE(i2c3_pads));
-
-	/*setup i2c info 2*/
-	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
-
-	gpio_exp_setup_port(1, 2, 0x30);
-	gpio_exp_setup_port(2, 2, 0x32);
-	gpio_exp_setup_port(3, 2, 0x34);
-
-	return 0;
-#else
-	return -EPERM;
-#endif
-}
-#endif
-
 #ifdef CONFIG_MXC_SPI
 iomux_v3_cfg_t const ecspi1_pads[] = {
 	MX6_PAD_EIM_D16__ECSPI1_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
@@ -729,11 +684,6 @@ int board_early_init_f(void)
 {
 	setup_iomux_uart();
 
-#ifdef CONFIG_MAX7310_IOEXP
-	/*Reset gpio expander at early stage*/
-	reset_max7310();
-#endif
-
 	return 0;
 }
 
@@ -742,10 +692,16 @@ int board_init(void)
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-#ifdef CONFIG_MAX7310_IOEXP
-	setup_max7310();
-#endif
+	/* I2C 2 and 3 setup - I2C 3 hw mux with EIM */
 	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
+	/* I2C 3 Steer */
+	gpio_direction_output(IMX_GPIO_NR(5, 4), 1);
+	imx_iomux_v3_setup_multiple_pads(i2c3_pads, ARRAY_SIZE(i2c3_pads));
+#ifndef CONFIG_SYS_FLASH_CFI
+	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
+#endif
+	gpio_direction_output(IMX_GPIO_NR(1, 15), 1);
+	imx_iomux_v3_setup_multiple_pads(port_exp, ARRAY_SIZE(port_exp));
 
 #ifdef CONFIG_VIDEO_IPUV3
 	setup_display();
@@ -766,12 +722,17 @@ int board_init(void)
 #ifdef CONFIG_SYS_USE_EIMNOR
 	setup_iomux_eimnor();
 #endif
+
+#ifdef CONFIG_FEC_MXC
+	setup_fec();
+#endif
+
 	return 0;
 }
 
-static struct pmic *pfuze;
 int power_init_board(void)
 {
+	struct pmic *pfuze;
 	unsigned int value;
 	int ret;
 
@@ -844,7 +805,7 @@ int power_init_board(void)
 void ldo_mode_set(int ldo_bypass)
 {
 	unsigned int value;
-	struct pmic *p = pfuze;
+	struct pmic *p = pmic_get("PFUZE100");
 
 	if (!p) {
 		printf("No PMIC found!\n");
@@ -892,6 +853,17 @@ int board_late_init(void)
 	add_board_boot_modes(board_boot_modes);
 #endif
 
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	setenv("board_name", "SABREAUTO");
+
+	if (is_mx6dqp())
+		setenv("board_rev", "MX6QP");
+	else if (is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D))
+		setenv("board_rev", "MX6Q");
+	else if (is_cpu_type(MXC_CPU_MX6DL) || is_cpu_type(MXC_CPU_MX6SOLO))
+		setenv("board_rev", "MX6DL");
+#endif
+
 #ifdef CONFIG_ENV_IS_IN_MMC
 	board_late_mmc_env_init();
 #endif
@@ -920,8 +892,8 @@ int checkboard(void)
 }
 
 #ifdef CONFIG_USB_EHCI_MX6
-#define USB_HOST1_PWR     IOEXP_GPIO_NR(2, 7)
-#define USB_OTG_PWR       IOEXP_GPIO_NR(3, 1)
+#define USB_HOST1_PWR     PORTEXP_IO_NR(0x32, 7)
+#define USB_OTG_PWR       PORTEXP_IO_NR(0x34, 1)
 
 iomux_v3_cfg_t const usb_otg_pads[] = {
 	MX6_PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
@@ -954,15 +926,15 @@ int board_ehci_power(int port, int on)
 	switch (port) {
 	case 0:
 		if (on)
-			gpio_exp_direction_output(USB_OTG_PWR, 1);
+			port_exp_direction_output(USB_OTG_PWR, 1);
 		else
-			gpio_exp_direction_output(USB_OTG_PWR, 0);
+			port_exp_direction_output(USB_OTG_PWR, 0);
 		break;
 	case 1:
 		if (on)
-			gpio_exp_direction_output(USB_HOST1_PWR, 1);
+			port_exp_direction_output(USB_HOST1_PWR, 1);
 		else
-			gpio_exp_direction_output(USB_HOST1_PWR, 0);
+			port_exp_direction_output(USB_HOST1_PWR, 0);
 		break;
 	default:
 		printf("MXC USB port %d not yet supported\n", port);
@@ -974,7 +946,6 @@ int board_ehci_power(int port, int on)
 #endif
 
 #ifdef CONFIG_FSL_FASTBOOT
-
 void board_fastboot_setup(void)
 {
 	switch (get_boot_device()) {
@@ -1032,9 +1003,8 @@ int check_recovery_cmd_file(void)
 	int button_pressed = 0;
 	int recovery_mode = 0;
 
-#ifdef CONFIG_BCB_SUPPORT
-	recovery_mode = recovery_check_and_clean_command();
-#endif
+	recovery_mode = recovery_check_and_clean_flag();
+
 	/* Check Recovery Combo Button press or not. */
 	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
 		ARRAY_SIZE(recovery_key_pads));
@@ -1092,3 +1062,4 @@ void board_recovery_setup(void)
 #endif /*CONFIG_ANDROID_RECOVERY*/
 
 #endif /*CONFIG_FSL_FASTBOOT*/
+

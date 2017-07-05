@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -37,7 +37,7 @@ plugin_start:
  	ldr r1, [r0]
  	cmp r1, #0
  	beq normal_boot
-	
+
 	ldr r0, =0x30B10158
 	ldr r1, [r0]
 	cmp r1, #0

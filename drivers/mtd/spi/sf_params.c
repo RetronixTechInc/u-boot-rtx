@@ -16,7 +16,6 @@
 const struct spi_flash_params spi_flash_params_table[] = {
 #ifdef CONFIG_SPI_FLASH_ATMEL		/* ATMEL */
 	{"AT45DB011D",	   0x1f2200, 0x0,	64 * 1024,     4, RD_NORM,		    SECT_4K},
-	{"AT45DB021E",	   0x1f2300, 0x100,	32 * 1024,     8,	0,		    SECT_2K},
 	{"AT45DB021D",	   0x1f2300, 0x0,	64 * 1024,     8, RD_NORM,		    SECT_4K},
 	{"AT45DB041D",	   0x1f2400, 0x0,	64 * 1024,     8, RD_NORM,		    SECT_4K},
 	{"AT45DB081D",	   0x1f2500, 0x0,	64 * 1024,    16, RD_NORM,		    SECT_4K},
@@ -24,6 +23,7 @@ const struct spi_flash_params spi_flash_params_table[] = {
 	{"AT45DB321D",	   0x1f2700, 0x0,	64 * 1024,    64, RD_NORM,		    SECT_4K},
 	{"AT45DB641D",	   0x1f2800, 0x0,	64 * 1024,   128, RD_NORM,		    SECT_4K},
 	{"AT25DF321",      0x1f4701, 0x0,	64 * 1024,    64, RD_NORM,		    SECT_4K},
+	{"AT26DF081A",     0x1f4501, 0x0,	64 * 1024,    16, RD_NORM,		    SECT_4K},
 #endif
 #ifdef CONFIG_SPI_FLASH_EON		/* EON */
 	{"EN25Q32B",	   0x1c3016, 0x0,	64 * 1024,    64, RD_NORM,			  0},
@@ -34,6 +34,11 @@ const struct spi_flash_params spi_flash_params_table[] = {
 #ifdef CONFIG_SPI_FLASH_GIGADEVICE	/* GIGADEVICE */
 	{"GD25Q64B",	   0xc84017, 0x0,	64 * 1024,   128, RD_NORM,		    SECT_4K},
 	{"GD25LQ32",	   0xc86016, 0x0,	64 * 1024,    64, RD_NORM,		    SECT_4K},
+#endif
+#ifdef CONFIG_SPI_FLASH_ISSI		/* ISSI */
+	{"IS25LP032",	   0x9d6016, 0x0,	64 * 1024,    64, RD_NORM,			  0},
+	{"IS25LP064",	   0x9d6017, 0x0,	64 * 1024,   128, RD_NORM,			  0},
+	{"IS25LP128",	   0x9d6018, 0x0,	64 * 1024,   256, RD_NORM,			  0},
 #endif
 #ifdef CONFIG_SPI_FLASH_MACRONIX	/* MACRONIX */
 	{"MX25L2006E",	   0xc22012, 0x0,	64 * 1024,     4, RD_NORM,			  0},
@@ -101,7 +106,7 @@ const struct spi_flash_params spi_flash_params_table[] = {
 	{"SST25WF010",	   0xbf2502, 0x0,	64 * 1024,     2, RD_NORM,          SECT_4K | SST_WR},
 	{"SST25WF020",	   0xbf2503, 0x0,	64 * 1024,     4, RD_NORM,	    SECT_4K | SST_WR},
 	{"SST25WF040",	   0xbf2504, 0x0,	64 * 1024,     8, RD_NORM,	    SECT_4K | SST_WR},
-	{"SST25WF040B",	   0x621613, 0x0,	64 * 1024,     8, RD_NORM,	    SECT_4K | SST_WR},
+	{"SST25WF040B",	   0x621613, 0x0,	64 * 1024,     8, RD_NORM,		     SECT_4K},
 	{"SST25WF080",	   0xbf2505, 0x0,	64 * 1024,    16, RD_NORM,	    SECT_4K | SST_WR},
 #endif
 #ifdef CONFIG_SPI_FLASH_WINBOND		/* WINBOND */

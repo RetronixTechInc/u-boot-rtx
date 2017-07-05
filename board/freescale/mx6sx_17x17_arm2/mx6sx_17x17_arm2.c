@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -333,25 +333,8 @@ static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 
 #define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 10)
 
-int mmc_get_env_devno(void)
+int board_mmc_get_env_dev(int dev_no)
 {
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	/* need ubstract 2 to map to the mmc device id
-	 * see the comments in board_mmc_init function
-	 */
-
 #ifdef CONFIG_SYS_USE_SPINOR
 	dev_no -= 2;
 #else
@@ -470,39 +453,6 @@ int board_mmc_init(bd_t *bis)
 	return 0;
 }
 #endif
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
-
 #endif
 
 #ifdef CONFIG_SYS_USE_SPINOR
@@ -607,27 +557,9 @@ static void setup_gpmi_nand(void)
 	/* config gpmi nand iomux */
 	imx_iomux_v3_setup_multiple_pads(gpmi_pads, ARRAY_SIZE(gpmi_pads));
 
-	/* Disable the QSPI2 root clock */
-	clrbits_le32(&mxc_ccm->CCGR4, MXC_CCM_CCGR4_QSPI2_ENFC_MASK
-				| MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_GPMI_IO_MASK);
-
-	/* config gpmi and bch clock to 100 MHz */
-	clrsetbits_le32(&mxc_ccm->cs2cdr,
-			MXC_CCM_CS2CDR_QSPI2_CLK_PODF_MASK |
-			MXC_CCM_CS2CDR_QSPI2_CLK_PRED_MASK |
-			MXC_CCM_CS2CDR_QSPI2_CLK_SEL_MASK,
-			MXC_CCM_CS2CDR_QSPI2_CLK_PODF(0) |
+	setup_gpmi_io_clk((MXC_CCM_CS2CDR_QSPI2_CLK_PODF(0) |
 			MXC_CCM_CS2CDR_QSPI2_CLK_PRED(3) |
-			MXC_CCM_CS2CDR_QSPI2_CLK_SEL(3));
-
-	/* enable gpmi and bch clock gating */
-	setbits_le32(&mxc_ccm->CCGR4,
-		     MXC_CCM_CCGR4_RAWNAND_U_BCH_INPUT_APB_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_BCH_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_GPMI_IO_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_INPUT_APB_MASK |
-		     MXC_CCM_CCGR4_PL301_MX6QPER1_BCH_MASK |
-		     MXC_CCM_CCGR4_QSPI2_ENFC_MASK);
+			MXC_CCM_CS2CDR_QSPI2_CLK_SEL(3)));
 
 	/* enable apbh clock gating */
 	setbits_le32(&mxc_ccm->CCGR0, MXC_CCM_CCGR0_APBHDMA_MASK);
@@ -804,7 +736,7 @@ int board_late_init(void)
 #endif
 
 #ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_init();
+	board_late_mmc_env_init();
 #endif
 
 	return 0;

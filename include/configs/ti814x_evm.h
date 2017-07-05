@@ -16,6 +16,8 @@
 #ifndef __CONFIG_TI814X_EVM_H
 #define __CONFIG_TI814X_EVM_H
 
+#define CONFIG_SYS_CACHELINE_SIZE	64
+
 #define CONFIG_TI81XX
 #define CONFIG_TI814X
 #define CONFIG_SYS_NO_FLASH
@@ -28,7 +30,6 @@
 #define CONFIG_SYS_MALLOC_LEN		(1024 << 10)
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_HUSH_PARSER		/* Use HUSH for command parsing */
-#define CONFIG_SYS_PROMPT		"U-Boot# "
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_MACH_TYPE		MACH_TYPE_TI8148EVM
 
@@ -38,8 +39,6 @@
 #define CONFIG_INITRD_TAG		/* for ramdisk support */
 
 /* commands to include */
-# include <config_cmd_default.h>
-
 #define CONFIG_CMD_ASKENV
 #define CONFIG_VERSION_VARIABLE
 
@@ -102,8 +101,6 @@
 #define V_OSCK			24000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
 
-#define CONFIG_CMD_ECHO
-
 /* max number of command args */
 #define CONFIG_SYS_MAXARGS		16
 
@@ -150,7 +147,6 @@
 #define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
 
 /* NS16550 Configuration */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		(48000000)
@@ -216,7 +212,6 @@
 #undef CONFIG_USE_IRQ
 
 /* Ethernet */
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_MII
@@ -228,7 +223,6 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_NET_RETRY_COUNT         10
-#define CONFIG_NET_MULTI
 #define CONFIG_PHY_GIGE
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_ET1011C

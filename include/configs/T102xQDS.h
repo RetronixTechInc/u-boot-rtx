@@ -12,7 +12,6 @@
 #define __T1024QDS_H
 
 /* High Level Configuration Options */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_BOOKE
 #define CONFIG_E500			/* BOOKE e500 family */
@@ -39,6 +38,8 @@
 #define CONFIG_SILENT_CONSOLE
 #define CONFIG_BOARD_EARLY_INIT_F
 #endif
+
+#define CONFIG_FSL_CAAM			/* Enable SEC/CAAM */
 
 #ifdef CONFIG_RAMBOOT_PBL
 #define CONFIG_SYS_FSL_PBL_PBI board/freescale/t102xqds/t1024_pbi.cfg
@@ -475,13 +476,13 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_INIT_RAM_ADDR	0xfdd00000	/* Initial L1 address */
 #ifdef CONFIG_PHYS_64BIT
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH	0xf
-#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe0ec000
+#define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW	0xfe03c000
 /* The assembler doesn't like typecast */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS \
 	((CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH * 1ull << 32) | \
 	  CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW)
 #else
-#define CONFIG_SYS_INIT_RAM_ADDR_PHYS	0xfe0ec000 /* Initial L1 address */
+#define CONFIG_SYS_INIT_RAM_ADDR_PHYS	0xfe03c000 /* Initial L1 address */
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH 0
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW CONFIG_SYS_INIT_RAM_ADDR_PHYS
 #endif
@@ -496,7 +497,6 @@ unsigned long get_board_ddr_clk(void);
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(get_bus_freq(0)/2)
@@ -580,12 +580,7 @@ unsigned long get_board_ddr_clk(void);
 /*
  * eSPI - Enhanced SPI
  */
-#define CONFIG_FSL_ESPI
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_SPI_FLASH_SST
-#define CONFIG_SPI_FLASH_EON
 #endif
 #define CONFIG_CMD_SF
 #define CONFIG_SPI_FLASH_BAR
@@ -669,7 +664,6 @@ unsigned long get_board_ddr_clk(void);
 #endif
 
 #define CONFIG_PCI_PNP			/* do pci plug-and-play */
-#define CONFIG_E1000
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #define CONFIG_DOS_PARTITION
 #endif	/* CONFIG_PCI */
@@ -849,12 +843,9 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_ERRATA
 #define CONFIG_CMD_GREPENV
 #define CONFIG_CMD_IRQ
@@ -862,11 +853,9 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
-#define CONFIG_CMD_SETEXPR
 
 #ifdef CONFIG_PCI
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_NET
 #endif
 
 /*
@@ -876,7 +865,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #else
@@ -950,8 +938,12 @@ unsigned long get_board_ddr_clk(void);
 
 #define CONFIG_BOOTCOMMAND	CONFIG_LINUX
 
-#ifdef CONFIG_SECURE_BOOT
-#include <asm/fsl_secure_boot.h>
+/* Hash command with SHA acceleration supported in hardware */
+#ifdef CONFIG_FSL_CAAM
+#define CONFIG_CMD_HASH
+#define CONFIG_SHA_HW_ACCEL
 #endif
+
+#include <asm/fsl_secure_boot.h>
 
 #endif	/* __T1024QDS_H */

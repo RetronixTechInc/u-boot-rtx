@@ -45,19 +45,13 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_EXT2
-#undef CONFIG_CMD_LOADB
-#undef CONFIG_CMD_LOADS
 #define CONFIG_CMD_DHCP
 
 #define CONFIG_DRIVER_NE2000
 #define CONFIG_DRIVER_NE2000_BASE	0xffffffffb4000300
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		115200
@@ -84,6 +78,7 @@
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 
 /* Monitor Command Prompt */
+#undef CONFIG_SYS_PROMPT
 #if defined(CONFIG_SYS_LITTLE_ENDIAN)
 #define CONFIG_SYS_PROMPT		"qemu-mips64el # "
 #else

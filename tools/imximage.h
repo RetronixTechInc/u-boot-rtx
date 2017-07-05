@@ -2,7 +2,7 @@
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
  *
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -11,7 +11,6 @@
 #define _IMXIMAGE_H_
 
 #include <config.h>
-#include <linux/sizes.h>
 #define MAX_HW_CFG_SIZE_V2 220 /* Max number of registers imx can set for v2 */
 #define MAX_PLUGIN_CODE_SIZE (16*1024)
 #define MAX_HW_CFG_SIZE_V1 60  /* Max number of registers imx can set for v1 */
@@ -40,7 +39,6 @@
 #else
 #define FLASH_OFFSET_ONENAND	0x100
 #define FLASH_OFFSET_NOR	0x1000
-#define FLASH_OFFSET_SATA	FLASH_OFFSET_STANDARD
 #define FLASH_OFFSET_QSPI	0x1000
 #endif
 
@@ -55,16 +53,14 @@
 #define FLASH_LOADSIZE_SATA		FLASH_LOADSIZE_STANDARD
 #define FLASH_LOADSIZE_QSPI		0x0 /* entire image */
 
-#define IVT_HEADER_TAG 0xD1
-#define IVT_VERSION 0x40
-#define DCD_HEADER_TAG 0xD2
-#define DCD_COMMAND_TAG 0xCC
-#define DCD_VERSION 0x40
-#define DCD_COMMAND_PARAM 0x4
-
+/* Command tags and parameters */
+#define IVT_HEADER_TAG			0xD1
+#define IVT_VERSION			0x40
+#define DCD_HEADER_TAG			0xD2
+#define DCD_VERSION			0x40
 #define DCD_WRITE_DATA_COMMAND_TAG	0xCC
 #define DCD_WRITE_DATA_PARAM		0x4
-#define DCD_CLR_BIT_PARAM		0xC
+#define DCD_WRITE_CLR_BIT_PARAM	0xC
 #define DCD_CHECK_DATA_COMMAND_TAG	0xCF
 #define DCD_CHECK_BITS_SET_PARAM	0x14
 #define DCD_CHECK_BITS_CLR_PARAM	0x04
@@ -74,8 +70,8 @@ enum imximage_cmd {
 	CMD_IMAGE_VERSION,
 	CMD_BOOT_FROM,
 	CMD_BOOT_OFFSET,
-	CMD_DATA,
-	CMD_CLR_BIT,
+	CMD_WRITE_DATA,
+	CMD_WRITE_CLR_BIT,
 	CMD_CHECK_BITS_SET,
 	CMD_CHECK_BITS_CLR,
 	CMD_CSF,
@@ -149,16 +145,15 @@ typedef struct {
 	uint8_t param;
 } __attribute__((packed)) write_dcd_command_t;
 
-typedef struct {
-	uint8_t tag;
-	uint16_t length;
-	uint8_t param;
-	dcd_addr_data_t addr_data[0];
-} __attribute__((packed)) dcd_command_t;
+struct dcd_v2_cmd {
+	write_dcd_command_t write_dcd_command;
+	dcd_addr_data_t addr_data[MAX_HW_CFG_SIZE_V2];
+};
 
 typedef struct {
 	ivt_header_t header;
-	uint32_t dcd_data[SZ_512];
+	struct dcd_v2_cmd dcd_cmd;
+	uint32_t padding[1]; /* end up on an 8-byte boundary */
 } dcd_v2_t;
 
 typedef struct {
@@ -199,8 +194,11 @@ struct imx_header {
 
 typedef void (*set_dcd_val_t)(struct imx_header *imxhdr,
 					char *name, int lineno,
-					int fld, int cmd, uint32_t value,
+					int fld, uint32_t value,
 					uint32_t off);
+
+typedef void (*set_dcd_param_t)(struct imx_header *imxhdr, uint32_t dcd_len,
+					int32_t cmd);
 
 typedef void (*set_dcd_rst_t)(struct imx_header *imxhdr,
 					uint32_t dcd_len,

@@ -18,6 +18,7 @@
 #include <u-boot/zlib.h>
 #include <asm/byteorder.h>
 #include <libfdt.h>
+#include <mapmem.h>
 #include <fdt_support.h>
 #include <asm/bootm.h>
 #include <asm/secure.h>
@@ -25,7 +26,7 @@
 #include <bootm.h>
 #include <vxworks.h>
 
-#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+#ifdef CONFIG_ARMV7_NONSEC
 #include <asm/armv7.h>
 #endif
 
@@ -224,7 +225,17 @@ static void boot_prep_linux(bootm_headers_t *images)
 		if (BOOTM_ENABLE_MEMORY_TAGS)
 			setup_memory_tags(gd->bd);
 		if (BOOTM_ENABLE_INITRD_TAG) {
-			if (images->rd_start && images->rd_end) {
+			/*
+			 * In boot_ramdisk_high(), it may relocate ramdisk to
+			 * a specified location. And set images->initrd_start &
+			 * images->initrd_end to relocated ramdisk's start/end
+			 * addresses. So use them instead of images->rd_start &
+			 * images->rd_end when possible.
+			 */
+			if (images->initrd_start && images->initrd_end) {
+				setup_initrd_tag(gd->bd, images->initrd_start,
+						 images->initrd_end);
+			} else if (images->rd_start && images->rd_end) {
 				setup_initrd_tag(gd->bd, images->rd_start,
 						 images->rd_end);
 			}
@@ -237,7 +248,7 @@ static void boot_prep_linux(bootm_headers_t *images)
 	}
 }
 
-#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+#ifdef CONFIG_ARMV7_NONSEC
 bool armv7_boot_nonsec(void)
 {
 	char *s = getenv("bootm_boot_mode");
@@ -307,7 +318,7 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 		r2 = gd->bd->bi_boot_params;
 
 	if (!fake) {
-#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV7_VIRT)
+#ifdef CONFIG_ARMV7_NONSEC
 		if (armv7_boot_nonsec()) {
 			armv7_init_nonsec();
 			secure_ram_addr(_do_nonsec_entry)(kernel_entry,

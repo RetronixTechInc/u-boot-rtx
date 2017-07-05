@@ -196,10 +196,9 @@ u32 mx6_uart_fused(u32 base_addr)
 		return check_module_fused(MX6_MODULE_UART4);
 	case UART5_BASE:
 		return check_module_fused(MX6_MODULE_UART5);
-#ifdef UART6_BASE_ADDR
-	case UART6_BASE_ADDR:
+	case MX6UL_UART6_BASE_ADDR:
+	case MX6SX_UART6_BASE_ADDR:
 		return check_module_fused(MX6_MODULE_UART6);
-#endif
 #ifdef UART7_IPS_BASE_ADDR
 	case UART7_IPS_BASE_ADDR:
 		return check_module_fused(MX6_MODULE_UART7);

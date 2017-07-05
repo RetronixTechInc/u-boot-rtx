@@ -4,6 +4,8 @@
  * (C) Copyright 2000-2005
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
+ * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  ********************************************************************
  * NOTE: This header file defines an interface to U-Boot. Including
@@ -23,6 +25,7 @@
 struct lmb;
 
 #ifdef USE_HOSTCC
+#include <sys/types.h>
 
 /* new uImage format support enabled on host */
 #define CONFIG_FIT		1
@@ -243,6 +246,13 @@ struct lmb;
 #define IH_TYPE_SOCFPGAIMAGE	19	/* Altera SOCFPGA Preloader	*/
 #define IH_TYPE_X86_SETUP	20	/* x86 setup.bin Image		*/
 #define IH_TYPE_LPC32XXIMAGE	21	/* x86 setup.bin Image		*/
+#define IH_TYPE_LOADABLE	22	/* A list of typeless images	*/
+#define IH_TYPE_RKIMAGE		23	/* Rockchip Boot Image		*/
+#define IH_TYPE_RKSD		24	/* Rockchip SD card		*/
+#define IH_TYPE_RKSPI		25	/* Rockchip SPI image		*/
+#define IH_TYPE_ZYNQIMAGE	26	/* Xilinx Zynq Boot Image */
+
+#define IH_TYPE_COUNT		27	/* Number of image types */
 
 /*
  * Compression Types
@@ -252,6 +262,7 @@ struct lmb;
 #define IH_COMP_BZIP2		2	/* bzip2 Compression Used	*/
 #define IH_COMP_LZMA		3	/* lzma  Compression Used	*/
 #define IH_COMP_LZO		4	/* lzo   Compression Used	*/
+#define IH_COMP_LZ4		5	/* lz4   Compression Used	*/
 
 #define IH_MAGIC	0x27051956	/* Image Magic Number		*/
 #define IH_NMLEN		32	/* Image Name Length		*/
@@ -409,6 +420,15 @@ char *get_table_entry_name(const table_entry_t *table, char *msg, int id);
 const char *genimg_get_os_name(uint8_t os);
 const char *genimg_get_arch_name(uint8_t arch);
 const char *genimg_get_type_name(uint8_t type);
+
+/**
+ * genimg_get_type_short_name() - get the short name for an image type
+ *
+ * @param type	Image type (IH_TYPE_...)
+ * @return image short name, or "unknown" if unknown
+ */
+const char *genimg_get_type_short_name(uint8_t type);
+
 const char *genimg_get_comp_name(uint8_t comp);
 int genimg_get_os_id(const char *name);
 int genimg_get_arch_id(const char *name);
@@ -454,7 +474,31 @@ ulong genimg_get_image(ulong img_addr);
 
 int boot_get_ramdisk(int argc, char * const argv[], bootm_headers_t *images,
 		uint8_t arch, ulong *rd_start, ulong *rd_end);
-#endif
+
+/**
+ * boot_get_loadable - routine to load a list of binaries to memory
+ * @argc: Ignored Argument
+ * @argv: Ignored Argument
+ * @images: pointer to the bootm images structure
+ * @arch: expected architecture for the image
+ * @ld_start: Ignored Argument
+ * @ld_len: Ignored Argument
+ *
+ * boot_get_loadable() will take the given FIT configuration, and look
+ * for a field named "loadables".  Loadables, is a list of elements in
+ * the FIT given as strings.  exe:
+ *   loadables = "linux_kernel@1", "fdt@2";
+ * this function will attempt to parse each string, and load the
+ * corresponding element from the FIT into memory.  Once placed,
+ * no aditional actions are taken.
+ *
+ * @return:
+ *     0, if only valid images or no images are found
+ *     error code, if an error occurs during fit_image_load
+ */
+int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
+		uint8_t arch, const ulong *ld_start, ulong * const ld_len);
+#endif /* !USE_HOSTCC */
 
 int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
 		       ulong *setup_start, ulong *setup_len);
@@ -741,6 +785,7 @@ int bootz_setup(ulong image, ulong *start, ulong *end);
 #define FIT_KERNEL_PROP		"kernel"
 #define FIT_RAMDISK_PROP	"ramdisk"
 #define FIT_FDT_PROP		"fdt"
+#define FIT_LOADABLE_PROP	"loadables"
 #define FIT_DEFAULT_PROP	"default"
 #define FIT_SETUP_PROP		"setup"
 
@@ -775,10 +820,7 @@ static inline ulong fit_get_size(const void *fit)
  * returns:
  *     end address of the FIT image (blob) in memory
  */
-static inline ulong fit_get_end(const void *fit)
-{
-	return (ulong)fit + fdt_totalsize(fit);
-}
+ulong fit_get_end(const void *fit);
 
 /**
  * fit_get_name - get FIT node name

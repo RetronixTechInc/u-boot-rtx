@@ -19,6 +19,7 @@
 #include <environment.h>
 #include <linux/stddef.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <nand.h>
 #include <search.h>
 #include <errno.h>
@@ -233,6 +234,12 @@ int saveenv(void)
 }
 #endif /* CMD_SAVEENV */
 
+#if defined(CONFIG_SPL_BUILD)
+static int readenv(size_t offset, u_char *buf)
+{
+	return nand_spl_load_image(offset, CONFIG_ENV_SIZE, buf);
+}
+#else
 static int readenv(size_t offset, u_char *buf)
 {
 	size_t end = offset + CONFIG_ENV_RANGE;
@@ -266,6 +273,7 @@ static int readenv(size_t offset, u_char *buf)
 
 	return 0;
 }
+#endif /* #if defined(CONFIG_SPL_BUILD) */
 
 #ifdef CONFIG_ENV_OFFSET_OOB
 int get_nand_env_oob(nand_info_t *nand, unsigned long *result)

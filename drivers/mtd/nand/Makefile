@@ -33,6 +33,7 @@ obj-y += nand_ids.o
 obj-y += nand_util.o
 obj-y += nand_ecc.o
 obj-y += nand_base.o
+obj-y += nand_timings.o
 
 endif # not spl
 
@@ -41,6 +42,7 @@ ifdef NORMAL_DRIVERS
 obj-$(CONFIG_NAND_ECC_BCH) += nand_bch.o
 
 obj-$(CONFIG_NAND_ATMEL) += atmel_nand.o
+obj-$(CONFIG_NAND_ARASAN) += arasan_nfc.o
 obj-$(CONFIG_DRIVER_NAND_BFIN) += bfin_nand.o
 obj-$(CONFIG_NAND_DAVINCI) += davinci_nand.o
 obj-$(CONFIG_NAND_DENALI) += denali.o
@@ -53,12 +55,13 @@ obj-$(CONFIG_NAND_KB9202) += kb9202_nand.o
 obj-$(CONFIG_NAND_KIRKWOOD) += kirkwood_nand.o
 obj-$(CONFIG_NAND_KMETER1) += kmeter1_nand.o
 obj-$(CONFIG_NAND_LPC32XX_MLC) += lpc32xx_nand_mlc.o
+obj-$(CONFIG_NAND_LPC32XX_SLC) += lpc32xx_nand_slc.o
 obj-$(CONFIG_NAND_MPC5121_NFC) += mpc5121_nfc.o
 obj-$(CONFIG_NAND_VF610_NFC) += vf610_nfc.o
 obj-$(CONFIG_NAND_MXC) += mxc_nand.o
 obj-$(CONFIG_NAND_MXS) += mxs_nand.o
 obj-$(CONFIG_NAND_NDFC) += ndfc.o
-obj-$(CONFIG_NAND_NOMADIK) += nomadik.o
+obj-$(CONFIG_NAND_PXA3XX) += pxa3xx_nand.o
 obj-$(CONFIG_NAND_S3C2410) += s3c2410_nand.o
 obj-$(CONFIG_NAND_SPEAR) += spr_nand.o
 obj-$(CONFIG_TEGRA_NAND) += tegra_nand.o
@@ -73,5 +76,6 @@ obj-$(CONFIG_NAND_FSL_ELBC) += fsl_elbc_spl.o
 obj-$(CONFIG_NAND_FSL_IFC) += fsl_ifc_spl.o
 obj-$(CONFIG_NAND_MXC) += mxc_nand_spl.o
 obj-$(CONFIG_NAND_MXS) += mxs_nand_spl.o mxs_nand.o
+obj-$(CONFIG_NAND_SUNXI) += sunxi_nand_spl.o
 
 endif # drivers

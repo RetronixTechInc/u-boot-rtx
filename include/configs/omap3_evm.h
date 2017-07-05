@@ -21,11 +21,9 @@
 #include <asm/arch/omap.h>
 
 /* ----------------------------------------------------------------------------
- * Supported U-boot commands
+ * Supported U-Boot commands
  * ----------------------------------------------------------------------------
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_ASKENV
 
 #define CONFIG_CMD_EXT2
@@ -38,13 +36,8 @@
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
 
-#undef CONFIG_CMD_FLASH		/* flinfo, erase, protect	*/
-#undef CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
-#undef CONFIG_CMD_IMI		/* iminfo			*/
-#undef CONFIG_CMD_IMLS		/* List all found images	*/
-
 /* ----------------------------------------------------------------------------
- * Supported U-boot features
+ * Supported U-Boot features
  * ----------------------------------------------------------------------------
  */
 #define CONFIG_SYS_LONGHELP
@@ -84,12 +77,12 @@
 
 /* USB
  *
- * Enable CONFIG_MUSB_HCD for Host functionalities MSC, keyboard
- * Enable CONFIG_MUSB_UDD for Device functionalities.
+ * Enable CONFIG_USB_MUSB_HCD for Host functionalities MSC, keyboard
+ * Enable CONFIG_USB_MUSB_UDD for Device functionalities.
  */
 #define CONFIG_USB_OMAP3
-#define CONFIG_MUSB_HCD
-/* #define CONFIG_MUSB_UDC */
+#define CONFIG_USB_MUSB_HCD
+/* #define CONFIG_USB_MUSB_UDC */
 
 /* NAND SPL */
 #define CONFIG_SPL_NAND_SIMPLE

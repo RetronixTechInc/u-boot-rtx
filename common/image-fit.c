@@ -16,6 +16,7 @@
 #else
 #include <common.h>
 #include <errno.h>
+#include <mapmem.h>
 #include <asm/io.h>
 DECLARE_GLOBAL_DATA_PTR;
 #endif /* !USE_HOSTCC*/
@@ -850,6 +851,11 @@ static int fit_image_hash_get_ignore(const void *fit, int noffset, int *ignore)
 	return 0;
 }
 
+ulong fit_get_end(const void *fit)
+{
+	return map_to_sysmem((void *)(fit + fdt_totalsize(fit)));
+}
+
 /**
  * fit_set_timestamp - set node timestamp property
  * @fit: pointer to the FIT format image header
@@ -1029,6 +1035,13 @@ int fit_image_verify(const void *fit, int image_noffset)
 					strlen(FIT_SIG_NODENAME))) {
 			ret = fit_image_check_sig(fit, noffset, data,
 							size, -1, &err_msg);
+
+			/*
+			 * Show an indication on failure, but do not return
+			 * an error. Only keys marked 'required' can cause
+			 * an image validation failure. See the call to
+			 * fit_image_verify_required_sigs() above.
+			 */
 			if (ret)
 				puts("- ");
 			else
@@ -1435,6 +1448,7 @@ void fit_conf_print(const void *fit, int noffset, const char *p)
 	char *desc;
 	char *uname;
 	int ret;
+	int loadables_index;
 
 	/* Mandatory properties */
 	ret = fit_get_desc(fit, noffset, &desc);
@@ -1459,6 +1473,22 @@ void fit_conf_print(const void *fit, int noffset, const char *p)
 	uname = (char *)fdt_getprop(fit, noffset, FIT_FDT_PROP, NULL);
 	if (uname)
 		printf("%s  FDT:          %s\n", p, uname);
+
+	/* Print out all of the specified loadables */
+	for (loadables_index = 0;
+	     fdt_get_string_index(fit, noffset,
+			FIT_LOADABLE_PROP,
+			loadables_index,
+			(const char **)&uname) == 0;
+	     loadables_index++)
+	{
+		if (loadables_index == 0) {
+			printf("%s  Loadables:    ", p);
+		} else {
+			printf("%s                ", p);
+		}
+		printf("%s\n", uname);
+	}
 }
 
 static int fit_image_select(const void *fit, int rd_noffset, int verify)
@@ -1526,6 +1556,8 @@ static const char *fit_get_image_type_property(int type)
 		return FIT_RAMDISK_PROP;
 	case IH_TYPE_X86_SETUP:
 		return FIT_SETUP_PROP;
+	case IH_TYPE_LOADABLE:
+		return FIT_LOADABLE_PROP;
 	}
 
 	return "unknown";
@@ -1643,7 +1675,13 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	os_ok = image_type == IH_TYPE_FLATDT ||
 		fit_image_check_os(fit, noffset, IH_OS_LINUX) ||
 		fit_image_check_os(fit, noffset, IH_OS_OPENRTOS);
-	if (!type_ok || !os_ok) {
+
+	/*
+	 * If either of the checks fail, we should report an error, but
+	 * if the image type is coming from the "loadables" field, we
+	 * don't care what it is
+	 */
+	if ((!type_ok || !os_ok) && image_type != IH_TYPE_LOADABLE) {
 		fit_image_get_os(fit, noffset, &os);
 		printf("No %s %s %s Image\n",
 		       genimg_get_os_name(os),

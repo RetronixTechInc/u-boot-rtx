@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
+ * Copyright 2013-2016 Freescale Semiconductor, Inc.
  *
  * Configuration settings for the Freescale i.MX6SL EVK board.
  *
@@ -9,14 +9,13 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/arch/imx-regs.h>
-#include <asm/imx-common/gpio.h>
-#include <linux/sizes.h>
 #include "mx6_common.h"
 
-#define CONFIG_MX6
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
+#ifdef CONFIG_SPL
+#define CONFIG_SPL_LIBCOMMON_SUPPORT
+#define CONFIG_SPL_MMC_SUPPORT
+#include "imx6_spl.h"
+#endif
 
 /* uncomment for PLUGIN mode support */
 /* #define CONFIG_USE_PLUGIN */
@@ -33,42 +32,27 @@
 #define MACH_TYPE_MX6SLEVK		4307
 #define CONFIG_MACH_TYPE		MACH_TYPE_MX6SLEVK
 
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
-#define CONFIG_REVISION_TAG
-
-#define CONFIG_SYS_GENERIC_BOARD
-
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
 
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
-#define CONFIG_MXC_GPIO
 
 #define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE		UART1_IPS_BASE_ADDR
+#define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configs */
-#define CONFIG_FSL_ESDHC
-#define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
 #define CONFIG_SYS_FSL_USDHC_NUM	3
 #define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC2*/
-
-#define CONFIG_MMC
-#define CONFIG_CMD_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_CMD_FAT
-#define CONFIG_DOS_PARTITION
-
-#define CONFIG_SUPPORT_EMMC_BOOT /* eMMC specific */
 
 /* I2C Configs */
 #define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_I2C_SPEED		  100000
 
 /* PMIC */
@@ -80,7 +64,6 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
 #define CONFIG_FEC_MXC
 #define CONFIG_MII
 #define IMX_FEC_BASE			ENET_BASE_ADDR
@@ -90,21 +73,6 @@
 
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_SMSC
-
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-#define CONFIG_CONS_INDEX		1
-#define CONFIG_BAUDRATE			115200
-
-/* Command definition */
-#include <config_cmd_default.h>
-
-#undef CONFIG_CMD_IMLS
-
-#define CONFIG_BOOTDELAY		3
-
-#define CONFIG_LOADADDR			0x80800000
-#define CONFIG_SYS_TEXT_BASE		0x87800000
 
 #define CONFIG_MFG_ENV_SETTINGS \
 	"mfgtool_args=setenv bootargs console=${console},${baudrate} " \
@@ -196,23 +164,10 @@
 	   "else run netboot; fi"
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE		1024
-
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		256
-#define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE
-
 #define CONFIG_CMD_MEMTEST
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + SZ_512M)
 
-#define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-#define CONFIG_CMDLINE_EDITING
 #define CONFIG_STACKSIZE		SZ_128K
 
 /* Physical Memory Map */
@@ -229,9 +184,7 @@
 #define CONFIG_SYS_INIT_SP_ADDR \
 	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-/* FLASH and environment organization */
-#define CONFIG_SYS_NO_FLASH
-
+/* Environment organization */
 #define CONFIG_ENV_SIZE			SZ_8K
 #define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2 */
 #define CONFIG_SYS_MMC_ENV_PART		0	/* user partition */
@@ -250,17 +203,8 @@
 #define CONFIG_ENV_IS_IN_MMC
 #endif
 
-#define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_BOOTZ
-
-#ifndef CONFIG_SYS_DCACHE_OFF
-#define CONFIG_CMD_CACHE
-#endif
-
 #define CONFIG_CMD_SF
 #ifdef CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_MXC_SPI
 #define CONFIG_SF_DEFAULT_BUS		0
 #define CONFIG_SF_DEFAULT_CS		0
@@ -287,10 +231,7 @@
 #define CONFIG_SYS_MMC_ENV_DEV		1	/* SDHC2*/
 #endif
 
-#define CONFIG_CMD_FUSE
-#if defined(CONFIG_CMD_FUSE)
-#define CONFIG_MXC_OCOTP
-#endif
+#define CONFIG_IMX_THERMAL
 
 /*#define CONFIG_SPLASH_SCREEN*/
 

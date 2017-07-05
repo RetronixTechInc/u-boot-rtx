@@ -6,6 +6,8 @@
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
+ * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -14,6 +16,7 @@
 #include <errno.h>
 #include <image.h>
 #include <libfdt.h>
+#include <mapmem.h>
 #include <asm/io.h>
 
 #ifndef CONFIG_SYS_FDT_PAD
@@ -476,7 +479,7 @@ error:
  * addresses of some of the devices in the device tree are compared with the
  * actual addresses at which U-Boot has placed them.
  *
- * Returns 1 on success, 0 on failure.  If 0 is returned, U-boot will halt the
+ * Returns 1 on success, 0 on failure.  If 0 is returned, U-Boot will halt the
  * boot process.
  */
 __weak int ft_verify_fdt(void *fdt)
@@ -497,6 +500,10 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 	int ret = -EPERM;
 	int fdt_ret;
 
+	if (fdt_root(blob) < 0) {
+		printf("ERROR: root node setup failed\n");
+		goto err;
+	}
 	if (fdt_chosen(blob) < 0) {
 		printf("ERROR: /chosen node create failed\n");
 		goto err;

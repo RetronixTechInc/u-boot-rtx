@@ -1,0 +1,35 @@
+
+config TARGET_RTX_ADLINK_MX6DL
+	bool "Support Retronix ADLINK Board (imx6dl SOC)"
+	select DM
+	select DM_THERMAL
+	
+config TARGET_RTX_A6PLUS_MX6Q
+	bool "Support Retronix A6Plus Board (imx6q SOC)"
+	select DM
+	select DM_THERMAL
+
+config TARGET_RTX_A6_MX6Q
+	bool "Support Retronix A6 Board (imx6q SOC)"
+	select DM
+	select DM_THERMAL
+
+config TARGET_RTX_PITX_MX6Q
+	bool "Support Retronix PITX Board (imx6q SOC)"
+	select DM
+	select DM_THERMAL
+
+config TARGET_RTX_Q7_MX6Q
+	bool "Support Retronix Q7 Board (imx6q SOC)"
+	select DM
+	select DM_THERMAL
+
+config TARGET_RTX_VOLAR111Plus_MX6DL
+	bool "Support Retronix VOLAR111Plus Board (imx6dl SOC)"
+	select DM
+	select DM_THERMAL
+
+config TARGET_RTX_TREADMILL_MX6Q
+	bool "Support Retronix TREADMILL Board (imx6q SOC)"
+	select DM
+	select DM_THERMAL

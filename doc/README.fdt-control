@@ -156,7 +156,10 @@ address of the fdt binary blob, and will override either of the options.
 Be aware that this environment variable is checked prior to relocation,
 when only the compiled-in environment is available. Therefore it is not
 possible to define this variable in the saved SPI/NAND flash
-environment, for example (it will be ignored).
+environment, for example (it will be ignored). After relocation, this
+variable will be set to the address of the newly relocated fdt blob.
+It is read-only and cannot be changed. It can optionally be used to
+control the boot process of Linux with bootm/bootz commands.
 
 To use this, put something like this in your board header file:
 
@@ -169,6 +172,22 @@ After board configuration is done, fdt supported u-boot can be build in two ways
     $ make
 2)  build the user specified dts file
     $ make DEVICE_TREE=<dts-file-name>
+
+
+Configuration Options
+---------------------
+
+A number of run-time configuration options are provided in the /config node
+of the control device tree. You can access these using fdtdec_get_config_int(),
+fdtdec_get_config_bool() and fdtdec_get_config_string().
+
+Available options are:
+
+silent-console
+	If present and non-zero, the console is silenced by default on boot.
+
+no-keyboard
+	Tells U-Boot not to expect an attached keyboard with a VGA console
 
 
 Limitations

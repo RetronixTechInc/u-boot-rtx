@@ -18,7 +18,6 @@
 /*
  * Board
  */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DRIVER_TI_EMAC
 #define CONFIG_BARIX_IPAM390
 
@@ -134,7 +133,6 @@
 /*
  * Serial Driver info
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
 #define CONFIG_SYS_NS16550_COM1	DAVINCI_UART0_BASE /* Base address of UART0 */
@@ -207,7 +205,6 @@
 #define CONFIG_MISC_INIT_R
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT	"U-Boot > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS	16 /* max number of command args */
@@ -255,7 +252,6 @@
 /*
  * U-Boot commands
  */
-#include <config_cmd_default.h>
 #define CONFIG_CMD_ENV
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
@@ -263,14 +259,12 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
-#define CONFIG_CMD_MEMORY
 
 #ifdef CONFIG_CMD_BDI
 #define CONFIG_CLOCKS
 #endif
 
 #ifndef CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_CMD_NET
 #undef CONFIG_CMD_DHCP
 #undef CONFIG_CMD_MII
 #undef CONFIG_CMD_PING

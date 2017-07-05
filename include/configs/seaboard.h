@@ -20,7 +20,6 @@
 #include "tegra20-common.h"
 
 /* High-level configuration options */
-#define V_PROMPT		"Tegra20 (SeaBoard) # "
 #define CONFIG_TEGRA_BOARD_STRING	"NVIDIA Seaboard"
 
 /* Board-specific serial config */
@@ -46,7 +45,6 @@
 #define CONFIG_SYS_MMC_ENV_PART 2
 
 /* USB Host support */
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 3
 #define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_TEGRA
 #define CONFIG_USB_STORAGE
@@ -57,7 +55,6 @@
 #define CONFIG_USB_ETHER_ASIX
 
 /* General networking support */
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 
 /* Enable keyboard */
@@ -68,10 +65,6 @@
 #define CONFIG_USB_KEYBOARD
 
 /* LCD support */
-#define CONFIG_LCD
-#define CONFIG_PWM_TEGRA
-#define CONFIG_VIDEO_TEGRA
-#define LCD_BPP				LCD_COLOR16
 #define CONFIG_SYS_WHITE_ON_BLACK
 #define CONFIG_CONSOLE_SCROLL_LINES	10
 

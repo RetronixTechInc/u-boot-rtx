@@ -6,7 +6,7 @@
  *
  * Linux IPU driver for MX51:
  *
- * (C) Copyright 2005-2015 Freescale Semiconductor, Inc.
+ * (C) Copyright 2005-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -131,7 +131,7 @@ int clk_set_rate(struct clk *clk, unsigned long rate)
 
 	if (!clk)
 		return 0;
-	
+
 	return clk->rate;
 }
 
@@ -215,6 +215,10 @@ static struct clk ipu_clk = {
 	.usecount = 0,
 };
 
+#if !defined CONFIG_SYS_LDB_CLOCK
+#define CONFIG_SYS_LDB_CLOCK 65000000
+#endif
+
 #if defined(CONFIG_MX6) || defined(CONFIG_MX53)
 static int clk_ldb_clk_enable(struct clk *clk)
 {
@@ -240,7 +244,7 @@ static struct clk ldb_clk[2] = {
 	{
 	.name = "ldb_clk",
 	.id = 0,
-	.rate = 65000000,
+	.rate = CONFIG_SYS_LDB_CLOCK,
 #ifdef CONFIG_MX6
 	.enable_reg = (u32 *)(CCM_BASE_ADDR +
 		offsetof(struct mxc_ccm_reg, CCGR3)),
@@ -256,7 +260,7 @@ static struct clk ldb_clk[2] = {
 	}, {
 	.name = "ldb_clk",
 	.id = 1,
-	.rate = 65000000,
+	.rate = CONFIG_SYS_LDB_CLOCK,
 #ifdef CONFIG_MX6
 	.enable_reg = (u32 *)(CCM_BASE_ADDR +
 		offsetof(struct mxc_ccm_reg, CCGR3)),
@@ -1288,4 +1292,13 @@ ipu_color_space_t format_to_colorspace(uint32_t fmt)
 		break;
 	}
 	return RGB;
+}
+
+/* should be removed when clk framework is availiable */
+int ipu_set_ldb_clock(int rate)
+{
+	ldb_clk[0].rate = rate;
+	ldb_clk[1].rate = rate;
+
+	return 0;
 }

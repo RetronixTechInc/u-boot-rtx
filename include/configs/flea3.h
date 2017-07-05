@@ -22,7 +22,6 @@
 #define CONFIG_SYS_CACHELINE_SIZE	32
 
 #define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 /* Only in case the value is not present in mach-types.h */
 #ifndef MACH_TYPE_FLEA3
@@ -52,6 +51,9 @@
  */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_SPD_BUS_NUM		2 /* I2C3 */
 #define CONFIG_SYS_MXC_I2C3_SLAVE	0xfe
 #define CONFIG_MXC_SPI
@@ -71,9 +73,6 @@
 /*
  * Command definition
  */
-
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
 #define CONFIG_BOOTP_SUBNETMASK
@@ -86,7 +85,6 @@
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_SPI
 #define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
 #define CONFIG_NET_RETRY_COUNT	100
 
 #define CONFIG_BOOTDELAY	3
@@ -111,7 +109,6 @@
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define CONFIG_SYS_PROMPT	"flea3 U-Boot > "
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_HUSH_PARSER	/* Use the HUSH parser */
 
@@ -252,5 +249,9 @@
 		"fi;"							\
 		"else echo U-Boot not downloaded..exiting;fi\0"		\
 	"bootcmd=run net_nfs\0"
+
+/* Enable FIT images support */
+#define CONFIG_CMD_FDT
+#define CONFIG_FIT
 
 #endif				/* __CONFIG_H */

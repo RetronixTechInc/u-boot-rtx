@@ -16,8 +16,8 @@ config TARGET_RTX_PITX_MX6Q_MFG
 	  Uboot is MFG mode.
 	  
 config SYS_CONFIG_NAME
-	default "retronix/rtx_pitx_mx6q"     if !TARGET_RTX_PITX_MX6Q_MFG
-	default "retronix/rtx_pitx_mx6q_mfg" if TARGET_RTX_PITX_MX6Q_MFG
+	default "../../board/retronix/rtx_pitx_mx6q/rtx_pitx_mx6q"     if !TARGET_RTX_PITX_MX6Q_MFG
+	default "../../board/retronix/rtx_pitx_mx6q/rtx_pitx_mx6q_mfg" if TARGET_RTX_PITX_MX6Q_MFG
 
 config EXTRA_ENV_USE_DTB
 	bool "kernel is dtb type."

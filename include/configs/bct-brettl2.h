@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF536 brettl2 board
+ * U-Boot - Configuration file for BF536 brettl2 board
  */
 
 #ifndef __CONFIG_BCT_BRETTL2_H__
@@ -73,9 +73,6 @@
 #define CONFIG_GATEWAYIP	192.168.233.1
 #define CONFIG_SERVERIP		192.168.233.53
 #define CONFIG_ROOTPATH		"/romfs/brettl2"
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
-#define CONFIG_LIB_RAND
 #endif
 
 

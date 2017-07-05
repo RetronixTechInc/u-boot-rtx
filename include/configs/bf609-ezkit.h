@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF609 EZ-Kit board
+ * U-Boot - Configuration file for BF609 EZ-Kit board
  */
 
 #ifndef __CONFIG_BF609_EZKIT_H__
@@ -69,16 +69,12 @@
  */
 #define ADI_CMDS_NETWORK
 #define CONFIG_NETCONSOLE
-#define CONFIG_NET_MULTI
 #define CONFIG_HOSTNAME		"bf609-ezkit"
-#define CONFIG_DESIGNWARE_ETH
 #define CONFIG_PHY_ADDR		1
 #define CONFIG_DW_PORTS		1
 #define CONFIG_DW_ALTDESCRIPTOR
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_MII
 #define CONFIG_MII
-#define CONFIG_PHYLIB
 
 /* i2c Settings */
 #define CONFIG_SYS_I2C
@@ -87,7 +83,6 @@
 /*
  * Flash Settings
  */
-#undef CONFIG_CMD_IMLS
 #undef CONFIG_CMD_JFFS2
 #define CONFIG_SYS_FLASH_CFI_WIDTH     2
 #define CONFIG_FLASH_CFI_DRIVER
@@ -104,7 +99,6 @@
 #define CONFIG_BFIN_SPI6XX
 #define CONFIG_ENV_SPI_MAX_HZ	25000000
 #define CONFIG_SF_DEFAULT_SPEED	25000000
-#define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_ALL
 
 /*
@@ -144,7 +138,6 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_UART_CONSOLE	0
 
-#define CONFIG_CMD_MEMORY
 #define CONFIG_CMD_SOFTSWITCH
 
 #define CONFIG_SYS_MEMTEST_END (CONFIG_STACKBASE - 20*1024*1024 + 4)

@@ -16,26 +16,30 @@ extern int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 			struct mmc_data *data);
 extern int mmc_send_status(struct mmc *mmc, int timeout);
 extern int mmc_set_blocklen(struct mmc *mmc, int len);
+#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
+void mmc_adapter_card_type_ident(void);
+#endif
 
 #ifndef CONFIG_SPL_BUILD
 
-extern unsigned long mmc_berase(int dev_num, lbaint_t start, lbaint_t blkcnt);
+unsigned long mmc_berase(block_dev_desc_t *block_dev, lbaint_t start,
+			 lbaint_t blkcnt);
 
-extern ulong mmc_bwrite(int dev_num, lbaint_t start, lbaint_t blkcnt,
-		const void *src);
+unsigned long mmc_bwrite(block_dev_desc_t *block_dev, lbaint_t start,
+			 lbaint_t blkcnt, const void *src);
 
 #else /* CONFIG_SPL_BUILD */
 
 /* SPL will never write or erase, declare dummies to reduce code size. */
 
-static inline unsigned long mmc_berase(int dev_num, lbaint_t start,
-		lbaint_t blkcnt)
+static inline unsigned long mmc_berase(block_dev_desc_t *block_dev,
+				       lbaint_t start, lbaint_t blkcnt)
 {
 	return 0;
 }
 
-static inline ulong mmc_bwrite(int dev_num, lbaint_t start, lbaint_t blkcnt,
-		const void *src)
+static inline ulong mmc_bwrite(block_dev_desc_t *block_dev, lbaint_t start,
+			       lbaint_t blkcnt, const void *src)
 {
 	return 0;
 }

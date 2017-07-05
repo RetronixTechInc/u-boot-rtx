@@ -12,7 +12,6 @@
 #define __CONFIG_H
 
 #define CONFIG_PHYS_64BIT
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 
 #ifdef CONFIG_C29XPCIE
@@ -99,10 +98,8 @@
 #define CONFIG_FSL_PCIE_RESET		/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_PCI
 
-#define CONFIG_E1000
 
 /*
  * PCI Windows
@@ -380,7 +377,6 @@
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -389,7 +385,6 @@
 #define CONFIG_NS16550_MIN_FUNCTIONS
 #endif
 
-#define CONFIG_SERIAL_MULTI		/* Enable both serial ports */
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV
 
 #define CONFIG_SYS_BAUDRATE_TABLE	\
@@ -424,7 +419,6 @@
 /* I2C EEPROM */
 /* enable read and write access to EEPROM */
 #define CONFIG_CMD_EEPROM
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 2
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 5
@@ -432,16 +426,11 @@
 #define CONFIG_CMD_I2C
 
 /* eSPI - Enhanced SPI */
-#define CONFIG_FSL_ESPI
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_SPANSION
-#define CONFIG_SPI_FLASH_EON
 #define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED		10000000
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 
 #ifdef CONFIG_TSEC_ENET
-#define CONFIG_NET_MULTI
 #define CONFIG_MII			/* MII PHY management */
 #define CONFIG_MII_DEFAULT_TSEC	1	/* Allow unregistered phys */
 #define CONFIG_TSEC1		1
@@ -498,14 +487,10 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_ERRATA
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
-#define CONFIG_CMD_SETEXPR
 #define CONFIG_CMD_REGINFO
 
 /* Hash command with SHA acceleration supported in hardware */

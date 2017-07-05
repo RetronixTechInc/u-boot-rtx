@@ -9,16 +9,7 @@
 #ifndef __MX7D_ARM2_CONFIG_H
 #define __MX7D_ARM2_CONFIG_H
 
-#include <asm/arch/imx-regs.h>
-#include <linux/sizes.h>
 #include "mx7_common.h"
-#include <asm/imx-common/gpio.h>
-
-#define CONFIG_MX7
-#define CONFIG_ROM_UNIFIED_SECTIONS
-#define CONFIG_SYS_GENERIC_BOARD
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
 
 #define CONFIG_DBG_MONITOR
 /* uncomment for PLUGIN mode support */
@@ -38,35 +29,9 @@
 #define CONFIG_INITRD_TAG
 #define CONFIG_REVISION_TAG
 
-/* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		(32 * SZ_1M)
-
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_BOARD_LATE_INIT
-#define CONFIG_MXC_GPIO
-
-#define CONFIG_MXC_UART
-#define CONFIG_MXC_UART_BASE		UART1_IPS_BASE_ADDR
-
 #define CONFIG_IMX_THERMAL
-#define CONFIG_CMD_FUSE
-#ifdef CONFIG_CMD_FUSE
-#define CONFIG_MXC_OCOTP
-#endif
 
-/* MMC Configs */
-#define CONFIG_FSL_ESDHC
-#define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
-
-#define CONFIG_MMC
-#define CONFIG_CMD_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_CMD_FAT
-#define CONFIG_DOS_PARTITION
-#define CONFIG_SUPPORT_EMMC_BOOT /* eMMC specific */
-
-#define CONFIG_BAUDRATE			115200
 
 #undef CONFIG_BOOTM_NETBSD
 #undef CONFIG_BOOTM_PLAN9
@@ -75,32 +40,16 @@
 #undef CONFIG_CMD_EXPORTENV
 #undef CONFIG_CMD_IMPORTENV
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-#define CONFIG_CONS_INDEX		1
-
 /* I2C configs */
 #define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_SPEED		100000
 
-/* Command definition */
-#include <config_cmd_default.h>
-
-#undef CONFIG_CMD_IMLS
-
-#define CONFIG_BOOTDELAY		3
-
-#define CONFIG_LOADADDR			0x80800000
-#define CONFIG_SYS_TEXT_BASE		0x87800000
-
+#ifdef CONFIG_IMX_BOOTAUX
 #define CONFIG_SYS_AUXCORE_BOOTDATA 0x68000000 /* Set to QSPI1 B flash at default */
-#define CONFIG_CMD_BOOTAUX /* Boot M4 */
-#define CONFIG_CMD_SETEXPR
-
-#ifdef CONFIG_CMD_BOOTAUX
-#define CONFIG_MXC_RDC /* Enable RDC to isolate the peripherals for A7 and M4 */
 
 #define UPDATE_M4_ENV \
 	"m4image=m4_qspi.bin\0" \
@@ -122,7 +71,7 @@
 
 #define CONFIG_SYS_MMC_IMG_LOAD_PART	1
 #ifdef CONFIG_SYS_BOOT_NAND
-#define CONFIG_MFG_NAND_PARTITION "mtdparts=gpmi-nand:64m(boot),16m(kernel),16m(dtb),-(rootfs) "
+#define CONFIG_MFG_NAND_PARTITION "mtdparts=gpmi-nand:64m(boot),16m(kernel),16m(dtb),1m(misc),-(rootfs) "
 #else
 #define CONFIG_MFG_NAND_PARTITION ""
 #endif
@@ -162,9 +111,9 @@
 	"fdt_addr=0x83000000\0" \
 	"fdt_high=0xffffffff\0"	  \
 	"console=ttymxc0\0" \
-	"bootargs=console=ttymxc0,115200 ubi.mtd=4 "  \
+	"bootargs=console=ttymxc0,115200 ubi.mtd=5 "  \
 		"root=ubi0:rootfs rootfstype=ubifs "		     \
-		"mtdparts=gpmi-nand:64m(boot),16m(kernel),16m(dtb),-(rootfs)\0"\
+		"mtdparts=gpmi-nand:64m(boot),16m(kernel),16m(dtb),1m(misc),-(rootfs)\0"\
 	"bootcmd=nand read ${loadaddr} 0x4000000 0x800000;"\
 		"nand read ${fdt_addr} 0x5000000 0x100000;"\
 		"bootz ${loadaddr} - ${fdt_addr}\0"
@@ -250,17 +199,8 @@
 	   "else run netboot; fi"
 #endif
 
-/* Miscellaneous configurable options */
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT		"=> "
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE		1024
-
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		256
-#define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE
 
 #ifndef CONFIG_CMD_MEMTEST
 #define CONFIG_CMD_MEMTEST
@@ -271,7 +211,6 @@
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
 #define CONFIG_SYS_HZ			1000
 
-#define CONFIG_CMDLINE_EDITING
 #define CONFIG_STACKSIZE		SZ_128K
 
 /* Physical Memory Map */
@@ -350,7 +289,7 @@
 #undef CONFIG_ENV_SIZE
 #define CONFIG_ENV_SIZE			CONFIG_SYS_FLASH_SECT_SIZE
 #define CONFIG_ENV_SECT_SIZE		CONFIG_SYS_FLASH_SECT_SIZE
-#define CONFIG_ENV_OFFSET		(4 * CONFIG_SYS_FLASH_SECT_SIZE)
+#define CONFIG_ENV_OFFSET		(6 * CONFIG_SYS_FLASH_SECT_SIZE)
 #elif defined(CONFIG_ENV_IS_IN_NAND)
 #undef CONFIG_ENV_SIZE
 #define CONFIG_ENV_OFFSET		(60 << 20)
@@ -358,14 +297,7 @@
 #define CONFIG_ENV_SIZE			CONFIG_ENV_SECT_SIZE
 #endif
 
-#define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_BOOTZ
-
 #define CONFIG_CMD_BMODE
-
-#ifndef CONFIG_SYS_DCACHE_OFF
-#define CONFIG_CMD_CACHE
-#endif
 
 #ifdef CONFIG_VIDEO
 #define	CONFIG_CFB_CONSOLE
@@ -380,6 +312,7 @@
 #define	CONFIG_BMP_16BPP
 #define	CONFIG_VIDEO_BMP_RLE8
 #define CONFIG_VIDEO_BMP_LOGO
+#define CONFIG_IMX_VIDEO_SKIP
 #endif
 
 #if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_MXC_EPDC)

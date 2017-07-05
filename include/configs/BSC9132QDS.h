@@ -11,7 +11,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_DISPLAY_BOARDINFO
 
 #ifdef CONFIG_BSC9132QDS
@@ -92,10 +91,8 @@
 #define CONFIG_FSL_PCIE_RESET		/* need PCIe reset errata */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
 
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_PCI
 
-#define CONFIG_E1000			/*  E1000 pci Ethernet card*/
 
 /*
  * PCI Windows
@@ -411,7 +408,6 @@ combinations. this should be removed later
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
 #undef	CONFIG_SERIAL_SOFTWARE_FIFO
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -419,7 +415,6 @@ combinations. this should be removed later
 #define CONFIG_NS16550_MIN_FUNCTIONS
 #endif
 
-#define CONFIG_SERIAL_MULTI	1 /* Enable both serial ports */
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV	/* determine from environment */
 
 #define CONFIG_SYS_BAUDRATE_TABLE	\
@@ -467,7 +462,6 @@ combinations. this should be removed later
 
 /* enable read and write access to EEPROM */
 #define CONFIG_CMD_EEPROM
-#define CONFIG_SYS_I2C_MULTI_EEPROMS
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 5
@@ -484,10 +478,7 @@ combinations. this should be removed later
  * used for SLIC
  */
 /* eSPI - Enhanced SPI */
-#define CONFIG_FSL_ESPI  /* SPI */
 #ifdef CONFIG_FSL_ESPI
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED		10000000
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
@@ -582,17 +573,13 @@ combinations. this should be removed later
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_ERRATA
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
-#define CONFIG_CMD_SETEXPR
 #define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_MMC) || defined(CONFIG_USB_EHCI)
@@ -734,9 +721,5 @@ combinations. this should be removed later
 #define CONFIG_BOOTCOMMAND CONFIG_RAMBOOTCOMMAND
 
 #include <asm/fsl_secure_boot.h>
-
-#ifdef CONFIG_SECURE_BOOT
-#define CONFIG_CMD_BLOB
-#endif
 
 #endif	/* __CONFIG_H */

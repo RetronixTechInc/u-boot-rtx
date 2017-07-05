@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2011 Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  *
- * Copyright (C) 2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -13,20 +13,29 @@
 #include <errno.h>
 #include <asm/bootm.h>
 
+#define ANDROID_IMAGE_DEFAULT_KERNEL_ADDR	0x10008000
+
 static char andr_tmp_str[ANDR_BOOT_ARGS_SIZE + 1];
 
-#ifdef CONFIG_BRILLO_SUPPORT
-#include <linux/usb/ch9.h>
-#include <linux/usb/gadget.h>
-#include "../drivers/usb/gadget/bootctrl.h"
-#endif
-#ifdef CONFIG_RESET_CAUSE
-#include <asm/arch-imx/cpu.h>
-#include <recovery.h>
-#define POR_NUM1 0x1
-#define POR_NUM2 0x11
-#define ANDROID_NORMAL_BOOT     6
-#endif
+static ulong android_image_get_kernel_addr(const struct andr_img_hdr *hdr)
+{
+	/*
+	 * All the Android tools that generate a boot.img use this
+	 * address as the default.
+	 *
+	 * Even though it doesn't really make a lot of sense, and it
+	 * might be valid on some platforms, we treat that adress as
+	 * the default value for this field, and try to execute the
+	 * kernel in place in such a case.
+	 *
+	 * Otherwise, we will return the actual value set by the user.
+	 */
+	if (hdr->kernel_addr == ANDROID_IMAGE_DEFAULT_KERNEL_ADDR)
+		return (ulong)hdr + hdr->page_size;
+
+	return hdr->kernel_addr;
+}
+
 /**
  * android_image_get_kernel() - processes kernel part of Android boot images
  * @hdr:	Pointer to image header, which is at the start
@@ -45,21 +54,20 @@ static char andr_tmp_str[ANDR_BOOT_ARGS_SIZE + 1];
 int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 			     ulong *os_data, ulong *os_len)
 {
+	u32 kernel_addr = android_image_get_kernel_addr(hdr);
+
 	/*
 	 * Not all Android tools use the id field for signing the image with
 	 * sha1 (or anything) so we don't check it. It is not obvious that the
 	 * string is null terminated so we take care of this.
 	 */
-#ifdef CONFIG_RESET_CAUSE
-	u32 reset_cause_sw,reset_cause_hw;
-#endif
 	strncpy(andr_tmp_str, hdr->name, ANDR_BOOT_NAME_SIZE);
 	andr_tmp_str[ANDR_BOOT_NAME_SIZE] = '\0';
 	if (strlen(andr_tmp_str))
 		printf("Android's image name: %s\n", andr_tmp_str);
 
 	printf("Kernel load addr 0x%08x size %u KiB\n",
-	       hdr->kernel_addr, DIV_ROUND_UP(hdr->kernel_size, 1024));
+	       kernel_addr, DIV_ROUND_UP(hdr->kernel_size, 1024));
 
 	int len = 0;
 	if (*hdr->cmdline) {
@@ -94,32 +102,11 @@ int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 					newbootargs,
 					serialnr.high,
 					serialnr.low);
-	newbootargs = commandline;
-#endif
-#ifdef CONFIG_RESET_CAUSE
-	reset_cause_sw = read_boot_reason();
-	clear_boot_reason();
-	reset_cause_hw = get_imx_reset_cause();
-	if (ANDROID_NORMAL_BOOT == reset_cause_sw)
-		sprintf(commandline,
-				"%s androidboot.bootreason=Reboot",
-				newbootargs);
-	else if (POR_NUM1==reset_cause_hw || POR_NUM2 == reset_cause_hw)
-		sprintf(commandline,
-				"%s androidboot.bootreason=normal",
-				newbootargs);
-	else
-		sprintf(commandline,
-				"%s androidboot.bootreason=unknown",
-				newbootargs);
+	setenv("bootargs", commandline);
+#else
+	setenv("bootargs", newbootargs);
 #endif
 
-#ifdef CONFIG_BRILLO_SUPPORT
-	char suffixStr[64];
-	sprintf(suffixStr, " androidboot.slot_suffix=%s", get_slot_suffix());
-	strcat(commandline, suffixStr);
-#endif
-	setenv("bootargs", commandline);
 	if (os_data) {
 		*os_data = (ulong)hdr;
 		*os_data += hdr->page_size;
@@ -152,14 +139,16 @@ ulong android_image_get_end(const struct andr_img_hdr *hdr)
 
 ulong android_image_get_kload(const struct andr_img_hdr *hdr)
 {
-	return hdr->kernel_addr;
+	return android_image_get_kernel_addr(hdr);
 }
 
 int android_image_get_ramdisk(const struct andr_img_hdr *hdr,
 			      ulong *rd_data, ulong *rd_len)
 {
-	if (!hdr->ramdisk_size)
+	if (!hdr->ramdisk_size) {
+		*rd_data = *rd_len = 0;
 		return -1;
+	}
 
 	printf("RAM disk load addr 0x%08x size %u KiB\n",
 	       hdr->ramdisk_addr, DIV_ROUND_UP(hdr->ramdisk_size, 1024));
@@ -189,4 +178,3 @@ int android_image_get_fdt(const struct andr_img_hdr *hdr,
 	*fdt_len = hdr->second_size;
 	return 0;
 }
-

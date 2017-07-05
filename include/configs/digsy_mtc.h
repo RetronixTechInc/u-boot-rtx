@@ -23,7 +23,6 @@
 #define CONFIG_MPC5200		1	/* This is an MPC5200 CPU */
 #define CONFIG_DIGSY_MTC	1	/* ... on InterControl digsyMTC board */
 #define CONFIG_DISPLAY_BOARDINFO
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Valid values for CONFIG_SYS_TEXT_BASE are:
@@ -99,8 +98,6 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #ifdef CONFIG_VIDEO
 #define CONFIG_CMD_BMP
 #endif
@@ -109,7 +106,6 @@
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DIAG
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_EXT2
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_I2C
@@ -395,10 +391,6 @@
 #define CONFIG_AUTO_COMPLETE	1
 #define CONFIG_CMDLINE_EDITING	1
 #define CONFIG_SYS_HUSH_PARSER
-
-#define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_PROMPT "autoboot in %d seconds\n", bootdelay
-#define CONFIG_AUTOBOOT_DELAY_STR	" "
 
 #define CONFIG_LOOPW		1
 #define CONFIG_MX_CYCLIC	1

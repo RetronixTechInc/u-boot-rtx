@@ -49,24 +49,6 @@ const uchar default_environment[] = {
 #ifdef	CONFIG_LOADS_ECHO
 	"loads_echo="	__stringify(CONFIG_LOADS_ECHO)	"\0"
 #endif
-#ifdef	CONFIG_ETHADDR
-	"ethaddr="	__stringify(CONFIG_ETHADDR)	"\0"
-#endif
-#ifdef	CONFIG_ETH1ADDR
-	"eth1addr="	__stringify(CONFIG_ETH1ADDR)	"\0"
-#endif
-#ifdef	CONFIG_ETH2ADDR
-	"eth2addr="	__stringify(CONFIG_ETH2ADDR)	"\0"
-#endif
-#ifdef	CONFIG_ETH3ADDR
-	"eth3addr="	__stringify(CONFIG_ETH3ADDR)	"\0"
-#endif
-#ifdef	CONFIG_ETH4ADDR
-	"eth4addr="	__stringify(CONFIG_ETH4ADDR)	"\0"
-#endif
-#ifdef	CONFIG_ETH5ADDR
-	"eth5addr="	__stringify(CONFIG_ETH5ADDR)	"\0"
-#endif
 #ifdef	CONFIG_ETHPRIME
 	"ethprime="	CONFIG_ETHPRIME			"\0"
 #endif
@@ -97,7 +79,7 @@ const uchar default_environment[] = {
 #ifdef	CONFIG_BOOTFILE
 	"bootfile="	CONFIG_BOOTFILE			"\0"
 #endif
-#if defined(CONFIG_LOADADDR) && !defined(CONFIG_DEF_LOADADDR)
+#ifdef	CONFIG_LOADADDR
 	"loadaddr="	__stringify(CONFIG_LOADADDR)	"\0"
 #endif
 #ifdef	CONFIG_CLOCKS_IN_MHZ

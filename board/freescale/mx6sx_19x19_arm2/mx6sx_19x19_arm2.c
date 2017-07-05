@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -29,11 +29,7 @@
 #include "../common/pfuze.h"
 #include <usb.h>
 #include <usb/ehci-fsl.h>
-
-#ifdef CONFIG_VIDEO_MXS
-#include <linux/fb.h>
-#include <mxsfb.h>
-#endif
+#include <asm/imx-common/video.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -279,10 +275,10 @@ struct lcd_panel_info_t {
 	struct fb_videomode mode;
 };
 
-void do_enable_lvds(struct lcd_panel_info_t const *dev)
+void do_enable_lvds(struct display_info_t const *dev)
 {
-	enable_lcdif_clock(dev->lcdif_base_addr);
-	enable_lvds(dev->lcdif_base_addr);
+	enable_lcdif_clock(dev->bus);
+	enable_lvds_bridge(dev->bus);
 
 	imx_iomux_v3_setup_multiple_pads(lvds_ctrl_pads,
 							ARRAY_SIZE(lvds_ctrl_pads));
@@ -294,9 +290,9 @@ void do_enable_lvds(struct lcd_panel_info_t const *dev)
 	gpio_direction_output(IMX_GPIO_NR(1, 12) , 1);
 }
 
-void do_enable_parallel_lcd(struct lcd_panel_info_t const *dev)
+void do_enable_parallel_lcd(struct display_info_t const *dev)
 {
-	enable_lcdif_clock(dev->lcdif_base_addr);
+	enable_lcdif_clock(dev->bus);
 
 	imx_iomux_v3_setup_multiple_pads(lcd_pads, ARRAY_SIZE(lcd_pads));
 
@@ -307,10 +303,12 @@ void do_enable_parallel_lcd(struct lcd_panel_info_t const *dev)
 	gpio_direction_output(IMX_GPIO_NR(1, 12) , 1);
 }
 
-static struct lcd_panel_info_t const displays[] = {{
-	.lcdif_base_addr = LCDIF2_BASE_ADDR,
-	.depth = 18,
+struct display_info_t const displays[] = {{
+	.bus = LCDIF2_BASE_ADDR,
+	.addr = 0,
+	.pixfmt = 18,
 	.enable	= do_enable_lvds,
+	.detect = NULL,
 	.mode	= {
 		.name			= "Hannstar-XGA",
 		.xres           = 1024,
@@ -325,8 +323,10 @@ static struct lcd_panel_info_t const displays[] = {{
 		.sync           = 0,
 		.vmode          = FB_VMODE_NONINTERLACED
 } }, {
-	.lcdif_base_addr = LCDIF1_BASE_ADDR,
-	.depth = 24,
+	.bus = MX6SX_LCDIF1_BASE_ADDR,
+	.pixfmt = 24,
+	.addr = 0,
+	.detect = NULL,
 	.enable	= do_enable_parallel_lcd,
 	.mode	= {
 		.name			= "MCIMX28LCD",
@@ -342,42 +342,7 @@ static struct lcd_panel_info_t const displays[] = {{
 		.sync           = 0,
 		.vmode          = FB_VMODE_NONINTERLACED
 } } };
-
-int board_video_skip(void)
-{
-	int i;
-	int ret;
-	char const *panel = getenv("panel");
-	if (!panel) {
-		panel = displays[0].mode.name;
-		printf("No panel detected: default to %s\n", panel);
-		i = 0;
-	} else {
-		for (i = 0; i < ARRAY_SIZE(displays); i++) {
-			if (!strcmp(panel, displays[i].mode.name))
-				break;
-		}
-	}
-	if (i < ARRAY_SIZE(displays)) {
-		ret = mxs_lcd_panel_setup(displays[i].mode, displays[i].depth,
-				    displays[i].lcdif_base_addr);
-		if (!ret) {
-			if (displays[i].enable)
-				displays[i].enable(displays+i);
-			printf("Display: %s (%ux%u)\n",
-			       displays[i].mode.name,
-			       displays[i].mode.xres,
-			       displays[i].mode.yres);
-		} else
-			printf("LCD %s cannot be configured: %d\n",
-			       displays[i].mode.name, ret);
-	} else {
-		printf("unsupported panel %s\n", panel);
-		return -EINVAL;
-	}
-
-	return 0;
-}
+size_t display_count = ARRAY_SIZE(displays);
 #endif
 
 #ifdef CONFIG_FEC_MXC
@@ -454,29 +419,6 @@ static struct fsl_esdhc_cfg usdhc_cfg[1] = {
 	{USDHC1_BASE_ADDR, 0, 4},
 };
 
-int mmc_get_env_devno(void)
-{
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	return dev_no;
-}
-
-int mmc_map_to_kernel_blk(int dev_no)
-{
-	return dev_no;
-}
-
 int board_mmc_getcd(struct mmc *mmc)
 {
 	return 1;	/* Assume boot SD always present */
@@ -493,39 +435,6 @@ int board_mmc_init(bd_t *bis)
 	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 	return fsl_esdhc_initialize(bis, &usdhc_cfg[0]);
 }
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
-
 #endif
 
 #ifdef CONFIG_SYS_USE_SPINOR
@@ -648,27 +557,9 @@ static void setup_gpmi_nand(void)
 	/* config gpmi nand iomux */
 	imx_iomux_v3_setup_multiple_pads(gpmi_pads, ARRAY_SIZE(gpmi_pads));
 
-	/* Disable the QSPI2 root clock */
-	clrbits_le32(&mxc_ccm->CCGR4, MXC_CCM_CCGR4_QSPI2_ENFC_MASK
-				| MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_GPMI_IO_MASK);
-
-	/* config gpmi and bch clock to 100 MHz */
-	clrsetbits_le32(&mxc_ccm->cs2cdr,
-			MXC_CCM_CS2CDR_QSPI2_CLK_PODF_MASK |
-			MXC_CCM_CS2CDR_QSPI2_CLK_PRED_MASK |
-			MXC_CCM_CS2CDR_QSPI2_CLK_SEL_MASK,
-			MXC_CCM_CS2CDR_QSPI2_CLK_PODF(0) |
+	setup_gpmi_io_clk((MXC_CCM_CS2CDR_QSPI2_CLK_PODF(0) |
 			MXC_CCM_CS2CDR_QSPI2_CLK_PRED(3) |
-			MXC_CCM_CS2CDR_QSPI2_CLK_SEL(3));
-
-	/* enable gpmi and bch clock gating */
-	setbits_le32(&mxc_ccm->CCGR4,
-		     MXC_CCM_CCGR4_RAWNAND_U_BCH_INPUT_APB_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_BCH_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_GPMI_IO_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_INPUT_APB_MASK |
-		     MXC_CCM_CCGR4_PL301_MX6QPER1_BCH_MASK |
-		     MXC_CCM_CCGR4_QSPI2_ENFC_MASK);
+			MXC_CCM_CS2CDR_QSPI2_CLK_SEL(3)));
 
 	/* enable apbh clock gating */
 	setbits_le32(&mxc_ccm->CCGR0, MXC_CCM_CCGR0_APBHDMA_MASK);
@@ -846,7 +737,7 @@ int board_late_init(void)
 #endif
 
 #ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_init();
+	board_late_mmc_env_init();
 #endif
 
 	return 0;

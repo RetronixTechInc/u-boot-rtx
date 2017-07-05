@@ -172,7 +172,6 @@ static int m88e1011s_startup(struct phy_device *phydev)
 static int m88e1111s_config(struct phy_device *phydev)
 {
 	int reg;
-	int timeout;
 
 	if ((phydev->interface == PHY_INTERFACE_MODE_RGMII) ||
 			(phydev->interface == PHY_INTERFACE_MODE_RGMII_ID) ||
@@ -236,16 +235,7 @@ static int m88e1111s_config(struct phy_device *phydev)
 			MIIM_88E1111_PHY_EXT_SR, reg);
 
 		/* soft reset */
-		timeout = 1000;
-		phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
-		udelay(1000);
-		reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-		while ((reg & BMCR_RESET) && --timeout) {
-			udelay(1000);
-			reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-		}
-		if (!timeout)
-			printf("%s: phy soft reset timeout\n", __func__);
+		phy_reset(phydev);
 
 		reg = phy_read(phydev, MDIO_DEVAD_NONE,
 			MIIM_88E1111_PHY_EXT_SR);
@@ -258,20 +248,10 @@ static int m88e1111s_config(struct phy_device *phydev)
 	}
 
 	/* soft reset */
-	timeout = 1000;
-	phy_write(phydev, MDIO_DEVAD_NONE, MII_BMCR, BMCR_RESET);
-	udelay(1000);
-	reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-	while ((reg & BMCR_RESET) && --timeout) {
-		udelay(1000);
-		reg = phy_read(phydev, MDIO_DEVAD_NONE, MII_BMCR);
-	}
-	if (!timeout)
-		printf("%s: phy soft reset timeout\n", __func__);
+	phy_reset(phydev);
 
 	genphy_config_aneg(phydev);
-
-	phy_reset(phydev);
+	genphy_restart_aneg(phydev);
 
 	return 0;
 }
@@ -303,28 +283,56 @@ static int m88e1518_config(struct phy_device *phydev)
 	 * As per Marvell Release Notes - Alaska 88E1510/88E1518/88E1512
 	 * /88E1514 Rev A0, Errata Section 3.1
 	 */
+
+	/* EEE initialization */
+	phy_write(phydev, MDIO_DEVAD_NONE, 22, 0x00ff);
+	phy_write(phydev, MDIO_DEVAD_NONE, 17, 0x214B);
+	phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x2144);
+	phy_write(phydev, MDIO_DEVAD_NONE, 17, 0x0C28);
+	phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x2146);
+	phy_write(phydev, MDIO_DEVAD_NONE, 17, 0xB233);
+	phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x214D);
+	phy_write(phydev, MDIO_DEVAD_NONE, 17, 0xCC0C);
+	phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x2159);
+	phy_write(phydev, MDIO_DEVAD_NONE, 22, 0x0000);
+
+	/* SGMII-to-Copper mode initialization */
 	if (phydev->interface == PHY_INTERFACE_MODE_SGMII) {
-		phy_write(phydev, MDIO_DEVAD_NONE, 22, 0x00ff);	/* page 0xff */
-		phy_write(phydev, MDIO_DEVAD_NONE, 17, 0x214B);
-		phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x2144);
-		phy_write(phydev, MDIO_DEVAD_NONE, 17, 0x0C28);
-		phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x2146);
-		phy_write(phydev, MDIO_DEVAD_NONE, 17, 0xB233);
-		phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x214D);
-		phy_write(phydev, MDIO_DEVAD_NONE, 17, 0xCC0C);
-		phy_write(phydev, MDIO_DEVAD_NONE, 16, 0x2159);
-		phy_write(phydev, MDIO_DEVAD_NONE, 22, 0x0000);	/* reg page 0 */
-		phy_write(phydev, MDIO_DEVAD_NONE, 22, 18);    /* reg page 18 */
-		/* Write HWCFG_MODE = SGMII to Copper */
+		/* Select page 18 */
+		phy_write(phydev, MDIO_DEVAD_NONE, 22, 18);
+
+		/* In reg 20, write MODE[2:0] = 0x1 (SGMII to Copper) */
 		m88e1518_phy_writebits(phydev, 20, 0, 3, 1);
 
-		/* Phy reset */
+		/* PHY reset is necessary after changing MODE[2:0] */
 		m88e1518_phy_writebits(phydev, 20, 15, 1, 1);
-		phy_write(phydev, MDIO_DEVAD_NONE, 22, 0);     /* reg page 18 */
+
+		/* Reset page selection */
+		phy_write(phydev, MDIO_DEVAD_NONE, 22, 0);
+
 		udelay(100);
 	}
 
 	return m88e1111s_config(phydev);
+}
+
+/* Marvell 88E1510 */
+static int m88e1510_config(struct phy_device *phydev)
+{
+	/* Select page 3 */
+	phy_write(phydev, MDIO_DEVAD_NONE, 22, 3);
+
+	/* Enable INTn output on LED[2] */
+	m88e1518_phy_writebits(phydev, 18, 7, 1, 1);
+
+	/* Configure LEDs */
+	m88e1518_phy_writebits(phydev, 16, 0, 4, 3); /* LED[0]:0011 (ACT) */
+	m88e1518_phy_writebits(phydev, 16, 4, 4, 6); /* LED[1]:0110 (LINK) */
+
+	/* Reset page selection */
+	phy_write(phydev, MDIO_DEVAD_NONE, 22, 0);
+
+	return m88e1518_config(phydev);
 }
 
 /* Marvell 88E1118 */
@@ -539,6 +547,16 @@ static struct phy_driver M88E1149S_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
+static struct phy_driver M88E1510_driver = {
+	.name = "Marvell 88E1510",
+	.uid = 0x1410dd0,
+	.mask = 0xffffff0,
+	.features = PHY_GBIT_FEATURES,
+	.config = &m88e1510_config,
+	.startup = &m88e1011s_startup,
+	.shutdown = &genphy_shutdown,
+};
+
 static struct phy_driver M88E1518_driver = {
 	.name = "Marvell 88E1518",
 	.uid = 0x1410dd1,
@@ -569,6 +587,7 @@ int phy_marvell_init(void)
 	phy_register(&M88E1118R_driver);
 	phy_register(&M88E1111S_driver);
 	phy_register(&M88E1011S_driver);
+	phy_register(&M88E1510_driver);
 	phy_register(&M88E1518_driver);
 
 	return 0;

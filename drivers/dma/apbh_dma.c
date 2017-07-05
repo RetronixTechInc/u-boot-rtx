@@ -5,7 +5,7 @@
  * on behalf of DENX Software Engineering GmbH
  *
  * Based on code from LTIB:
- * Copyright (C) 2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2010-2016 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */

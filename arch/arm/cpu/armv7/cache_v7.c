@@ -16,6 +16,23 @@
 #define ARMV7_DCACHE_CLEAN_INVAL_RANGE	4
 
 #ifndef CONFIG_SYS_DCACHE_OFF
+static int check_cache_range(unsigned long start, unsigned long stop)
+{
+	int ok = 1;
+
+	if (start & (CONFIG_SYS_CACHELINE_SIZE - 1))
+		ok = 0;
+
+	if (stop & (CONFIG_SYS_CACHELINE_SIZE - 1))
+		ok = 0;
+
+	if (!ok)
+		debug("CACHE: Misaligned operation at range [%08lx, %08lx]\n",
+			start, stop);
+
+	return ok;
+}
+
 /*
  * Write the level and type you want to Cache Size Selection Register(CSSELR)
  * to get size details from Current Cache Size ID Register(CCSIDR)
@@ -68,7 +85,7 @@ static void v7_inval_dcache_level_setway(u32 level, u32 num_sets,
 		}
 	}
 	/* DSB to make sure the operation is complete */
-	CP15DSB;
+	DSB;
 }
 
 static void v7_clean_inval_dcache_level_setway(u32 level, u32 num_sets,
@@ -96,7 +113,7 @@ static void v7_clean_inval_dcache_level_setway(u32 level, u32 num_sets,
 		}
 	}
 	/* DSB to make sure the operation is complete */
-	CP15DSB;
+	DSB;
 }
 
 static void v7_maint_dcache_level_setway(u32 level, u32 operation)
@@ -215,7 +232,7 @@ static void v7_dcache_maint_range(u32 start, u32 stop, u32 range_op)
 	}
 
 	/* DSB to make sure the operation is complete */
-	CP15DSB;
+	DSB;
 }
 
 /* Invalidate TLB */
@@ -228,9 +245,9 @@ static void v7_inval_tlb(void)
 	/* Invalidate entire instruction TLB */
 	asm volatile ("mcr p15, 0, %0, c8, c5, 0" : : "r" (0));
 	/* Full system DSB - make sure that the invalidation is complete */
-	CP15DSB;
+	DSB;
 	/* Full system ISB - make sure the instruction stream sees it */
-	CP15ISB;
+	ISB;
 }
 
 void invalidate_dcache_all(void)
@@ -257,6 +274,8 @@ void flush_dcache_all(void)
  */
 void invalidate_dcache_range(unsigned long start, unsigned long stop)
 {
+	check_cache_range(start, stop);
+
 	v7_dcache_maint_range(start, stop, ARMV7_DCACHE_INVAL_RANGE);
 
 	v7_outer_cache_inval_range(start, stop);
@@ -269,6 +288,8 @@ void invalidate_dcache_range(unsigned long start, unsigned long stop)
  */
 void flush_dcache_range(unsigned long start, unsigned long stop)
 {
+	check_cache_range(start, stop);
+
 	v7_dcache_maint_range(start, stop, ARMV7_DCACHE_CLEAN_INVAL_RANGE);
 
 	v7_outer_cache_flush_range(start, stop);
@@ -286,15 +307,6 @@ void mmu_page_table_flush(unsigned long start, unsigned long stop)
 	flush_dcache_range(start, stop);
 	v7_inval_tlb();
 }
-
-/*
- * Flush range from all levels of d-cache/unified-cache used:
- * Affects the range [start, start + size - 1]
- */
-void  flush_cache(unsigned long start, unsigned long size)
-{
-	flush_dcache_range(start, start + size);
-}
 #else /* #ifndef CONFIG_SYS_DCACHE_OFF */
 void invalidate_dcache_all(void)
 {
@@ -304,19 +316,7 @@ void flush_dcache_all(void)
 {
 }
 
-void invalidate_dcache_range(unsigned long start, unsigned long stop)
-{
-}
-
-void flush_dcache_range(unsigned long start, unsigned long stop)
-{
-}
-
 void arm_init_before_mmu(void)
-{
-}
-
-void  flush_cache(unsigned long start, unsigned long size)
 {
 }
 
@@ -343,10 +343,10 @@ void invalidate_icache_all(void)
 	asm volatile ("mcr p15, 0, %0, c7, c5, 6" : : "r" (0));
 
 	/* Full system DSB - make sure that the invalidation is complete */
-	CP15DSB;
+	DSB;
 
 	/* ISB - make sure the instruction stream sees it */
-	CP15ISB;
+	ISB;
 }
 #else
 void invalidate_icache_all(void)

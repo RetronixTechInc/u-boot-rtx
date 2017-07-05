@@ -6,6 +6,8 @@
 
 #include <common.h>
 #include <lcd.h>
+#include <memalign.h>
+#include <phys2bus.h>
 #include <asm/arch/mbox.h>
 #include <asm/global_data.h>
 
@@ -38,8 +40,8 @@ struct msg_setup {
 
 void lcd_ctrl_init(void *lcdbase)
 {
-	ALLOC_ALIGN_BUFFER(struct msg_query, msg_query, 1, 16);
-	ALLOC_ALIGN_BUFFER(struct msg_setup, msg_setup, 1, 16);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_query, msg_query, 1);
+	ALLOC_CACHE_ALIGN_BUFFER(struct msg_setup, msg_setup, 1);
 	int ret;
 	u32 w, h;
 
@@ -102,7 +104,8 @@ void lcd_ctrl_init(void *lcdbase)
 	panel_info.vl_row = h;
 	panel_info.vl_bpix = LCD_COLOR16;
 
-	gd->fb_base = msg_setup->allocate_buffer.body.resp.fb_address;
+	gd->fb_base = bus_to_phys(
+		msg_setup->allocate_buffer.body.resp.fb_address);
 }
 
 void lcd_enable(void)

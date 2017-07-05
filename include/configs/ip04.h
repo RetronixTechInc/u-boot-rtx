@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for IP04 board (having BF532 processor)
+ * U-Boot - Configuration file for IP04 board (having BF532 processor)
  *
  * Copyright (c) 2006 Intratrade Ltd., Ivan Danov, idanov@gmail.com
  *
@@ -77,7 +77,6 @@
 #define DM9000_IO		CONFIG_DM9000_BASE
 #define DM9000_DATA		(CONFIG_DM9000_BASE + 2)
 
-#define CONFIG_LIB_RAND
 
 /*
  * Flash Settings
@@ -92,9 +91,6 @@
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_WINBOND
 
 
 /*
@@ -131,14 +127,12 @@
  * Misc Settings
  */
 #define CONFIG_BAUDRATE		115200
-#define CONFIG_MISC_INIT_R	/* needed for MAC address */
 #define CONFIG_UART_CONSOLE	0
 
 #undef CONFIG_SHOW_BOOT_PROGRESS
 /* Enable this if bootretry required; currently it's disabled */
 #define CONFIG_BOOT_RETRY_TIME	-1
 #define CONFIG_BOOTCOMMAND	"run nandboot"
-#define CONFIG_AUTOBOOT_PROMPT	"autoboot in %d seconds\n"
 
 
 /*

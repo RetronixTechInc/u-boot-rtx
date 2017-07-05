@@ -13,7 +13,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 /*
  * Top level Makefile configuration choices
@@ -407,7 +406,6 @@
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		(400000000 / CONFIG_SYS_CLK_DIV)
@@ -536,12 +534,9 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
@@ -581,13 +576,9 @@
 /*
  * Environment Configuration
  */
-
-/* The mac addresses for all ethernet interface */
 #if defined(CONFIG_TSEC_ENET)
 #define CONFIG_HAS_ETH0
-#define CONFIG_ETHADDR	 02:E0:0C:00:00:FD
 #define CONFIG_HAS_ETH1
-#define CONFIG_ETH1ADDR	 02:E0:0C:00:01:FD
 #endif
 
 #define CONFIG_IPADDR	 192.168.0.55

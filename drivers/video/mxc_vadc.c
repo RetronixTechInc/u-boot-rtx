@@ -7,6 +7,7 @@
 #include <common.h>
 
 #include <asm/arch/imx-regs.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/arch/clock.h>
 #include <asm/errno.h>
 #include <asm/io.h>

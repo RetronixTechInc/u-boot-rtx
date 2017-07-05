@@ -20,6 +20,8 @@
  * High Level Configuration Options
  * (easy to change)
  */
+#define CONFIG_SYS_THUMB_BUILD
+
 #define CONFIG_S3C24X0		/* This is a SAMSUNG S3C24x0-type SoC */
 #define CONFIG_S3C2410		/* specifically a SAMSUNG S3C2410 SoC */
 #define CONFIG_VCMA9		/* on a MPL VCMA9 Board  */
@@ -27,7 +29,6 @@
 
 #define CONFIG_SYS_TEXT_BASE	0x0
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_ARM_CACHE_WRITETHROUGH
 
@@ -49,15 +50,12 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_USB
 #define CONFIG_CMD_REGINFO
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_BSP
@@ -142,7 +140,6 @@
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_PROMPT		"VCMA9 # "
 #define CONFIG_SYS_CBSIZE		256
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)

@@ -358,7 +358,7 @@ wait_stat:
 .endm
 
 .macro imx7_ddr_setting
-#if defined (CONFIG_MX7D_LPDDR2)
+#if defined (TARGET_MX7D_19X19_LPDDR2_ARM2)
 	imx7d_19x19_lpddr2_arm2_setting
 #else
 	imx7d_19x19_lpddr3_arm2_setting

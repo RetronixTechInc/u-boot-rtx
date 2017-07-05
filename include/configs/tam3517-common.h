@@ -16,7 +16,6 @@
 #define CONFIG_OMAP		/* in a TI OMAP core */
 #define CONFIG_OMAP_GPIO
 #define CONFIG_OMAP_COMMON
-#define CONFIG_SYS_GENERIC_BOARD
 /* Common ARM Erratas */
 #define CONFIG_ARM_ERRATA_454179
 #define CONFIG_ARM_ERRATA_430973
@@ -67,7 +66,6 @@
 /*
  * NS16550 Configuration
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		48000000	/* 48MHz (APLL96/2) */
@@ -100,25 +98,17 @@
 #define CONFIG_USB_STORAGE
 
 /* commands to include */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EXT2		/* EXT2 Support			*/
 #define CONFIG_CMD_FAT		/* FAT support			*/
-#define CONFIG_CMD_GPIO
 #define CONFIG_CMD_I2C		/* I2C serial bus support	*/
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_MMC		/* MMC support			*/
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_NFS
 #define CONFIG_CMD_NAND		/* NAND support			*/
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_USB
 #define CONFIG_CMD_EEPROM
-
-#undef CONFIG_CMD_FLASH		/* only NAND on the SOM */
-#undef CONFIG_CMD_IMLS
 
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_SYS_I2C
@@ -248,7 +238,7 @@
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 
 /* NAND boot config */
-#define CONFIG_SYS_NAND_BUSWIDTH_16BIT	16
+#define CONFIG_SYS_NAND_BUSWIDTH_16BIT
 #define CONFIG_SYS_NAND_PAGE_COUNT	64
 #define CONFIG_SYS_NAND_PAGE_SIZE	2048
 #define CONFIG_SYS_NAND_OOBSIZE		64
@@ -261,6 +251,7 @@
 #define CONFIG_SYS_NAND_ECCSIZE		256
 #define CONFIG_SYS_NAND_ECCBYTES	3
 #define CONFIG_NAND_OMAP_ECCSCHEME	OMAP_ECC_HAM1_CODE_SW
+#define CONFIG_NAND_OMAP_GPMC_PREFETCH
 
 #define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
 
@@ -393,7 +384,7 @@ do {								\
 		if (i)						\
 			sprintf(ethname, "eth%daddr", i);	\
 		else						\
-			sprintf(ethname, "ethaddr");		\
+			strcpy(ethname, "ethaddr");		\
 		printf("Setting %s from EEPROM with %s\n", ethname, buf);\
 		setenv(ethname, buf);				\
 	}							\

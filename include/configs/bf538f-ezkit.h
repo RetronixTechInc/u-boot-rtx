@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF538F EZ-Kit Lite board
+ * U-Boot - Configuration file for BF538F EZ-Kit Lite board
  */
 
 #ifndef __CONFIG_BF538F_EZKIT_H__
@@ -63,8 +63,6 @@
 #define CONFIG_SMC91111	1
 #define CONFIG_SMC91111_BASE	0x20310300
 #define CONFIG_HOSTNAME		bf538f-ezkit
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
 
 
 /*
@@ -85,7 +83,6 @@
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 /*
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_ALL
 */
 

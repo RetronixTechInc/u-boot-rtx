@@ -13,6 +13,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_DISPLAY_BOARDINFO
+
 #ifdef CONFIG_36BIT
 #define CONFIG_PHYS_64BIT
 #endif
@@ -319,7 +321,6 @@ extern unsigned long get_clock_freq(void);
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX	2
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -423,7 +424,6 @@ extern unsigned long get_clock_freq(void);
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
-#define CONFIG_E1000			/* Define e1000 pci Ethernet card */
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 
@@ -491,14 +491,10 @@ extern unsigned long get_clock_freq(void);
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IRQ
-#define CONFIG_CMD_SETEXPR
 #define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
@@ -539,17 +535,11 @@ extern unsigned long get_clock_freq(void);
 /*
  * Environment Configuration
  */
-
-/* The mac addresses for all ethernet interface */
 #if defined(CONFIG_TSEC_ENET)
 #define CONFIG_HAS_ETH0
-#define CONFIG_ETHADDR	 00:E0:0C:00:00:FD
 #define CONFIG_HAS_ETH1
-#define CONFIG_ETH1ADDR	 00:E0:0C:00:01:FD
 #define CONFIG_HAS_ETH2
-#define CONFIG_ETH2ADDR	 00:E0:0C:00:02:FD
 #define CONFIG_HAS_ETH3
-#define CONFIG_ETH3ADDR	 00:E0:0C:00:03:FD
 #endif
 
 #define CONFIG_IPADDR	 192.168.1.253

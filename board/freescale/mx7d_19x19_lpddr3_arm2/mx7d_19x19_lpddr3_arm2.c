@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -18,6 +18,9 @@
 #include <mmc.h>
 #include <miiphy.h>
 #include <netdev.h>
+#include <power/pmic.h>
+#include <power/pfuze3000_pmic.h>
+#include "../common/pfuze.h"
 #ifdef CONFIG_SYS_I2C_MXC
 #include <i2c.h>
 #include <asm/imx-common/mxc_i2c.h>
@@ -227,7 +230,7 @@ static void setup_iomux_uart(void)
 	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
 }
 
-#ifdef CONFIG_QSPI
+#ifdef CONFIG_FSL_QSPI
 
 static iomux_v3_cfg_t const quadspi_pads[] = {
 	MX7D_PAD_EPDC_DATA00__QSPI_A_DATA0 | MUX_PAD_CTRL(QSPI_PAD_CTRL),
@@ -314,26 +317,6 @@ static struct fsl_esdhc_cfg usdhc_cfg[1] = {
 	{USDHC1_BASE_ADDR, 0, 4},
 };
 
-int mmc_get_env_devno(void)
-{
-	struct bootrom_sw_info **p =
-		(struct bootrom_sw_info **)ROM_SW_INFO_ADDR;
-
-	u8 boot_type = (*p)->boot_dev_type;
-	u8 dev_no = (*p)->boot_dev_instance;
-
-	/* If not boot from sd/mmc, use default value */
-	if ((boot_type != BOOT_TYPE_SD) && (boot_type != BOOT_TYPE_MMC))
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	return dev_no;
-}
-
-int mmc_map_to_kernel_blk(int dev_no)
-{
-	return dev_no;
-}
-
 int board_mmc_getcd(struct mmc *mmc)
 {
 	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
@@ -381,39 +364,6 @@ int board_mmc_init(bd_t *bis)
 
 	return 0;
 }
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
-
 #endif
 
 #ifdef CONFIG_FEC_MXC
@@ -491,6 +441,22 @@ int board_spi_cs_gpio(unsigned bus, unsigned cs)
 }
 #endif
 
+#ifdef CONFIG_USB_EHCI_MX7
+iomux_v3_cfg_t const usb_otg1_pads[] = {
+	MX7D_PAD_GPIO1_IO05__USB_OTG1_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+iomux_v3_cfg_t const usb_otg2_pads[] = {
+	MX7D_PAD_GPIO1_IO07__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+static void setup_usb(void)
+{
+	imx_iomux_v3_setup_multiple_pads(usb_otg1_pads, ARRAY_SIZE(usb_otg1_pads));
+	imx_iomux_v3_setup_multiple_pads(usb_otg2_pads, ARRAY_SIZE(usb_otg2_pads));
+}
+#endif
+
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
@@ -500,6 +466,9 @@ int board_early_init_f(void)
 	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
 #endif
 
+#ifdef CONFIG_USB_EHCI_MX7
+	setup_usb();
+#endif
 	return 0;
 }
 
@@ -531,7 +500,7 @@ int board_init(void)
 	setup_fec();
 #endif
 
-#ifdef CONFIG_QSPI
+#ifdef CONFIG_FSL_QSPI
 	board_qspi_init();
 #endif
 
@@ -547,86 +516,52 @@ static const struct boot_mode board_boot_modes[] = {
 };
 #endif
 
-#ifdef CONFIG_PFUZE3000_PMIC_I2C
-#define PFUZE_DEVICEID	0x0
-#define PFUZE_REVID	0x3
-#define PFUZE_FABID	0x4
-
-#define PFUZE_LDOGCTL	0x69
-#define PFUZE300_SW1ASTBY	0x21
-#define PFUZE300_SW1AMODE	0x23
-#define PFUZE300_SW1BVOLT	0x2e
-#define PFUZE300_SW1BSTBY	0x2f
-#define PFUZE300_SW1BMODE	0x31
-
-
-static int setup_pmic_voltages(void)
+#ifdef CONFIG_POWER
+#define I2C_PMIC	0
+int power_init_board(void)
 {
-	unsigned char value, rev_id = 0;
+	struct pmic *p;
+	int ret;
+	unsigned int reg, rev_id;
 
-	i2c_set_bus_num(CONFIG_PMIC_I2C_BUS);
+	ret = power_pfuze3000_init(I2C_PMIC);
+	if (ret)
+		return ret;
 
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_PMIC_I2C_SLAVE);
-	if (!i2c_probe(CONFIG_PMIC_I2C_SLAVE)) {
-		if (i2c_read(CONFIG_PMIC_I2C_SLAVE, PFUZE_DEVICEID, 1, &value, 1)) {
-			printf("Read device ID error!\n");
-			return -1;
-		}
-		if (i2c_read(CONFIG_PMIC_I2C_SLAVE, PFUZE_REVID, 1, &rev_id, 1)) {
-			printf("Read Rev ID error!\n");
-			return -1;
-		}
-		printf("Found PFUZE300! deviceid 0x%x, revid 0x%x\n", value, rev_id);
+	p = pmic_get("PFUZE3000");
+	ret = pmic_probe(p);
+	if (ret)
+		return ret;
 
-		/* disable Low Power Mode during standby mode */
-		if (i2c_read(CONFIG_PMIC_I2C_SLAVE, PFUZE_LDOGCTL, 1, &value, 1)) {
-			printf("Read LDOCTL error!\n");
-			return -1;
-		}
-		value |= 0x1;
-		if (i2c_write(CONFIG_PMIC_I2C_SLAVE, PFUZE_LDOGCTL, 1, &value, 1)) {
-			printf("Set LDOCTL error!\n");
-			return -1;
-		}
+	pmic_reg_read(p, PFUZE3000_DEVICEID, &reg);
+	pmic_reg_read(p, PFUZE3000_REVID, &rev_id);
+	printf("PMIC: PFUZE3000 DEV_ID=0x%x REV_ID=0x%x\n", reg, rev_id);
 
-		/* SW1A/1B mode set to APS/APS */
-		value = 0x8;
-		if (i2c_write(CONFIG_PMIC_I2C_SLAVE, PFUZE300_SW1AMODE, 1, &value, 1)) {
-			printf("Set PFUZE300_SW1AMODE error!\n");
-			return -1;
-		}
-		if (i2c_write(CONFIG_PMIC_I2C_SLAVE, PFUZE300_SW1BMODE, 1, &value, 1)) {
-			printf("Set PFUZE300_SW1BMODE error!\n");
-			return -1;
-		}
+	/* disable Low Power Mode during standby mode */
+	pmic_reg_read(p, PFUZE3000_LDOGCTL, &reg);
+	reg |= 0x1;
+	pmic_reg_write(p, PFUZE3000_LDOGCTL, reg);
 
-		/* SW1A/1B standby voltage set to 0.975V */
-		value = 0xb;
-		if (i2c_write(CONFIG_PMIC_I2C_SLAVE, PFUZE300_SW1ASTBY, 1, &value, 1)) {
-			printf("Set PFUZE300_SW1ASTBY error!\n");
-			return -1;
-		}
-		if (i2c_write(CONFIG_PMIC_I2C_SLAVE, PFUZE300_SW1BSTBY, 1, &value, 1)) {
-			printf("Set PFUZE300_SW1BSTBY error!\n");
-			return -1;
-		}
+	/* SW1A/1B mode set to APS/APS */
+	reg = 0x8;
+	pmic_reg_write(p, PFUZE3000_SW1AMODE, reg);
+	pmic_reg_write(p, PFUZE3000_SW1BMODE, reg);
 
-		/* set SW1B normal voltage to 0.975V */
-		if (i2c_read(CONFIG_PMIC_I2C_SLAVE, PFUZE300_SW1BVOLT, 1, &value, 1)) {
-			printf("Read SW1BVOLT error!\n");
-			return -1;
-		}
-		value &= ~0x1f;
-		value |= 0xb;
-		if (i2c_write(CONFIG_PMIC_I2C_SLAVE, PFUZE300_SW1BVOLT, 1, &value, 1)) {
-			printf("Set SW1BVOLT error!\n");
-			return -1;
-		}
-	}
+	/* SW1A/1B standby voltage set to 0.975V */
+	reg = 0xb;
+	pmic_reg_write(p, PFUZE3000_SW1ASTBY, reg);
+	pmic_reg_write(p, PFUZE3000_SW1BSTBY, reg);
+
+	/* set SW1B normal voltage to 0.975V */
+	pmic_reg_read(p, PFUZE3000_SW1BVOLT, &reg);
+	reg &= ~0x1f;
+	reg |= PFUZE3000_SW1AB_SETP(975);
+	pmic_reg_write(p, PFUZE3000_SW1BVOLT, reg);
 
 	return 0;
 }
 #endif
+
 
 int board_late_init(void)
 {
@@ -634,16 +569,8 @@ int board_late_init(void)
 	add_board_boot_modes(board_boot_modes);
 #endif
 
-#ifdef CONFIG_PFUZE3000_PMIC_I2C
-	int ret = 0;
-
-	ret = setup_pmic_voltages();
-	if (ret)
-		return ret;
-#endif
-
 #ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_init();
+	board_late_mmc_env_init();
 #endif
 
 	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
@@ -660,38 +587,10 @@ u32 get_board_rev(void)
 
 int checkboard(void)
 {
-#ifdef CONFIG_MX7D_LPDDR2
+#ifdef CONFIG_TARGET_MX7D_19X19_LPDDR2_ARM2
 	puts("Board: MX7D 19x19 LPDDR2 ARM2\n");
 #else
 	puts("Board: MX7D 19x19 LPDDR3 ARM2\n");
 #endif
 	return 0;
 }
-
-#ifdef CONFIG_USB_EHCI_MX7
-iomux_v3_cfg_t const usb_otg1_pads[] = {
-	MX7D_PAD_GPIO1_IO05__USB_OTG1_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-iomux_v3_cfg_t const usb_otg2_pads[] = {
-	MX7D_PAD_GPIO1_IO07__USB_OTG2_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-int board_ehci_hcd_init(int port)
-{
-	switch (port) {
-	case 0:
-		imx_iomux_v3_setup_multiple_pads(usb_otg1_pads,
-			ARRAY_SIZE(usb_otg1_pads));
-		break;
-	case 1:
-		imx_iomux_v3_setup_multiple_pads(usb_otg2_pads,
-			ARRAY_SIZE(usb_otg2_pads));
-		break;
-	default:
-		printf("MXC USB port %d not yet supported\n", port);
-		return 1;
-	}
-	return 0;
-}
-#endif

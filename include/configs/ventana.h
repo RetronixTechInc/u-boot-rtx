@@ -12,7 +12,6 @@
 #include "tegra20-common.h"
 
 /* High-level configuration options */
-#define V_PROMPT		"Tegra20 (Ventana) # "
 #define CONFIG_TEGRA_BOARD_STRING	"NVIDIA Ventana"
 
 /* Board-specific serial config */
@@ -44,17 +43,12 @@
 #define CONFIG_USB_ETHER_ASIX
 
 /* General networking support */
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 
 /* USB keyboard */
 #define CONFIG_USB_KEYBOARD
 
 /* LCD support */
-#define CONFIG_LCD
-#define CONFIG_PWM_TEGRA
-#define CONFIG_VIDEO_TEGRA
-#define LCD_BPP				LCD_COLOR16
 #define CONFIG_SYS_WHITE_ON_BLACK
 #define CONFIG_CONSOLE_SCROLL_LINES	10
 

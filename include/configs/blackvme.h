@@ -1,4 +1,4 @@
-/* U-boot for BlackVME. (C) Wojtek Skulski 2010.
+/* U-Boot for BlackVME. (C) Wojtek Skulski 2010.
  * The board includes ADSP-BF561 rev. 0.5,
  * 32-bit SDRAM (2 * MT48LC16M16A2TG or MT48LC32M16A2TG),
  * Gigabit Ether AX88180 (ASIX) + 88E1111 rev. B2 (Marvell),
@@ -85,9 +85,6 @@
 #define CFG_AUTOLOAD		"no"
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
-#define CONFIG_ENV_OVERWRITE	1	/* enable changing MAC at runtime */
-/* Comment out hardcoded MAC to enable MAC storage in EEPROM */
-/* # define CONFIG_ETHADDR	ff:ee:dd:cc:bb:aa */
 
 /*
  * SDRAM settings & memory map
@@ -145,8 +142,6 @@
 
 #define CONFIG_ENV_SPI_MAX_HZ	15000000
 #define CONFIG_SF_DEFAULT_SPEED	15000000
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_STMICRO
 
 /*
  * Interactive command settings
@@ -156,13 +151,10 @@
 #define CONFIG_CMDLINE_EDITING	1
 #define CONFIG_AUTO_COMPLETE	1
 
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_BOOTLDR
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_CPLBINFO
 #define CONFIG_CMD_SF
-#define CONFIG_CMD_ELF
 
 /*
  * Default: boot from SPI flash.
@@ -237,8 +229,6 @@
  * No Parallel Flash on this board
  */
 #define CONFIG_SYS_NO_FLASH
-#undef CONFIG_CMD_IMLS
 #undef CONFIG_CMD_JFFS2
-#undef CONFIG_CMD_FLASH
 
 #endif

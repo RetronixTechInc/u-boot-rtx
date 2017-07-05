@@ -58,10 +58,13 @@ hostprogs-$(CONFIG_FIT_SIGNATURE) += fit_info fit_check_sign
 FIT_SIG_OBJS-$(CONFIG_FIT_SIGNATURE) := common/image-sig.o
 # Flattened device tree objects
 LIBFDT_OBJS := $(addprefix lib/libfdt/, \
-			fdt.o fdt_ro.o fdt_rw.o fdt_strerror.o fdt_wip.o)
+			fdt.o fdt_ro.o fdt_rw.o fdt_strerror.o fdt_wip.o \
+			fdt_region.o)
 RSA_OBJS-$(CONFIG_FIT_SIGNATURE) := $(addprefix lib/rsa/, \
 					rsa-sign.o rsa-verify.o rsa-checksum.o \
 					rsa-mod-exp.o)
+
+ROCKCHIP_OBS = lib/rc4.o rkcommon.o rkimage.o rksd.o rkspi.o
 
 # common objs for dumpimage and mkimage
 dumpimage-mkimage-objs := aisimage.o \
@@ -89,11 +92,13 @@ dumpimage-mkimage-objs := aisimage.o \
 			os_support.o \
 			pblimage.o \
 			pbl_crc32.o \
+			$(ROCKCHIP_OBS) \
 			socfpgaimage.o \
 			lib/sha1.o \
 			lib/sha256.o \
 			common/hash.o \
 			ublimage.o \
+			zynqimage.o \
 			$(LIBFDT_OBJS) \
 			$(RSA_OBJS-y)
 
@@ -116,13 +121,22 @@ ifdef CONFIG_FIT_SIGNATURE
 HOST_EXTRACFLAGS	+= -DCONFIG_FIT_SIGNATURE
 endif
 
-ifdef CONFIG_SYS_SPI_U_BOOT_OFFS
-HOSTCFLAGS_kwbimage.o += -DCONFIG_SYS_SPI_U_BOOT_OFFS=$(CONFIG_SYS_SPI_U_BOOT_OFFS)
+ifdef CONFIG_SYS_U_BOOT_OFFS
+HOSTCFLAGS_kwbimage.o += -DCONFIG_SYS_U_BOOT_OFFS=$(CONFIG_SYS_U_BOOT_OFFS)
 endif
 
 # MXSImage needs LibSSL
 ifneq ($(CONFIG_MX23)$(CONFIG_MX28)$(CONFIG_FIT_SIGNATURE),)
-HOSTLOADLIBES_mkimage += -lssl -lcrypto
+HOSTLOADLIBES_mkimage += \
+	$(shell pkg-config --libs libssl libcrypto 2> /dev/null || echo "-lssl -lcrypto")
+
+# OS X deprecate openssl in favour of CommonCrypto, supress deprecation
+# warnings on those systems
+ifeq ($(HOSTOS),darwin)
+HOSTCFLAGS_mxsimage.o += -Wno-deprecated-declarations
+HOSTCFLAGS_image-sig.o += -Wno-deprecated-declarations
+HOSTCFLAGS_rsa-sign.o += -Wno-deprecated-declarations
+endif
 endif
 
 HOSTLOADLIBES_dumpimage := $(HOSTLOADLIBES_mkimage)
@@ -150,9 +164,12 @@ ubsha1-objs := os_support.o ubsha1.o lib/sha1.o
 HOSTCFLAGS_ubsha1.o := -pedantic
 
 hostprogs-$(CONFIG_KIRKWOOD) += kwboot
-hostprogs-$(CONFIG_ARMADA_XP) += kwboot
+hostprogs-$(CONFIG_ARCH_MVEBU) += kwboot
 hostprogs-y += proftool
 hostprogs-$(CONFIG_STATIC_RELA) += relocate-rela
+
+hostprogs-y += fdtgrep
+fdtgrep-objs += $(LIBFDT_OBJS) fdtgrep.o
 
 # We build some files with extra pedantic flags to try to minimize things
 # that won't build on some weird host compiler -- though there are lots of
@@ -161,10 +178,6 @@ HOSTCFLAGS_crc32.o := -pedantic
 HOSTCFLAGS_md5.o := -pedantic
 HOSTCFLAGS_sha1.o := -pedantic
 HOSTCFLAGS_sha256.o := -pedantic
-
-# Don't build by default
-#hostprogs-$(CONFIG_PPC) += mpc86x_clk
-#HOSTCFLAGS_mpc86x_clk.o := -pedantic
 
 quiet_cmd_wrap = WRAP    $@
 cmd_wrap = echo "\#include <../$(patsubst $(obj)/%,%,$@)>" >$@

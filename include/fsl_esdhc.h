@@ -2,7 +2,7 @@
  * FSL SD/MMC Defines
  *-------------------------------------------------------------------
  *
- * Copyright 2007-2008, 2010-2015 Freescale Semiconductor, Inc.
+ * Copyright 2007-2008, 2010-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -16,15 +16,21 @@
 /* needed for the mmc_cfg definition */
 #include <mmc.h>
 
+#ifdef CONFIG_FSL_ESDHC_ADAPTER_IDENT
+#include "../board/freescale/common/qixis.h"
+#endif
+
 /* FSL eSDHC-specific constants */
 #define SYSCTL			0x0002e02c
 #define SYSCTL_INITA		0x08000000
 #define SYSCTL_TIMEOUT_MASK	0x000f0000
 #define SYSCTL_CLOCK_MASK	0x0000fff0
+#if !defined(CONFIG_FSL_USDHC)
 #define SYSCTL_CKEN		0x00000008
 #define SYSCTL_PEREN		0x00000004
 #define SYSCTL_HCKEN		0x00000002
 #define SYSCTL_IPGEN		0x00000001
+#endif
 #define SYSCTL_RSTA		0x01000000
 #define SYSCTL_RSTC		0x02000000
 #define SYSCTL_RSTD		0x04000000
@@ -80,6 +86,9 @@
 #define IRQSTATEN_TC		(0x00000002)
 #define IRQSTATEN_CC		(0x00000001)
 
+#define ESDHCCTL		0x0002e40c
+#define ESDHCCTL_PCS		(0x00080000)
+
 #define PRSSTAT			0x0002e024
 #define PRSSTAT_DAT0		(0x01000000)
 #define PRSSTAT_CLSL		(0x00800000)
@@ -88,7 +97,7 @@
 #define PRSSTAT_CINS		(0x00010000)
 #define PRSSTAT_BREN		(0x00000800)
 #define PRSSTAT_BWEN		(0x00000400)
-#define PRSSTAT_SDSTB		(0x00000008)
+#define PRSSTAT_SDSTB		(0X00000008)
 #define PRSSTAT_DLA		(0x00000004)
 #define PRSSTAT_CICHB		(0x00000002)
 #define PRSSTAT_CIDHB		(0x00000001)
@@ -165,10 +174,15 @@
 #define ESDHC_VENDORSPEC_VSELECT 0x00000002 /* Use 1.8V */
 
 struct fsl_esdhc_cfg {
+#ifdef CONFIG_FSL_LAYERSCAPE
+	u64	esdhc_base;
+#else
 	u32	esdhc_base;
+#endif
 	u32	sdhc_clk;
 	u8	max_bus_width;
 	u8	wp_enable;
+	u8	vs18_enable; /*default use 1.8v if this var is not 0*/
 	struct mmc_config cfg;
 };
 

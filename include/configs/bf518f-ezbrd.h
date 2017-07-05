@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF518F EZBrd board
+ * U-Boot - Configuration file for BF518F EZBrd board
  */
 
 #ifndef __CONFIG_BF518F_EZBRD_H__
@@ -87,9 +87,6 @@
 #endif
 #define CONFIG_HOSTNAME		bf518f-ezbrd
 #define CONFIG_PHY_ADDR		3
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
-#define CONFIG_LIB_RAND
 
 /*
  * Flash Settings
@@ -108,9 +105,6 @@
 #define CONFIG_BFIN_SPI
 #define CONFIG_ENV_SPI_MAX_HZ	30000000
 #define CONFIG_SF_DEFAULT_SPEED	30000000
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_SST
-#define CONFIG_SPI_FLASH_STMICRO
 
 
 /*

@@ -2,7 +2,7 @@
  * (C) Copyright 2009 SAMSUNG Electronics
  * Minkyu Kang <mk7.kang@samsung.com>
  * Jaehoon Chung <jh80.chung@samsung.com>
- * Portions Copyright 2011-2013 NVIDIA Corporation
+ * Portions Copyright 2011-2015 NVIDIA Corporation
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -21,7 +21,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 struct mmc_host mmc_host[CONFIG_SYS_MMC_MAX_DEVICE];
 
-#ifndef CONFIG_OF_CONTROL
+#if !CONFIG_IS_ENABLED(OF_CONTROL)
 #error "Please enable device tree support to use this driver"
 #endif
 
@@ -67,7 +67,7 @@ static void mmc_prepare_data(struct mmc_host *host, struct mmc_data *data,
 		bbstate->bounce_buffer, bbstate->user_buffer, data->blocks,
 		data->blocksize);
 
-	writel((u32)bbstate->bounce_buffer, &host->reg->sysad);
+	writel((u32)(unsigned long)bbstate->bounce_buffer, &host->reg->sysad);
 	/*
 	 * DMASEL[4:3]
 	 * 00 = Selects SDMA
@@ -233,8 +233,8 @@ static int mmc_send_cmd_bounced(struct mmc *mmc, struct mmc_cmd *cmd,
 		if (cmd->resp_type & MMC_RSP_136) {
 			/* CRC is stripped so we need to do some shifting. */
 			for (i = 0; i < 4; i++) {
-				unsigned int offset =
-					(unsigned int)(&host->reg->rspreg3 - i);
+				unsigned long offset =
+					(unsigned long)(&host->reg->rspreg3 - i);
 				cmd->response[i] = readl(offset) << 8;
 
 				if (i != 3) {
@@ -528,7 +528,7 @@ static const struct mmc_ops tegra_mmc_ops = {
 	.getcd		= tegra_mmc_getcd,
 };
 
-static int do_mmc_init(int dev_index)
+static int do_mmc_init(int dev_index, bool removable)
 {
 	struct mmc_host *host;
 	struct mmc *mmc;
@@ -559,7 +559,7 @@ static int do_mmc_init(int dev_index)
 		host->cfg.host_caps |= MMC_MODE_8BIT;
 	if (host->width >= 4)
 		host->cfg.host_caps |= MMC_MODE_4BIT;
-	host->cfg.host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_HC;
+	host->cfg.host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
 
 	/*
 	 * min freq is for card identification, and is the highest
@@ -573,6 +573,7 @@ static int do_mmc_init(int dev_index)
 	host->cfg.b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 
 	mmc = mmc_create(&host->cfg, host);
+	mmc->block_dev.removable = removable;
 	if (mmc == NULL)
 		return -1;
 
@@ -586,7 +587,8 @@ static int do_mmc_init(int dev_index)
  * @param node		Device index (0-3)
  * @param host		Structure to fill in (reg, width, mmc_id)
  */
-static int mmc_get_config(const void *blob, int node, struct mmc_host *host)
+static int mmc_get_config(const void *blob, int node, struct mmc_host *host,
+			  bool *removablep)
 {
 	debug("%s: node = %d\n", __func__, node);
 
@@ -619,6 +621,7 @@ static int mmc_get_config(const void *blob, int node, struct mmc_host *host)
 				   GPIOD_IS_IN);
 	gpio_request_by_name_nodev(blob, node, "power-gpios", 0,
 				   &host->pwr_gpio, GPIOD_IS_OUT);
+	*removablep = !fdtdec_get_bool(blob, node, "non-removable");
 
 	debug("%s: found controller at %p, width = %d, periph_id = %d\n",
 		__func__, host->reg, host->width, host->mmc_id);
@@ -636,6 +639,7 @@ static int mmc_get_config(const void *blob, int node, struct mmc_host *host)
 static int process_nodes(const void *blob, int node_list[], int count)
 {
 	struct mmc_host *host;
+	bool removable;
 	int i, node;
 
 	debug("%s: count = %d\n", __func__, count);
@@ -649,11 +653,11 @@ static int process_nodes(const void *blob, int node_list[], int count)
 		host = &mmc_host[i];
 		host->id = i;
 
-		if (mmc_get_config(blob, node, host)) {
+		if (mmc_get_config(blob, node, host, &removable)) {
 			printf("%s: failed to decode dev %d\n",	__func__, i);
 			return -1;
 		}
-		do_mmc_init(i);
+		do_mmc_init(i, removable);
 	}
 	return 0;
 }
@@ -664,13 +668,23 @@ void tegra_mmc_init(void)
 	const void *blob = gd->fdt_blob;
 	debug("%s entry\n", __func__);
 
+	/* See if any Tegra210 MMC controllers are present */
+	count = fdtdec_find_aliases_for_id(blob, "sdhci",
+		COMPAT_NVIDIA_TEGRA210_SDMMC, node_list,
+		CONFIG_SYS_MMC_MAX_DEVICE);
+	debug("%s: count of Tegra210 sdhci nodes is %d\n", __func__, count);
+	if (process_nodes(blob, node_list, count)) {
+		printf("%s: Error processing T210 mmc node(s)!\n", __func__);
+		return;
+	}
+
 	/* See if any Tegra124 MMC controllers are present */
 	count = fdtdec_find_aliases_for_id(blob, "sdhci",
 		COMPAT_NVIDIA_TEGRA124_SDMMC, node_list,
 		CONFIG_SYS_MMC_MAX_DEVICE);
 	debug("%s: count of Tegra124 sdhci nodes is %d\n", __func__, count);
 	if (process_nodes(blob, node_list, count)) {
-		printf("%s: Error processing T30 mmc node(s)!\n", __func__);
+		printf("%s: Error processing T124 mmc node(s)!\n", __func__);
 		return;
 	}
 

@@ -7,7 +7,7 @@
  */
 
 /* ---
- * Version: U-boot 1.0.0 - initial release for Sentec COBRA5272 board
+ * Version: U-Boot 1.0.0 - initial release for Sentec COBRA5272 board
  * Date: 2004-03-29
  * Author: Florian Schlote
  *
@@ -104,6 +104,9 @@
 #define CONFIG_ENV_IS_IN_FLASH	1
 #endif
 
+#define LDS_BOARD_TEXT \
+        . = DEFINED(env_offset) ? env_offset : .; \
+        common/env_embedded.o (.text);
 
 /*
  * BOOTP options
@@ -117,12 +120,8 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_PING
 
-#undef CONFIG_CMD_LOADS
-#undef CONFIG_CMD_LOADB
 #undef CONFIG_CMD_MII
 
 #ifdef CONFIG_MCFFEC
@@ -174,13 +173,10 @@ considered during boot */
 
 /* User network settings */
 
-#define CONFIG_ETHADDR 00:00:00:00:00:09	/* default ethernet MAC addr. */
 #define CONFIG_IPADDR 192.168.100.2		/* default board IP address */
 #define CONFIG_SERVERIP 192.168.100.1	/* default tftp server IP address */
 
 #endif
-
-#define CONFIG_SYS_PROMPT		"COBRA > "	/* Layout of u-boot prompt*/
 
 #define CONFIG_SYS_LOAD_ADDR		0x20000		/*Defines default RAM address
 from which user programs will be started */

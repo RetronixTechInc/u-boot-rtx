@@ -1,5 +1,5 @@
 /*
- * U-boot - Configuration file for BF533 EZKIT board
+ * U-Boot - Configuration file for BF533 EZKIT board
  */
 
 #ifndef __CONFIG_BF533_EZKIT_H__
@@ -75,8 +75,6 @@
 		SSYNC(); \
 	} while (0)
 #define CONFIG_HOSTNAME		bf533-ezkit
-/* Uncomment next line to use fixed MAC address */
-/* #define CONFIG_ETHADDR	02:80:ad:20:31:e8 */
 
 
 /*

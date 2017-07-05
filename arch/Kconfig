@@ -1,3 +1,6 @@
+config CREATE_ARCH_SYMLINK
+	bool
+
 config HAVE_GENERIC_BOARD
 	bool
 
@@ -18,13 +21,17 @@ config ARC
 
 config ARM
 	bool "ARM architecture"
-	select HAVE_PRIVATE_LIBGCC
+	select CREATE_ARCH_SYMLINK
+	select HAVE_PRIVATE_LIBGCC if !ARM64
 	select HAVE_GENERIC_BOARD
+	select SYS_GENERIC_BOARD
 	select SUPPORT_OF_CONTROL
 
 config AVR32
 	bool "AVR32 architecture"
+	select CREATE_ARCH_SYMLINK
 	select HAVE_GENERIC_BOARD
+	select SYS_GENERIC_BOARD
 
 config BLACKFIN
 	bool "Blackfin architecture"
@@ -33,6 +40,7 @@ config BLACKFIN
 
 config M68K
 	bool "M68000 architecture"
+	select HAVE_PRIVATE_LIBGCC
 	select HAVE_GENERIC_BOARD
 	select SYS_GENERIC_BOARD
 
@@ -47,14 +55,21 @@ config MIPS
 	select HAVE_PRIVATE_LIBGCC
 	select HAVE_GENERIC_BOARD
 	select SYS_GENERIC_BOARD
+	select SUPPORT_OF_CONTROL
 
 config NDS32
 	bool "NDS32 architecture"
+	select HAVE_GENERIC_BOARD
+	select SYS_GENERIC_BOARD
 
 config NIOS2
 	bool "Nios II architecture"
 	select HAVE_GENERIC_BOARD
 	select SYS_GENERIC_BOARD
+	select SUPPORT_OF_CONTROL
+	select OF_CONTROL
+	select DM
+	select CPU
 
 config OPENRISC
 	bool "OpenRISC architecture"
@@ -63,6 +78,7 @@ config PPC
 	bool "PowerPC architecture"
 	select HAVE_PRIVATE_LIBGCC
 	select HAVE_GENERIC_BOARD
+	select SYS_GENERIC_BOARD
 	select SUPPORT_OF_CONTROL
 
 config SANDBOX
@@ -70,6 +86,12 @@ config SANDBOX
 	select HAVE_GENERIC_BOARD
 	select SYS_GENERIC_BOARD
 	select SUPPORT_OF_CONTROL
+	select DM
+	select DM_SPI_FLASH
+	select DM_SERIAL
+	select DM_I2C
+	select DM_SPI
+	select DM_GPIO
 
 config SH
 	bool "SuperH architecture"
@@ -77,13 +99,21 @@ config SH
 
 config SPARC
 	bool "SPARC architecture"
+	select HAVE_GENERIC_BOARD
+	select CREATE_ARCH_SYMLINK
 
 config X86
 	bool "x86 architecture"
+	select CREATE_ARCH_SYMLINK
 	select HAVE_PRIVATE_LIBGCC
 	select HAVE_GENERIC_BOARD
 	select SYS_GENERIC_BOARD
 	select SUPPORT_OF_CONTROL
+	select DM
+	select DM_SERIAL
+	select DM_GPIO
+	select DM_SPI
+	select DM_SPI_FLASH
 
 endchoice
 

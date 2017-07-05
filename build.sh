@@ -66,6 +66,7 @@ fi
 
 #TreadMill Board
 #U_BOOT_DEFAULT_CONFIG=rtx_treadmill_mx6q_samsung2g_dtb_rtx_all_android_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_treadmill_mx6q_samsung2g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_treadmill_mx6q_samsung2g_dtb_rtx_all_mfg_defconfig
 
 # Get Host Number of CPUs
@@ -79,12 +80,12 @@ case "${1}" in
 	"all")
 		#rm -rf out
 		#mkdir -p out
-		make ${U_BOOT_DEFAULT_CONFIG}
+		make SRCARCH=../board/retronix ${U_BOOT_DEFAULT_CONFIG}
 		make -j${CPUS}
 		cp -f u-boot.imx out/.
 		;;
 	"config")
-		make ${U_BOOT_DEFAULT_CONFIG}
+		make SRCARCH=../board/retronix ${U_BOOT_DEFAULT_CONFIG}
 		;;
 	"menuconfig")
 		make menuconfig

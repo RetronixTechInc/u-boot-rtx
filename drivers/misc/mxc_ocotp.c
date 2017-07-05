@@ -18,6 +18,7 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
+#include <asm/imx-common/sys_proto.h>
 
 #define BO_CTRL_WR_UNLOCK		16
 #define BM_CTRL_WR_UNLOCK		0xffff0000
@@ -26,19 +27,19 @@
 #define BM_CTRL_BUSY			0x00000100
 #define BO_CTRL_ADDR			0
 #ifdef CONFIG_MX7
-#define BM_CTRL_ADDR			0x0000000f
-#define BM_CTRL_RELOAD			0x00000400
+#define BM_CTRL_ADDR                    0x0000000f
+#define BM_CTRL_RELOAD                  0x00000400
 #else
 #define BM_CTRL_ADDR			0x0000007f
 #endif
 
 #ifdef CONFIG_MX7
-#define BO_TIMING_FSOURCE		12
-#define BM_TIMING_FSOURCE		0x0007f000
-#define BV_TIMING_FSOURCE_NS		1001
-#define BO_TIMING_PROG			0
-#define BM_TIMING_PROG			0x00000fff
-#define BV_TIMING_PROG_US		10
+#define BO_TIMING_FSOURCE               12
+#define BM_TIMING_FSOURCE               0x0007f000
+#define BV_TIMING_FSOURCE_NS            1001
+#define BO_TIMING_PROG                  0
+#define BM_TIMING_PROG                  0x00000fff
+#define BV_TIMING_PROG_US               10
 #else
 #define BO_TIMING_STROBE_READ		16
 #define BM_TIMING_STROBE_READ		0x003f0000
@@ -61,7 +62,7 @@
 #define FUSE_BANK_SIZE	0x80
 #ifdef CONFIG_MX6SL
 #define FUSE_BANKS	8
-#elif defined CONFIG_MX6ULL
+#elif defined(CONFIG_MX6ULL) || defined(CONFIG_MX6SLL)
 #define FUSE_BANKS	9
 #else
 #define FUSE_BANKS	16
@@ -73,12 +74,12 @@
 #error "Unsupported architecture\n"
 #endif
 
-#if defined(CONFIG_MX6) || defined(CONFIG_MX7)
-#include <asm/arch/sys_proto.h>
+#if defined(CONFIG_MX6)
 
 /*
  * There is a hole in shadow registers address map of size 0x100
- * between bank 5 and bank 6 on iMX6QP, iMX6DQ, iMX6SDL, iMX6SX, iMX6UL and iMX6ULL.
+ * between bank 5 and bank 6 on iMX6QP, iMX6DQ, iMX6SDL, iMX6SX, iMX6UL,
+ * iMX6ULL and iMX6SLL.
  * Bank 5 ends at 0x6F0 and Bank 6 starts at 0x800. When reading the fuses,
  * we should account for this hole in address space.
  *
@@ -97,11 +98,11 @@ u32 fuse_bank_physical(int index)
 {
 	u32 phy_index;
 
-	if ((index == 0) || is_cpu_type(MXC_CPU_MX6SL) ||
-	    is_cpu_type(MXC_CPU_MX7D))
+	if (is_cpu_type(MXC_CPU_MX6SL)) {
 		phy_index = index;
-	else if (is_cpu_type(MXC_CPU_MX6UL) || is_cpu_type(MXC_CPU_MX6ULL)) {
-		if (is_cpu_type(MXC_CPU_MX6ULL) && index == 8)
+	} else if (is_cpu_type(MXC_CPU_MX6UL) || is_cpu_type(MXC_CPU_MX6ULL) ||
+			is_cpu_type(MXC_CPU_MX6SLL)) {
+		if ((is_cpu_type(MXC_CPU_MX6ULL) || is_cpu_type(MXC_CPU_MX6SLL)) && index == 8)
 			index = 7;
 
 		if (index >= 6)
@@ -121,7 +122,7 @@ u32 fuse_bank_physical(int index)
 
 u32 fuse_word_physical(u32 bank, u32 word_index)
 {
-	if (is_cpu_type(MXC_CPU_MX6ULL)) {
+	if (is_cpu_type(MXC_CPU_MX6ULL) || is_cpu_type(MXC_CPU_MX6SLL)) {
 		if (bank == 8)
 			word_index = word_index + 4;
 	}
@@ -164,10 +165,10 @@ static int prepare_access(struct ocotp_regs **regs, u32 bank, u32 word,
 		return -EINVAL;
 	}
 
-	if (is_cpu_type(MXC_CPU_MX6ULL)) {
+	if (is_cpu_type(MXC_CPU_MX6ULL) || is_cpu_type(MXC_CPU_MX6SLL)) {
 		if ((bank == 7 || bank == 8) &&
 		    word >= ARRAY_SIZE((*regs)->bank[0].fuse_regs) >> 3) {
-			printf("mxc_ocotp %s(): Invalid argument on 6ULL\n", caller);
+			printf("mxc_ocotp %s(): Invalid argument\n", caller);
 			return -EINVAL;
 		}
 	}
@@ -230,7 +231,7 @@ static void set_timing(struct ocotp_regs *regs)
 	ipg_clk = mxc_get_clock(MXC_IPG_CLK);
 
 	fsource = DIV_ROUND_UP((ipg_clk / 1000) * BV_TIMING_FSOURCE_NS,
-			       1000000) + 1;
+			+       1000000) + 1;
 	prog = DIV_ROUND_CLOSEST(ipg_clk * BV_TIMING_PROG_US, 1000000) + 1;
 
 	timing = BF(fsource, TIMING_FSOURCE) | BF(prog, TIMING_PROG);
@@ -269,7 +270,13 @@ static void setup_direct_access(struct ocotp_regs *regs, u32 bank, u32 word,
 #ifdef CONFIG_MX7
 	u32 addr = bank;
 #else
-	u32 addr = bank << 3 | word;
+	u32 addr;
+	/* Bank 7 and Bank 8 only supports 4 words each */
+	if ((is_cpu_type(MXC_CPU_MX6ULL) || is_cpu_type(MXC_CPU_MX6SLL)) && (bank > 7)) {
+		bank = bank - 1;
+		word += 4;
+	}
+	addr = bank << 3 | word;
 #endif
 
 	set_timing(regs);

@@ -54,19 +54,14 @@
 #define CONFIG_CMD_DTT
 #define CONFIG_TMU_CMD_DTT
 
-/* TPM */
-#define CONFIG_TPM
-#define CONFIG_CMD_TPM
-#define CONFIG_TPM_TIS_I2C
-#define CONFIG_TPM_TIS_I2C_BUS_NUMBER	3
-#define CONFIG_TPM_TIS_I2C_SLAVE_ADDR	0x20
-
 /* MMC SPL */
 #define COPY_BL2_FNPTR_ADDR	0x02020030
 #define CONFIG_SUPPORT_EMMC_BOOT
 
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_GPIO_SUPPORT
+#define CONFIG_SPL_SERIAL_SUPPORT
+#define CONFIG_SPL_LIBGENERIC_SUPPORT
 
 /* specific .lds file */
 #define CONFIG_SPL_LDSCRIPT	"board/samsung/common/exynos-uboot-spl.lds"
@@ -118,7 +113,7 @@
 #define CONFIG_BL1_OFFSET	(CONFIG_RES_BLOCK_SIZE + CONFIG_SEC_FW_SIZE)
 #define CONFIG_BL2_OFFSET	(CONFIG_BL1_OFFSET + CONFIG_BL1_SIZE)
 
-/* U-boot copy size from boot Media to DRAM.*/
+/* U-Boot copy size from boot Media to DRAM.*/
 #define BL2_START_OFFSET	(CONFIG_BL2_OFFSET/512)
 #define BL2_SIZE_BLOC_COUNT	(CONFIG_BL2_SIZE/512)
 
@@ -126,10 +121,6 @@
 #define SPI_FLASH_UBOOT_POS	(CONFIG_SEC_FW_SIZE + CONFIG_BL1_SIZE)
 
 /* I2C */
-
-/* TODO(sjg@chromium.org): Move these two options to Kconfig */
-#define CONFIG_DM_I2C
-#define CONFIG_DM_I2C_COMPAT
 #define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C_S3C24X0
 #define CONFIG_SYS_I2C_S3C24X0_SPEED	100000		/* 100 Kbps */
@@ -138,15 +129,10 @@
 
 /* SPI */
 #ifdef CONFIG_SPI_FLASH
-#define CONFIG_EXYNOS_SPI
 #define CONFIG_CMD_SF
 #define CONFIG_CMD_SPI
-#define CONFIG_SPI_FLASH_WINBOND
-#define CONFIG_SPI_FLASH_GIGADEVICE
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define CONFIG_SF_DEFAULT_SPEED		50000000
-#define EXYNOS5_SPI_NUM_CONTROLLERS	5
-#define CONFIG_OF_SPI
 #endif
 
 #ifdef CONFIG_ENV_IS_IN_SPI_FLASH
@@ -173,17 +159,18 @@
 /* Enable Time Command */
 #define CONFIG_CMD_TIME
 
-#define CONFIG_CMD_GPIO
 
 /* USB */
 #define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE
+#define CONFIG_USB_XHCI_DWC3
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	3
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS	2
 
 #define CONFIG_USB_HOST_ETHER
 #define CONFIG_USB_ETHER_ASIX
 #define CONFIG_USB_ETHER_SMSC95XX
+#define CONFIG_USB_ETHER_RTL8152
 
 /* USB boot mode */
 #define CONFIG_USB_BOOTING
@@ -194,7 +181,6 @@
 /* Enable FIT support and comparison */
 #define CONFIG_FIT
 #define CONFIG_FIT_BEST_MATCH
-
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 1) \

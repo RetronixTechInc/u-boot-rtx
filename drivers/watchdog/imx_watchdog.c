@@ -8,19 +8,8 @@
 #include <asm/io.h>
 #include <watchdog.h>
 #include <asm/arch/imx-regs.h>
-
-struct watchdog_regs {
-	u16	wcr;	/* Control */
-	u16	wsr;	/* Service */
-	u16	wrsr;	/* Reset Status */
-};
-
-#define WCR_WDZST	0x01
-#define WCR_WDBG	0x02
-#define WCR_WDE		0x04	/* WDOG enable */
-#define WCR_WDT		0x08
-#define WCR_SRS		0x10
-#define SET_WCR_WT(x)	(x << 8)
+#include <fsl_wdog.h>
+#include <asm/arch/sys_proto.h>
 
 #ifdef CONFIG_IMX_WATCHDOG
 void hw_watchdog_reset(void)
@@ -55,11 +44,11 @@ void reset_cpu(ulong addr)
 {
 	struct watchdog_regs *wdog = (struct watchdog_regs *)WDOG1_BASE_ADDR;
 
-#if defined(CONFIG_MX7)
-	writew((WCR_WDE | WCR_SRS), &wdog->wcr);
-#else
-	writew(WCR_WDE, &wdog->wcr);
-#endif
+	if (is_cpu_type(MXC_CPU_MX7D))
+		clrsetbits_le16(&wdog->wcr, WCR_WT_MSK, (WCR_WDE | WCR_SRS));
+	else
+		clrsetbits_le16(&wdog->wcr, WCR_WT_MSK, WCR_WDE);
+
 	writew(0x5555, &wdog->wsr);
 	writew(0xaaaa, &wdog->wsr);	/* load minimum 1/2 second timeout */
 	while (1) {

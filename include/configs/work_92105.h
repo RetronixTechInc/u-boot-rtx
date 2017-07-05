@@ -103,7 +103,6 @@
 /*
  * U-Boot General Configurations
  */
-#define CONFIG_SYS_GENERIC_BOARD
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_CBSIZE		1024
 #define CONFIG_SYS_PBSIZE		\
@@ -154,7 +153,6 @@
  * GPIO
  */
 
-#define CONFIG_CMD_GPIO
 #define CONFIG_LPC32XX_GPIO
 
 /*
@@ -175,22 +173,6 @@
 #define CONFIG_ENV_OFFSET		0x00100000
 #define CONFIG_ENV_OFFSET_REDUND	0x00120000
 #define CONFIG_ENV_ADDR			0x80000100
-
-/*
- * Provide default ethernet address
- *
- * THIS IS NORMALLY NOT DONE. HERE WE KEEP WHAT WAS IN THE PORTED
- * BOARD CONFIG IN CASE SOME PROVISIONING PROCESS OUT THERE EXPECTS
- * THIS MAC ADDRESS WHEN THE DEVICE HAS STILL ITS DEFAULT CONFIG.
- */
-
-#define CONFIG_ETHADDR			00:12:B4:00:AF:FE
-#define	CONFIG_OVERWRITE_ETHADDR_ONCE
-
-/*
- * U-Boot Commands
- */
-#include <config_cmd_default.h>
 
 /*
  * Boot Linux

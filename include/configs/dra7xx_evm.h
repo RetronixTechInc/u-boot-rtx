@@ -15,6 +15,10 @@
 #define CONFIG_DRA7XX
 #define CONFIG_BOARD_EARLY_INIT_F
 
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_IODELAY_RECALIBRATION
+#endif
+
 #ifndef CONFIG_QSPI_BOOT
 /* MMC ENV related defines */
 #define CONFIG_ENV_IS_IN_MMC
@@ -24,7 +28,6 @@
 #define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
 #define CONFIG_SYS_REDUNDAND_ENVIRONMENT
 #endif
-#define CONFIG_CMD_SAVEENV
 
 #if (CONFIG_CONS_INDEX == 1)
 #define CONSOLEDEV			"ttyO0"
@@ -38,20 +41,102 @@
 
 #define CONFIG_SYS_OMAP_ABE_SYSCK
 
+#ifndef CONFIG_SPL_BUILD
 /* Define the default GPT table for eMMC */
 #define PARTS_DEFAULT \
+	/* Linux partitions */ \
 	"uuid_disk=${uuid_gpt_disk};" \
-	"name=rootfs,start=2MiB,size=-,uuid=${uuid_gpt_rootfs}"
+	"name=rootfs,start=2MiB,size=-,uuid=${uuid_gpt_rootfs}\0" \
+	/* Android partitions */ \
+	"partitions_android=" \
+	"uuid_disk=${uuid_gpt_disk};" \
+	"name=xloader,start=128K,size=128K,uuid=${uuid_gpt_xloader};" \
+	"name=bootloader,size=384K,uuid=${uuid_gpt_bootloader};" \
+	"name=environment,size=128K,uuid=${uuid_gpt_environment};" \
+	"name=misc,size=128K,uuid=${uuid_gpt_misc};" \
+	"name=efs,start=1280K,size=16M,uuid=${uuid_gpt_efs};" \
+	"name=crypto,size=16K,uuid=${uuid_gpt_crypto};" \
+	"name=recovery,size=10M,uuid=${uuid_gpt_recovery};" \
+	"name=boot,size=10M,uuid=${uuid_gpt_boot};" \
+	"name=system,size=768M,uuid=${uuid_gpt_system};" \
+	"name=cache,size=256M,uuid=${uuid_gpt_cache};" \
+	"name=ipu1,size=1M,uuid=${uuid_gpt_ipu1};" \
+	"name=ipu2,size=1M,uuid=${uuid_gpt_ipu2};" \
+	"name=userdata,size=-,uuid=${uuid_gpt_userdata}"
+
+#define DFU_ALT_INFO_MMC \
+	"dfu_alt_info_mmc=" \
+	"boot part 0 1;" \
+	"rootfs part 0 2;" \
+	"MLO fat 0 1;" \
+	"MLO.raw raw 0x100 0x100;" \
+	"u-boot.img.raw raw 0x300 0x400;" \
+	"spl-os-args.raw raw 0x80 0x80;" \
+	"spl-os-image.raw raw 0x900 0x2000;" \
+	"spl-os-args fat 0 1;" \
+	"spl-os-image fat 0 1;" \
+	"u-boot.img fat 0 1;" \
+	"uEnv.txt fat 0 1\0"
+
+#define DFU_ALT_INFO_EMMC \
+	"dfu_alt_info_emmc=" \
+	"rawemmc raw 0 3751936;" \
+	"boot part 1 1;" \
+	"rootfs part 1 2;" \
+	"MLO fat 1 1;" \
+	"MLO.raw raw 0x100 0x100;" \
+	"u-boot.img.raw raw 0x300 0x400;" \
+	"spl-os-args.raw raw 0x80 0x80;" \
+	"spl-os-image.raw raw 0x900 0x2000;" \
+	"spl-os-args fat 1 1;" \
+	"spl-os-image fat 1 1;" \
+	"u-boot.img fat 1 1;" \
+	"uEnv.txt fat 1 1\0"
+
+#define DFU_ALT_INFO_RAM \
+	"dfu_alt_info_ram=" \
+	"kernel ram 0x80200000 0x4000000;" \
+	"fdt ram 0x80f80000 0x80000;" \
+	"ramdisk ram 0x81000000 0x4000000\0"
+
+#define DFU_ALT_INFO_QSPI \
+	"dfu_alt_info_qspi=" \
+	"MLO raw 0x0 0x010000;" \
+	"MLO.backup1 raw 0x010000 0x010000;" \
+	"MLO.backup2 raw 0x020000 0x010000;" \
+	"MLO.backup3 raw 0x030000 0x010000;" \
+	"u-boot.img raw 0x040000 0x0100000;" \
+	"u-boot-spl-os raw 0x140000 0x080000;" \
+	"u-boot-env raw 0x1C0000 0x010000;" \
+	"u-boot-env.backup raw 0x1D0000 0x010000;" \
+	"kernel raw 0x1E0000 0x800000\0"
+
+#define DFUARGS \
+	"dfu_bufsiz=0x10000\0" \
+	DFU_ALT_INFO_MMC \
+	DFU_ALT_INFO_EMMC \
+	DFU_ALT_INFO_RAM \
+	DFU_ALT_INFO_QSPI
+
+/* Fastboot */
+#define CONFIG_USB_FUNCTION_FASTBOOT
+#define CONFIG_CMD_FASTBOOT
+#define CONFIG_ANDROID_BOOT_IMAGE
+#define CONFIG_FASTBOOT_BUF_ADDR    CONFIG_SYS_LOAD_ADDR
+#define CONFIG_FASTBOOT_BUF_SIZE    0x2F000000
+#define CONFIG_FASTBOOT_FLASH
+#define CONFIG_FASTBOOT_FLASH_MMC_DEV   1
+#endif
 
 #include <configs/ti_omap5_common.h>
 
 /* Enhance our eMMC support / experience. */
 #define CONFIG_CMD_GPT
 #define CONFIG_EFI_PARTITION
+#define CONFIG_RANDOM_UUID
 #define CONFIG_HSMMC2_8BIT
 
 /* CPSW Ethernet */
-#define CONFIG_CMD_NET			/* 'bootp' and 'tftp' */
 #define CONFIG_CMD_DHCP
 #define CONFIG_BOOTP_DNS		/* Configurable parts of CMD_DHCP */
 #define CONFIG_BOOTP_DNS2
@@ -68,16 +153,17 @@
 
 /* SPI */
 #undef	CONFIG_OMAP3_SPI
-#define CONFIG_TI_QSPI
-#define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_CMD_SF
 #define CONFIG_CMD_SPI
-#define CONFIG_SPI_FLASH_BAR
 #define CONFIG_TI_SPI_MMAP
-#define CONFIG_SF_DEFAULT_SPEED                48000000
-#define CONFIG_DEFAULT_SPI_MODE                SPI_MODE_3
+#define CONFIG_SF_DEFAULT_SPEED                64000000
+#define CONFIG_SF_DEFAULT_MODE                 SPI_MODE_0
 #define CONFIG_QSPI_QUAD_SUPPORT
+
+#ifdef CONFIG_SPL_BUILD
+#undef CONFIG_DM_SPI
+#undef CONFIG_DM_SPI_FLASH
+#endif
 
 /*
  * Default to using SPI for environment, etc.
@@ -114,6 +200,8 @@
 
 /* SPI SPL */
 #define CONFIG_SPL_SPI_SUPPORT
+#define CONFIG_SPL_DMA_SUPPORT
+#define CONFIG_TI_EDMA3
 #define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SYS_SPI_U_BOOT_OFFS     0x40000
@@ -124,12 +212,36 @@
 #define CONFIG_CMD_USB
 #define CONFIG_USB_HOST
 #define CONFIG_USB_XHCI
+#define CONFIG_USB_XHCI_DWC3
 #define CONFIG_USB_XHCI_OMAP
 #define CONFIG_USB_STORAGE
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS 2
 
 #define CONFIG_OMAP_USB_PHY
 #define CONFIG_OMAP_USB2PHY2_HOST
+
+/* USB GADGET */
+#define CONFIG_USB_DWC3_PHY_OMAP
+#define CONFIG_USB_DWC3_OMAP
+#define CONFIG_USB_DWC3
+#define CONFIG_USB_DWC3_GADGET
+
+#define CONFIG_USB_GADGET
+#define CONFIG_USB_GADGET_DOWNLOAD
+#define CONFIG_USB_GADGET_VBUS_DRAW 2
+#define CONFIG_G_DNL_MANUFACTURER "Texas Instruments"
+#define CONFIG_G_DNL_VENDOR_NUM 0x0451
+#define CONFIG_G_DNL_PRODUCT_NUM 0xd022
+#define CONFIG_USB_GADGET_DUALSPEED
+
+/* USB Device Firmware Update support */
+#define CONFIG_USB_FUNCTION_DFU
+#define CONFIG_DFU_RAM
+#define CONFIG_CMD_DFU
+
+#define CONFIG_DFU_MMC
+#define CONFIG_DFU_RAM
+#define CONFIG_DFU_SF
 
 /* SATA */
 #define CONFIG_BOARD_LATE_INIT
@@ -178,7 +290,7 @@
 					"128k(NAND.u-boot-env)," \
 					"128k(NAND.u-boot-env.backup1)," \
 					"8m(NAND.kernel)," \
-					"-(NAND.rootfs)"
+					"-(NAND.file-system)"
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	0x000c0000
 /* NAND: SPL related configs */
 #ifdef CONFIG_SPL_NAND_SUPPORT
@@ -200,7 +312,6 @@
 #define CONFIG_SYS_FLASH_SIZE		(64 * 1024 * 1024) /* 64 MB */
 /* #define CONFIG_INIT_IGNORE_ERROR */
 #undef CONFIG_SYS_NO_FLASH
-#define CONFIG_CMD_FLASH
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #define CONFIG_SYS_FLASH_PROTECTION
 #define CONFIG_SYS_FLASH_CFI

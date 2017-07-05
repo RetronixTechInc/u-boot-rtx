@@ -16,40 +16,42 @@
 /* Dual SPI flash memories - see SPI_COMM_DUAL_... */
 enum spi_dual_flash {
 	SF_SINGLE_FLASH	= 0,
-	SF_DUAL_STACKED_FLASH	= 1 << 0,
-	SF_DUAL_PARALLEL_FLASH	= 1 << 1,
+	SF_DUAL_STACKED_FLASH	= BIT(0),
+	SF_DUAL_PARALLEL_FLASH	= BIT(1),
 };
 
 /* Enum list - Full read commands */
 enum spi_read_cmds {
-	ARRAY_SLOW		= 1 << 0,
-	ARRAY_FAST		= 1 << 1,
-	DUAL_OUTPUT_FAST	= 1 << 2,
-	DUAL_IO_FAST		= 1 << 3,
-	QUAD_OUTPUT_FAST	= 1 << 4,
-	QUAD_IO_FAST		= 1 << 5,
+	ARRAY_SLOW		= BIT(0),
+	ARRAY_FAST		= BIT(1),
+	DUAL_OUTPUT_FAST	= BIT(2),
+	QUAD_OUTPUT_FAST	= BIT(3),
+	DUAL_IO_FAST		= BIT(4),
+	QUAD_IO_FAST		= BIT(5),
 };
 
 /* Normal - Extended - Full command set */
-#define RD_NORM	(ARRAY_SLOW | ARRAY_FAST)
-#define RD_EXTN	(RD_NORM | DUAL_OUTPUT_FAST | DUAL_IO_FAST)
-#define RD_FULL	(RD_EXTN | QUAD_OUTPUT_FAST | QUAD_IO_FAST)
+#define RD_NORM		(ARRAY_SLOW | ARRAY_FAST)
+#define RD_EXTN		(RD_NORM | DUAL_OUTPUT_FAST | DUAL_IO_FAST)
+#define RD_FULL		(RD_EXTN | QUAD_OUTPUT_FAST | QUAD_IO_FAST)
 
 /* sf param flags */
 enum {
-	SECT_4K		= 1 << 0,
-	SECT_32K	= 1 << 1,
-	E_FSR		= 1 << 2,
-	SST_BP		= 1 << 3,
-	SST_WP		= 1 << 4,
-	WR_QPP		= 1 << 5,
-	SECT_2K		= 1 << 6,
+#ifndef CONFIG_SPI_FLASH_USE_4K_SECTORS
+	SECT_4K		= 0,
+#else
+	SECT_4K		= BIT(0),
+#endif
+	SECT_32K	= BIT(1),
+	E_FSR		= BIT(2),
+	SST_WR		= BIT(3),
+	WR_QPP		= BIT(4),
 };
 
-#define SPI_FLASH_PAGE_256		(1 << 0)
-#define SPI_FLASH_PAGE_264		(1 << 1)
-
-#define SST_WR		(SST_BP | SST_WP)
+enum spi_nor_option_flags {
+	SNOR_F_SST_WR		= BIT(0),
+	SNOR_F_USE_FSR		= BIT(1),
+};
 
 #define SPI_FLASH_3B_ADDR_LEN		3
 #define SPI_FLASH_CMD_LEN		(1 + SPI_FLASH_3B_ADDR_LEN)
@@ -59,10 +61,11 @@ enum {
 #define SPI_FLASH_CFI_MFR_SPANSION	0x01
 #define SPI_FLASH_CFI_MFR_STMICRO	0x20
 #define SPI_FLASH_CFI_MFR_MACRONIX	0xc2
+#define SPI_FLASH_CFI_MFR_SST		0xbf
 #define SPI_FLASH_CFI_MFR_WINBOND	0xef
+#define SPI_FLASH_CFI_MFR_ATMEL		0x1f
 
 /* Erase commands */
-#define CMD_ERASE_2K			0x50
 #define CMD_ERASE_4K			0x20
 #define CMD_ERASE_32K			0x52
 #define CMD_ERASE_CHIP			0xc7
@@ -72,16 +75,9 @@ enum {
 #define CMD_WRITE_STATUS		0x01
 #define CMD_PAGE_PROGRAM		0x02
 #define CMD_WRITE_DISABLE		0x04
-#ifdef CONFIG_SPI_FLASH_ATMEL
-#define CMD_READ_STATUS			0xd7
-#else
-#define CMD_READ_STATUS			0x05
-#endif
-#define CMD_QUAD_PAGE_PROGRAM		0x32
-#define CMD_READ_STATUS1		0x35
 #define CMD_WRITE_ENABLE		0x06
-#define CMD_READ_CONFIG		0x35
-#define CMD_FLAG_STATUS		0x70
+#define CMD_QUAD_PAGE_PROGRAM		0x32
+#define CMD_WRITE_EVCR			0x61
 
 /* Read commands */
 #define CMD_READ_ARRAY_SLOW		0x03
@@ -91,6 +87,11 @@ enum {
 #define CMD_READ_QUAD_OUTPUT_FAST	0x6b
 #define CMD_READ_QUAD_IO_FAST		0xeb
 #define CMD_READ_ID			0x9f
+#define CMD_READ_STATUS			0x05
+#define CMD_READ_STATUS1		0x35
+#define CMD_READ_CONFIG			0x35
+#define CMD_FLAG_STATUS			0x70
+#define CMD_READ_EVCR			0x65
 
 /* Bank addr access commands */
 #ifdef CONFIG_SPI_FLASH_BAR
@@ -101,24 +102,24 @@ enum {
 #endif
 
 /* Common status */
-#define STATUS_WIP			(1 << 0)
-#define STATUS_QEB_WINSPAN		(1 << 1)
-#define STATUS_QEB_MXIC		(1 << 6)
-#define STATUS_PEC			(1 << 7)
-
-#ifdef CONFIG_SYS_SPI_ST_ENABLE_WP_PIN
-#define STATUS_SRWD			(1 << 7) /* SR write protect */
-#endif
+#define STATUS_WIP			BIT(0)
+#define STATUS_QEB_WINSPAN		BIT(1)
+#define STATUS_QEB_MXIC			BIT(6)
+#define STATUS_PEC			BIT(7)
+#define STATUS_QEB_MICRON		BIT(7)
+#define SR_BP0				BIT(2)  /* Block protect 0 */
+#define SR_BP1				BIT(3)  /* Block protect 1 */
+#define SR_BP2				BIT(4)  /* Block protect 2 */
 
 /* Flash timeout values */
 #define SPI_FLASH_PROG_TIMEOUT		(2 * CONFIG_SYS_HZ)
-#define SPI_FLASH_PAGE_ERASE_TIMEOUT		(5 * CONFIG_SYS_HZ)
+#define SPI_FLASH_PAGE_ERASE_TIMEOUT	(5 * CONFIG_SYS_HZ)
 #define SPI_FLASH_SECTOR_ERASE_TIMEOUT	(10 * CONFIG_SYS_HZ)
 
 /* SST specific */
 #ifdef CONFIG_SPI_FLASH_SST
 # define CMD_SST_BP		0x02    /* Byte Program */
-# define CMD_SST_AAI_WP	0xAD	/* Auto Address Incr Word Program */
+# define CMD_SST_AAI_WP		0xAD	/* Auto Address Incr Word Program */
 
 int sst_write_wp(struct spi_flash *flash, u32 offset, size_t len,
 		const void *buf);
@@ -132,8 +133,9 @@ int sst_write_bp(struct spi_flash *flash, u32 offset, size_t len,
  * @name:		Device name ([MANUFLETTER][DEVTYPE][DENSITY][EXTRAINFO])
  * @jedec:		Device jedec ID (0x[1byte_manuf_id][2byte_dev_id])
  * @ext_jedec:		Device ext_jedec ID
- * @sector_size:	Sector size of this device
- * @nr_sectors:	No.of sectors on this device
+ * @sector_size:	Isn't necessarily a sector size from vendor,
+ *			the size listed here is what works with CMD_ERASE_64K
+ * @nr_sectors:		No.of sectors on this device
  * @e_rd_cmd:		Enum list for read commands
  * @flags:		Important param, for flash specific behaviour
  */
@@ -170,17 +172,14 @@ int spi_flash_cmd_write(struct spi_slave *spi, const u8 *cmd, size_t cmd_len,
 /* Flash erase(sectors) operation, support all possible erase commands */
 int spi_flash_cmd_erase_ops(struct spi_flash *flash, u32 offset, size_t len);
 
-/* Read the status register */
-int spi_flash_cmd_read_status(struct spi_flash *flash, u8 *rs);
+/* Lock stmicro spi flash region */
+int stm_lock(struct spi_flash *flash, u32 ofs, size_t len);
 
-/* Program the status register */
-int spi_flash_cmd_write_status(struct spi_flash *flash, u8 ws);
+/* Unlock stmicro spi flash region */
+int stm_unlock(struct spi_flash *flash, u32 ofs, size_t len);
 
-/* Read the config register */
-int spi_flash_cmd_read_config(struct spi_flash *flash, u8 *rc);
-
-/* Program the config register */
-int spi_flash_cmd_write_config(struct spi_flash *flash, u8 wc);
+/* Check if a stmicro spi flash region is completely locked */
+int stm_is_locked(struct spi_flash *flash, u32 ofs, size_t len);
 
 /* Enable writing on the SPI flash */
 static inline int spi_flash_cmd_write_enable(struct spi_flash *flash)
@@ -193,12 +192,6 @@ static inline int spi_flash_cmd_write_disable(struct spi_flash *flash)
 {
 	return spi_flash_cmd(flash->spi, CMD_WRITE_DISABLE, NULL, 0);
 }
-
-/*
- * Send the read status command to the device and wait for the wip
- * (write-in-progress) bit to clear itself.
- */
-int spi_flash_cmd_wait_ready(struct spi_flash *flash, unsigned long timeout);
 
 /*
  * Used for spi_flash write operation
@@ -229,5 +222,22 @@ int spi_flash_read_common(struct spi_flash *flash, const u8 *cmd,
 /* Flash read operation, support all possible read commands */
 int spi_flash_cmd_read_ops(struct spi_flash *flash, u32 offset,
 		size_t len, void *data);
+
+#ifdef CONFIG_SPI_FLASH_MTD
+int spi_flash_mtd_register(struct spi_flash *flash);
+void spi_flash_mtd_unregister(void);
+#endif
+
+/**
+ * spi_flash_scan - scan the SPI FLASH
+ * @flash:	the spi flash structure
+ *
+ * The drivers can use this fuction to scan the SPI FLASH.
+ * In the scanning, it will try to get all the necessary information to
+ * fill the spi_flash{}.
+ *
+ * Return: 0 for success, others for failure.
+ */
+int spi_flash_scan(struct spi_flash *flash);
 
 #endif /* _SF_INTERNAL_H_ */

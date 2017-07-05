@@ -13,7 +13,6 @@
 #include "tegra20-common.h"
 
 /* High-level configuration options */
-#define V_PROMPT			"Tegra20 (Plutux) # "
 #define CONFIG_TEGRA_BOARD_STRING	"Avionic Design Plutux"
 
 /* Board-specific serial config */
@@ -46,7 +45,6 @@
 #define CONFIG_USB_ETHER_SMSC95XX
 
 /* General networking support */
-#define CONFIG_CMD_NET
 #define CONFIG_CMD_DHCP
 
 /* support the new (FDT-based) image format */

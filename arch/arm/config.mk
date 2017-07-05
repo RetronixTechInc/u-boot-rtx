@@ -40,7 +40,8 @@ ifeq ($(CONFIG_SYS_THUMB_BUILD),y)
 archprepare: checkthumb
 
 checkthumb:
-	@if test "$(call cc-version)" -lt "0404"; then \
+	@if test "$(call cc-name)" = "gcc" -a \
+			"$(call cc-version)" -lt "0404"; then \
 		echo -n '*** Your GCC does not produce working '; \
 		echo 'binaries in THUMB mode.'; \
 		echo '*** Your board is configured for THUMB mode.'; \
@@ -113,7 +114,8 @@ endif
 ifdef CONFIG_ARM64
 OBJCOPYFLAGS += -j .text -j .rodata -j .data -j .u_boot_list -j .rela.dyn
 else
-OBJCOPYFLAGS += -j .text -j .secure_text -j .rodata -j .hash -j .data -j .got.plt -j .u_boot_list -j .rel.dyn
+OBJCOPYFLAGS += -j .text -j .secure_text -j .rodata -j .hash -j .data -j \
+	.got -j .got.plt -j .u_boot_list -j .rel.dyn
 endif
 
 ifdef CONFIG_OF_EMBED

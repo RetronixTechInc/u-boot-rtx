@@ -24,13 +24,10 @@
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_MISC_INIT_R
 #define CONFIG_LAST_STAGE_INIT
-#define CONFIG_SYS_GENERIC_BOARD
 
 #define CONFIG_SYS_CLK_FREQ	33333333 /* external frequency to pll   */
 
 #undef CONFIG_ZERO_BOOTDELAY_CHECK     /* ignore keypress on bootdelay==0 */
-#define CONFIG_AUTOBOOT_KEYED          /* use key strings to stop autoboot */
-#define CONFIG_AUTOBOOT_STOP_STR " "
 
 /*
  * Configure PLL
@@ -70,10 +67,8 @@
 #undef CONFIG_CMD_DHCP
 #undef CONFIG_CMD_DIAG
 #undef CONFIG_CMD_EEPROM
-#undef CONFIG_CMD_ELF
-#undef CONFIG_CMD_I2C
+#define CONFIG_CMD_I2C
 #undef CONFIG_CMD_IRQ
-#undef CONFIG_CMD_NFS
 
 /*
  * SDRAM configuration (please see cpu/ppc/sdram.[ch])
@@ -110,17 +105,22 @@
 #define CONFIG_SYS_I2C_PPC4XX_SLAVE_0		0x7F
 
 #define CONFIG_SYS_I2C_IHS
+#define CONFIG_SYS_I2C_IHS_DUAL
 #define CONFIG_SYS_I2C_IHS_CH0
 #define CONFIG_SYS_I2C_IHS_SPEED_0		50000
 #define CONFIG_SYS_I2C_IHS_SLAVE_0		0x7F
+#define CONFIG_SYS_I2C_IHS_SPEED_0_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_0_1		0x7F
 #define CONFIG_SYS_I2C_IHS_CH1
 #define CONFIG_SYS_I2C_IHS_SPEED_1		50000
 #define CONFIG_SYS_I2C_IHS_SLAVE_1		0x7F
+#define CONFIG_SYS_I2C_IHS_SPEED_1_1		50000
+#define CONFIG_SYS_I2C_IHS_SLAVE_1_1		0x7F
 
-#define CONFIG_SYS_SPD_BUS_NUM		2
+#define CONFIG_SYS_SPD_BUS_NUM		4
 
 /* Temp sensor/hwmon/dtt */
-#define CONFIG_SYS_DTT_BUS_NUM	2
+#define CONFIG_SYS_DTT_BUS_NUM	4
 #define CONFIG_DTT_LM63		1	/* National LM63	*/
 #define CONFIG_DTT_SENSORS	{ 0x4c, 0x4e, 0x18 } /* Sensor addresses */
 #define CONFIG_DTT_PWM_LOOKUPTABLE	\
@@ -128,8 +128,9 @@
 		  { 54, 27 }, { 56, 31 }, { 58, 36 }, { 60, 40 } }
 #define CONFIG_DTT_TACH_LIMIT	0xa10
 
-#define CONFIG_SYS_ICS8N3QV01_I2C	{0, 1}
-#define CONFIG_SYS_SIL1178_I2C		{0, 1}
+#define CONFIG_SYS_ICS8N3QV01_I2C	{1, 3}
+#define CONFIG_SYS_SIL1178_I2C		{0, 2}
+#define CONFIG_SYS_DP501_I2C		{0, 2}
 
 /* EBC peripherals */
 
@@ -332,5 +333,7 @@
  */
 #define CONFIG_SYS_MPC92469AC
 #define CONFIG_SYS_OSD_SCREENS		CONFIG_SYS_FPGA_COUNT
+#define CONFIG_SYS_DP501_DIFFERENTIAL
+#define CONFIG_SYS_DP501_VCAPCTRL0	0x01 /* DDR mode 0, DE for H/VSYNC */
 
 #endif	/* __CONFIG_H */

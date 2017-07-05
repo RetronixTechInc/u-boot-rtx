@@ -2184,7 +2184,7 @@ Void_t* mALLOc(bytes) size_t bytes;
   INTERNAL_SIZE_T nb;
 
 #ifdef CONFIG_SYS_MALLOC_F_LEN
-	if (gd && !(gd->flags & GD_FLG_FULL_MALLOC_INIT))
+	if (!(gd->flags & GD_FLG_FULL_MALLOC_INIT))
 		return malloc_simple(bytes);
 #endif
 
@@ -2829,6 +2829,28 @@ Void_t* mEMALIGn(alignment, bytes) size_t alignment; size_t bytes;
   nb = request2size(bytes);
   m  = (char*)(mALLOc(nb + alignment + MINSIZE));
 
+  /*
+  * The attempt to over-allocate (with a size large enough to guarantee the
+  * ability to find an aligned region within allocated memory) failed.
+  *
+  * Try again, this time only allocating exactly the size the user wants. If
+  * the allocation now succeeds and just happens to be aligned, we can still
+  * fulfill the user's request.
+  */
+  if (m == NULL) {
+    /*
+     * Use bytes not nb, since mALLOc internally calls request2size too, and
+     * each call increases the size to allocate, to account for the header.
+     */
+    m  = (char*)(mALLOc(bytes));
+    /* Aligned -> return it */
+    if ((((unsigned long)(m)) % alignment) == 0)
+      return m;
+    /* Otherwise, fail */
+    fREe(m);
+    m = NULL;
+  }
+
   if (m == NULL) return NULL; /* propagate failure */
 
   p = mem2chunk(m);
@@ -3259,6 +3281,17 @@ int mALLOPt(param_number, value) int param_number; int value;
     default:
       return 0;
   }
+}
+
+int initf_malloc(void)
+{
+#ifdef CONFIG_SYS_MALLOC_F_LEN
+	assert(gd->malloc_base);	/* Set up by crt0.S */
+	gd->malloc_limit = CONFIG_SYS_MALLOC_F_LEN;
+	gd->malloc_ptr = 0;
+#endif
+
+	return 0;
 }
 
 /*

@@ -20,24 +20,16 @@
 #include <fsl_esdhc.h>
 #include <miiphy.h>
 #include <netdev.h>
-
-#if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
-#include <lcd.h>
-#include <mxc_epdc_fb.h>
-#endif
 #include <asm/arch/mxc_hdmi.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <i2c.h>
-#include <ipu_pixfmt.h>
-#include <linux/fb.h>
 #include <power/pmic.h>
 #include <power/pfuze100_pmic.h>
 #include "../common/pfuze.h"
 #include <asm/arch/mx6-ddr.h>
 #include <usb.h>
-
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
 #include <lcd.h>
 #include <mxc_epdc_fb.h>
@@ -85,8 +77,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define I2C_PAD MUX_PAD_CTRL(I2C_PAD_CTRL)
 
 #define DISP0_PWR_EN	IMX_GPIO_NR(1, 21)
-#define EPDC_PAD_CTRL    (PAD_CTL_PKE | PAD_CTL_SPEED_MED |	\
-	PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
 
 int dram_init(void)
 {
@@ -125,8 +115,9 @@ static void setup_iomux_enet(void)
 
 	/* Reset AR8031 PHY */
 	gpio_direction_output(IMX_GPIO_NR(1, 25) , 0);
-	udelay(500);
+	mdelay(10);
 	gpio_set_value(IMX_GPIO_NR(1, 25), 1);
+	udelay(100);
 }
 
 static iomux_v3_cfg_t const usdhc2_pads[] = {
@@ -257,6 +248,11 @@ iomux_v3_cfg_t const di0_pads[] = {
 	MX6_PAD_DI0_PIN3__IPU1_DI0_PIN03,		/* DISP0_VSYNC */
 };
 
+static void setup_iomux_uart(void)
+{
+	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
+}
+
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
 static iomux_v3_cfg_t const epdc_enable_pads[] = {
 	MX6_PAD_EIM_A16__EPDC_DATA00	| MUX_PAD_CTRL(EPDC_PAD_CTRL),
@@ -305,11 +301,6 @@ static iomux_v3_cfg_t const epdc_disable_pads[] = {
 };
 #endif
 
-static void setup_iomux_uart(void)
-{
-	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
-}
-
 #ifdef CONFIG_FSL_ESDHC
 struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC2_BASE_ADDR},
@@ -317,37 +308,18 @@ struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC4_BASE_ADDR},
 };
 
-int mmc_get_env_devno(void)
-{
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	/* need ubstract 1 to map to the mmc device id
-	 * see the comments in board_mmc_init function
-	 */
-
-	dev_no--;
-
-	return dev_no;
-}
-
-int mmc_map_to_kernel_blk(int dev_no)
-{
-	return dev_no + 1;
-}
-
 #define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 2)
 #define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
+
+int board_mmc_get_env_dev(int devno)
+{
+	return devno - 1;
+}
+
+int mmc_map_to_kernel_blk(int devno)
+{
+	return devno + 1;
+}
 
 int board_mmc_getcd(struct mmc *mmc)
 {
@@ -377,7 +349,7 @@ int board_mmc_init(bd_t *bis)
 
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    SD2
 	 * mmc1                    SD3
 	 * mmc2                    eMMC
@@ -454,38 +426,6 @@ int board_mmc_init(bd_t *bis)
 #endif
 }
 #endif
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_env_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
 
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
 vidinfo_t panel_info = {
@@ -863,7 +803,7 @@ int overwrite_console(void)
 	return 1;
 }
 
-int board_eth_init(bd_t *bis)
+static void setup_fec(void)
 {
 	if (is_mx6dqp()) {
 		int ret;
@@ -874,7 +814,10 @@ int board_eth_init(bd_t *bis)
 		if (ret)
 		    printf("Error fec anatop clock settings!\n");
 	}
+}
 
+int board_eth_init(bd_t *bis)
+{
 	setup_iomux_enet();
 	setup_pcie();
 
@@ -976,12 +919,16 @@ int board_init(void)
 	setup_sata();
 #endif
 
+#ifdef CONFIG_FEC_MXC
+	setup_fec();
+#endif
+
 	return 0;
 }
 
-static struct pmic *pfuze;
 int power_init_board(void)
 {
+	struct pmic *pfuze;
 	unsigned int reg;
 	int ret;
 
@@ -996,18 +943,20 @@ int power_init_board(void)
 
 	if (ret < 0)
 		return ret;
+	/* VGEN3 and VGEN5 corrected on i.mx6qp board */
+	if (!is_mx6dqp()) {
+		/* Increase VGEN3 from 2.5 to 2.8V */
+		pmic_reg_read(pfuze, PFUZE100_VGEN3VOL, &reg);
+		reg &= ~LDO_VOL_MASK;
+		reg |= LDOB_2_80V;
+		pmic_reg_write(pfuze, PFUZE100_VGEN3VOL, reg);
 
-	/* Increase VGEN3 from 2.5 to 2.8V */
-	pmic_reg_read(pfuze, PFUZE100_VGEN3VOL, &reg);
-	reg &= ~LDO_VOL_MASK;
-	reg |= LDOB_2_80V;
-	pmic_reg_write(pfuze, PFUZE100_VGEN3VOL, reg);
-
-	/* Increase VGEN5 from 2.8 to 3V */
-	pmic_reg_read(pfuze, PFUZE100_VGEN5VOL, &reg);
-	reg &= ~LDO_VOL_MASK;
-	reg |= LDOB_3_00V;
-	pmic_reg_write(pfuze, PFUZE100_VGEN5VOL, reg);
+		/* Increase VGEN5 from 2.8 to 3V */
+		pmic_reg_read(pfuze, PFUZE100_VGEN5VOL, &reg);
+		reg &= ~LDO_VOL_MASK;
+		reg |= LDOB_3_00V;
+		pmic_reg_write(pfuze, PFUZE100_VGEN5VOL, reg);
+	}
 
 	if (is_mx6dqp()) {
 		/* set SW1C staby volatage 1.075V*/
@@ -1068,7 +1017,7 @@ void ldo_mode_set(int ldo_bypass)
 	unsigned int value;
 	int is_400M;
 	unsigned char vddarm;
-	struct pmic *p = pfuze;
+	struct pmic *p = pmic_get("PFUZE100");
 
 	if (!p) {
 		printf("No PMIC found!\n");
@@ -1111,11 +1060,10 @@ void ldo_mode_set(int ldo_bypass)
 			/* decrease VDDARM for 400Mhz DQ:1.1V, DL:1.275V */
 			pmic_reg_read(p, PFUZE100_SW1ABVOL, &value);
 			value &= ~0x3f;
-#if defined(CONFIG_MX6DL)
-			value |= 0x27;
-#else
-			value |= 0x20;
-#endif
+			if (is_cpu_type(MXC_CPU_MX6DL))
+				value |= 0x27;
+			else
+				value |= 0x20;
 
 			pmic_reg_write(p, PFUZE100_SW1ABVOL, value);
 		}
@@ -1144,18 +1092,17 @@ void ldo_mode_set(int ldo_bypass)
 			pmic_reg_write(p, PFUZE100_SW2VOL, value);
 		}
 
-		if (is_400M)
-#if defined(CONFIG_MX6DL)
-			vddarm = 0x1f;
-#else
-			vddarm = 0x1b;
-#endif
-		else
-#if defined(CONFIG_MX6DL)
-			vddarm = 0x23;
-#else
-			vddarm = 0x22;
-#endif
+		if (is_400M) {
+			if (is_cpu_type(MXC_CPU_MX6DL))
+				vddarm = 0x1f;
+			else
+				vddarm = 0x1b;
+		} else {
+			if (is_cpu_type(MXC_CPU_MX6DL))
+				vddarm = 0x23;
+			else
+				vddarm = 0x22;
+		}
 		pmic_reg_read(p, PFUZE100_SW1ABVOL, &value);
 		value &= ~0x3f;
 		value |= vddarm;
@@ -1190,9 +1137,21 @@ int board_late_init(void)
 	add_board_boot_modes(board_boot_modes);
 #endif
 
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	setenv("board_name", "SABRESD");
+
+	if (is_mx6dqp())
+		setenv("board_rev", "MX6QP");
+	else if (is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D))
+		setenv("board_rev", "MX6Q");
+	else if (is_cpu_type(MXC_CPU_MX6DL) || is_cpu_type(MXC_CPU_MX6SOLO))
+		setenv("board_rev", "MX6DL");
+#endif
+
 #ifdef CONFIG_ENV_IS_IN_MMC
 	board_late_mmc_env_init();
 #endif
+
 	return 0;
 }
 
@@ -1256,9 +1215,8 @@ int check_recovery_cmd_file(void)
     int button_pressed = 0;
     int recovery_mode = 0;
 
-#ifdef CONFIG_BCB_SUPPORT
-    recovery_mode = recovery_check_and_clean_command();
-#endif
+    recovery_mode = recovery_check_and_clean_flag();
+
     /* Check Recovery Combo Button press or not. */
 	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
 			ARRAY_SIZE(recovery_key_pads));
@@ -1318,6 +1276,7 @@ void board_recovery_setup(void)
 
 #endif /*CONFIG_FSL_FASTBOOT*/
 
+
 #ifdef CONFIG_SPL_BUILD
 #include <spl.h>
 #include <libfdt.h>
@@ -1349,6 +1308,35 @@ const struct mx6dq_iomux_ddr_regs mx6_ddr_ioregs = {
 	.dram_dqm5 =  0x00020030,
 	.dram_dqm6 =  0x00020030,
 	.dram_dqm7 =  0x00020030,
+};
+
+const struct mx6dq_iomux_ddr_regs mx6dqp_ddr_ioregs = {
+	.dram_sdclk_0 =  0x00000030,
+	.dram_sdclk_1 =  0x00000030,
+	.dram_cas =  0x00000030,
+	.dram_ras =  0x00000030,
+	.dram_reset =  0x00000030,
+	.dram_sdcke0 =  0x00003000,
+	.dram_sdcke1 =  0x00003000,
+	.dram_sdba2 =  0x00000000,
+	.dram_sdodt0 =  0x00003030,
+	.dram_sdodt1 =  0x00003030,
+	.dram_sdqs0 =  0x00000030,
+	.dram_sdqs1 =  0x00000030,
+	.dram_sdqs2 =  0x00000030,
+	.dram_sdqs3 =  0x00000030,
+	.dram_sdqs4 =  0x00000030,
+	.dram_sdqs5 =  0x00000030,
+	.dram_sdqs6 =  0x00000030,
+	.dram_sdqs7 =  0x00000030,
+	.dram_dqm0 =  0x00000030,
+	.dram_dqm1 =  0x00000030,
+	.dram_dqm2 =  0x00000030,
+	.dram_dqm3 =  0x00000030,
+	.dram_dqm4 =  0x00000030,
+	.dram_dqm5 =  0x00000030,
+	.dram_dqm6 =  0x00000030,
+	.dram_dqm7 =  0x00000030,
 };
 
 const struct mx6dq_iomux_grp_regs mx6_grp_ioregs = {
@@ -1383,10 +1371,26 @@ const struct mx6_mmdc_calibration mx6_mmcd_calib = {
 	.p1_mpwrdlctl =  0x48254A36,
 };
 
+const struct mx6_mmdc_calibration mx6dqp_mmcd_calib = {
+	.p0_mpwldectrl0 =  0x001B001E,
+	.p0_mpwldectrl1 =  0x002E0029,
+	.p1_mpwldectrl0 =  0x001B002A,
+	.p1_mpwldectrl1 =  0x0019002C,
+	.p0_mpdgctrl0 =  0x43240334,
+	.p0_mpdgctrl1 =  0x0324031A,
+	.p1_mpdgctrl0 =  0x43340344,
+	.p1_mpdgctrl1 =  0x03280276,
+	.p0_mprddlctl =  0x44383A3E,
+	.p1_mprddlctl =  0x3C3C3846,
+	.p0_mpwrdlctl =  0x2E303230,
+	.p1_mpwrdlctl =  0x38283E34,
+};
+
+/* MT41K128M16JT-125 */
 static struct mx6_ddr3_cfg mem_ddr = {
 	.mem_speed = 1600,
-	.density = 4,
-	.width = 64,
+	.density = 2,
+	.width = 16,
 	.banks = 8,
 	.rowaddr = 14,
 	.coladdr = 10,
@@ -1415,9 +1419,15 @@ static void gpr_init(void)
 
 	/* enable AXI cache for VDOA/VPU/IPU */
 	writel(0xF00000CF, &iomux->gpr[4]);
-	/* set IPU AXI-id0 Qos=0xf(bypass) AXI-id1 Qos=0x7 */
-	writel(0x007F007F, &iomux->gpr[6]);
-	writel(0x007F007F, &iomux->gpr[7]);
+	if (is_mx6dqp()) {
+		/* set IPU AXI-id1 Qos=0x1 AXI-id0/2/3 Qos=0x7 */
+		writel(0x007F007F, &iomux->gpr[6]);
+		writel(0x007F007F, &iomux->gpr[7]);
+	} else {
+		/* set IPU AXI-id0 Qos=0xf(bypass) AXI-id1 Qos=0x7 */
+		writel(0x007F007F, &iomux->gpr[6]);
+		writel(0x007F007F, &iomux->gpr[7]);
+	}
 }
 
 /*
@@ -1428,28 +1438,30 @@ static void spl_dram_init(void)
 {
 	struct mx6_ddr_sysinfo sysinfo = {
 		/* width of data bus:0=16,1=32,2=64 */
-		.dsize = mem_ddr.width/32,
+		.dsize = 2,
 		/* config for full 4GB range so that get_mem_size() works */
 		.cs_density = 32, /* 32Gb per CS */
 		/* single chip select */
 		.ncs = 1,
 		.cs1_mirror = 0,
 		.rtt_wr = 1 /*DDR3_RTT_60_OHM*/,	/* RTT_Wr = RZQ/4 */
-#ifdef RTT_NOM_120OHM
-		.rtt_nom = 2 /*DDR3_RTT_120_OHM*/,	/* RTT_Nom = RZQ/2 */
-#else
 		.rtt_nom = 1 /*DDR3_RTT_60_OHM*/,	/* RTT_Nom = RZQ/4 */
-#endif
 		.walat = 1,	/* Write additional latency */
 		.ralat = 5,	/* Read additional latency */
 		.mif3_mode = 3,	/* Command prediction working mode */
 		.bi_on = 1,	/* Bank interleaving enabled */
 		.sde_to_rst = 0x10,	/* 14 cycles, 200us (JEDEC default) */
 		.rst_to_cke = 0x23,	/* 33 cycles, 500us (JEDEC default) */
+		.ddr_type = DDR_TYPE_DDR3,
 	};
 
-	mx6dq_dram_iocfg(mem_ddr.width, &mx6_ddr_ioregs, &mx6_grp_ioregs);
-	mx6_dram_cfg(&sysinfo, &mx6_mmcd_calib, &mem_ddr);
+	if (is_mx6dqp()) {
+		mx6dq_dram_iocfg(64, &mx6dqp_ddr_ioregs, &mx6_grp_ioregs);
+		mx6_dram_cfg(&sysinfo, &mx6dqp_mmcd_calib, &mem_ddr);
+	} else {
+		mx6dq_dram_iocfg(64, &mx6_ddr_ioregs, &mx6_grp_ioregs);
+		mx6_dram_cfg(&sysinfo, &mx6_mmcd_calib, &mem_ddr);
+	}
 }
 
 void board_init_f(ulong dummy)
@@ -1477,9 +1489,5 @@ void board_init_f(ulong dummy)
 
 	/* load/boot image from boot device */
 	board_init_r(NULL, 0);
-}
-
-void reset_cpu(ulong addr)
-{
 }
 #endif

@@ -21,7 +21,6 @@
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFF80000
 
-#define CONFIG_SYS_GENERIC_BOARD
 
 /***********************************************************
  * Clock
@@ -41,8 +40,6 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PCI
@@ -55,7 +52,6 @@
 #define CONFIG_CMD_SCSI
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_USB
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_SDRAM
@@ -157,7 +153,6 @@
 #define CONFIG_SYS_MEMTEST_END		0x0C00000	/* 1 ... 12 MB in DRAM	*/
 
 #define CONFIG_CONS_INDEX	1	/* Use UART0			*/
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
@@ -321,11 +316,6 @@
 #define CONFIG_DOS_PARTITION
 #define CONFIG_MAC_PARTITION
 #define CONFIG_ISO_PARTITION /* Experimental */
-
-/************************************************************
- * Keyboard support
- ************************************************************/
-#define CONFIG_ISA_KEYBOARD
 
 /************************************************************
  * Video support

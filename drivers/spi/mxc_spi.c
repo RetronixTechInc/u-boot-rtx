@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2008, Guennadi Liakhovetski <lg@denx.de>
  *
+ * Copyright (C) 2016 Freescale Semiconductor, Inc.
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
