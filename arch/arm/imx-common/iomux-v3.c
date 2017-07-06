@@ -4,7 +4,7 @@
  * Copyright (C) 2009 by Jan Weitzel Phytec Messtechnik GmbH,
  *                       <armlinux@phytec.de>
  *
- * Copyright (C) 2004-2011, 2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2004-2011 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -51,7 +51,7 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 			sel_input_ofs += IOMUX_LPSR_SEL_INPUT_OFS;
 	}
 #else
-	if (is_cpu_type(MXC_CPU_MX6ULL) || is_cpu_type(MXC_CPU_MX6SLL)) {
+	if (is_mx6ull() || is_mx6sll()) {
 		if (lpsr == IOMUX_CONFIG_LPSR) {
 			base = (void *)IOMUXC_SNVS_BASE_ADDR;
 			mux_mode &= ~IOMUX_CONFIG_LPSR;
@@ -60,8 +60,7 @@ void imx_iomux_v3_setup_pad(iomux_v3_cfg_t pad)
 #endif
 #endif
 
-	if (is_soc_type(MXC_SOC_MX7) || is_cpu_type(MXC_CPU_MX6ULL) ||
-	    is_cpu_type(MXC_CPU_MX6SLL) || mux_ctrl_ofs)
+	if (is_mx7() || is_mx6ull() || is_mx6sll() || mux_ctrl_ofs)
 		__raw_writel(mux_mode, base + mux_ctrl_ofs);
 
 	if (sel_input_ofs)
@@ -97,7 +96,7 @@ void imx_iomux_v3_setup_multiple_pads(iomux_v3_cfg_t const *pad_list,
 
 #if defined(CONFIG_MX6QDL)
 	stride = 2;
-	if (!is_cpu_type(MXC_CPU_MX6Q) && !is_cpu_type(MXC_CPU_MX6D))
+	if (!is_mx6dq() && !is_mx6dqp())
 		p += 1;
 #else
 	stride = 1;

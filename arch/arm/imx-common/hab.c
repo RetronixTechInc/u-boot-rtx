@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2015 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:    GPL-2.0+
  */
@@ -17,80 +17,55 @@
 
 #define hab_rvt_report_event_p					\
 (								\
-	(is_cpu_type(MXC_CPU_MX6QP) ||				\
-	  is_cpu_type(MXC_CPU_MX6DP)) ?				\
+	(is_mx6dqp()) ?						\
 	((hab_rvt_report_event_t *)HAB_RVT_REPORT_EVENT_NEW) :	\
-	((is_cpu_type(MXC_CPU_MX6Q) ||				\
-	  is_cpu_type(MXC_CPU_MX6D)) &&				\
-	  (soc_rev() >= CHIP_REV_1_5)) ?			\
+	(is_mx6dq() && (soc_rev() >= CHIP_REV_1_5)) ?		\
 	((hab_rvt_report_event_t *)HAB_RVT_REPORT_EVENT_NEW) :	\
-	((is_cpu_type(MXC_CPU_MX6DL) ||				\
-	  is_cpu_type(MXC_CPU_MX6SOLO)) &&				\
-	 (soc_rev() >= CHIP_REV_1_2)) ?				\
+	(is_mx6sdl() &&	(soc_rev() >= CHIP_REV_1_2)) ?		\
 	((hab_rvt_report_event_t *)HAB_RVT_REPORT_EVENT_NEW) :	\
 	((hab_rvt_report_event_t *)HAB_RVT_REPORT_EVENT)	\
 )
 
 #define hab_rvt_report_status_p					\
 (								\
-	(is_cpu_type(MXC_CPU_MX6QP) ||				\
-	  is_cpu_type(MXC_CPU_MX6DP)) ?				\
+	(is_mx6dqp()) ?						\
 	((hab_rvt_report_status_t *)HAB_RVT_REPORT_STATUS_NEW) :\
-	((is_cpu_type(MXC_CPU_MX6Q) ||				\
-	  is_cpu_type(MXC_CPU_MX6D)) &&				\
-	  (soc_rev() >= CHIP_REV_1_5)) ?			\
+	(is_mx6dq() && (soc_rev() >= CHIP_REV_1_5)) ?		\
 	((hab_rvt_report_status_t *)HAB_RVT_REPORT_STATUS_NEW) :\
-	((is_cpu_type(MXC_CPU_MX6DL) ||				\
-	  is_cpu_type(MXC_CPU_MX6SOLO)) &&				\
-	 (soc_rev() >= CHIP_REV_1_2)) ?				\
+	(is_mx6sdl() &&	(soc_rev() >= CHIP_REV_1_2)) ?		\
 	((hab_rvt_report_status_t *)HAB_RVT_REPORT_STATUS_NEW) :\
 	((hab_rvt_report_status_t *)HAB_RVT_REPORT_STATUS)	\
 )
 
 #define hab_rvt_authenticate_image_p				\
 (								\
-	(is_cpu_type(MXC_CPU_MX6QP) ||				\
-	  is_cpu_type(MXC_CPU_MX6DP)) ?				\
+	(is_mx6dqp()) ?						\
 	((hab_rvt_authenticate_image_t *)HAB_RVT_AUTHENTICATE_IMAGE_NEW) : \
-	((is_cpu_type(MXC_CPU_MX6Q) ||				\
-	  is_cpu_type(MXC_CPU_MX6D)) &&				\
-	  (soc_rev() >= CHIP_REV_1_5)) ?			\
+	(is_mx6dq() && (soc_rev() >= CHIP_REV_1_5)) ?		\
 	((hab_rvt_authenticate_image_t *)HAB_RVT_AUTHENTICATE_IMAGE_NEW) : \
-	((is_cpu_type(MXC_CPU_MX6DL) ||				\
-	  is_cpu_type(MXC_CPU_MX6SOLO)) &&				\
-	 (soc_rev() >= CHIP_REV_1_2)) ?				\
+	(is_mx6sdl() &&	(soc_rev() >= CHIP_REV_1_2)) ?		\
 	((hab_rvt_authenticate_image_t *)HAB_RVT_AUTHENTICATE_IMAGE_NEW) : \
 	((hab_rvt_authenticate_image_t *)HAB_RVT_AUTHENTICATE_IMAGE)	\
 )
 
 #define hab_rvt_entry_p						\
 (								\
-	(is_cpu_type(MXC_CPU_MX6QP) ||				\
-	  is_cpu_type(MXC_CPU_MX6DP)) ?				\
+	(is_mx6dqp()) ?						\
 	((hab_rvt_entry_t *)HAB_RVT_ENTRY_NEW) :		\
-	((is_cpu_type(MXC_CPU_MX6Q) ||				\
-	  is_cpu_type(MXC_CPU_MX6D)) &&				\
-	  (soc_rev() >= CHIP_REV_1_5)) ?			\
+	(is_mx6dq() && (soc_rev() >= CHIP_REV_1_5)) ?		\
 	((hab_rvt_entry_t *)HAB_RVT_ENTRY_NEW) :		\
-	((is_cpu_type(MXC_CPU_MX6DL) ||				\
-	  is_cpu_type(MXC_CPU_MX6SOLO)) &&				\
-	 (soc_rev() >= CHIP_REV_1_2)) ?				\
+	(is_mx6sdl() &&	(soc_rev() >= CHIP_REV_1_2)) ?		\
 	((hab_rvt_entry_t *)HAB_RVT_ENTRY_NEW) :		\
 	((hab_rvt_entry_t *)HAB_RVT_ENTRY)			\
 )
 
 #define hab_rvt_exit_p						\
 (								\
-	(is_cpu_type(MXC_CPU_MX6QP) ||				\
-	  is_cpu_type(MXC_CPU_MX6DP)) ?			\
+	(is_mx6dqp()) ?						\
 	((hab_rvt_exit_t *)HAB_RVT_EXIT_NEW) :			\
-	((is_cpu_type(MXC_CPU_MX6Q) ||				\
-	  is_cpu_type(MXC_CPU_MX6D)) &&				\
-	  (soc_rev() >= CHIP_REV_1_5)) ?			\
+	(is_mx6dq() && (soc_rev() >= CHIP_REV_1_5)) ?		\
 	((hab_rvt_exit_t *)HAB_RVT_EXIT_NEW) :			\
-	((is_cpu_type(MXC_CPU_MX6DL) ||				\
-	  is_cpu_type(MXC_CPU_MX6SOLO)) &&				\
-	 (soc_rev() >= CHIP_REV_1_2)) ?				\
+	(is_mx6sdl() &&	(soc_rev() >= CHIP_REV_1_2)) ?		\
 	((hab_rvt_exit_t *)HAB_RVT_EXIT_NEW) :			\
 	((hab_rvt_exit_t *)HAB_RVT_EXIT)			\
 )
@@ -102,7 +77,8 @@
 #define MX6DLS_PU_IROM_MMU_EN_VAR	0x00901dd0
 #define MX6SL_PU_IROM_MMU_EN_VAR	0x00900a18
 #define IS_HAB_ENABLED_BIT \
-	(is_soc_type(MXC_SOC_MX7) ? 0x2000000 : 0x2)
+	(is_soc_type(MXC_SOC_MX7ULP) ? 0x80000000 :	\
+	 (is_soc_type(MXC_SOC_MX7) ? 0x2000000 : 0x2))
 
 /*
  * +------------+  0x0 (DDR_UIMAGE_START) -
@@ -134,6 +110,10 @@
  * |            |
  * +------------+ + CSF_PAD_SIZE
  */
+
+static bool is_hab_enabled(void);
+
+#if !defined(CONFIG_SPL_BUILD)
 
 #define MAX_RECORD_BYTES     (8*1024) /* 4 kbytes */
 
@@ -282,22 +262,6 @@ uint8_t hab_engines[16] = {
 	-1
 };
 
-bool is_hab_enabled(void)
-{
-	struct imx_sec_config_fuse_t *fuse =
-		(struct imx_sec_config_fuse_t *)&imx_sec_config_fuse;
-	uint32_t reg;
-	int ret;
-
-	ret = fuse_read(fuse->bank, fuse->word, &reg);
-	if (ret) {
-		puts("\nSecure boot fuse read error\n");
-		return ret;
-	}
-
-	return (reg & IS_HAB_ENABLED_BIT) == IS_HAB_ENABLED_BIT;
-}
-
 static inline uint8_t get_idx(uint8_t *list, uint8_t tgt)
 {
 	uint8_t idx = 0;
@@ -384,108 +348,6 @@ int get_hab_status(void)
 	return 0;
 }
 
-uint32_t authenticate_image(uint32_t ddr_start, uint32_t image_size)
-{
-	uint32_t load_addr = 0;
-	size_t bytes;
-	ptrdiff_t ivt_offset = 0;
-	int result = 0;
-	ulong start;
-	hab_rvt_authenticate_image_t *hab_rvt_authenticate_image;
-	hab_rvt_entry_t *hab_rvt_entry;
-	hab_rvt_exit_t *hab_rvt_exit;
-
-	hab_rvt_authenticate_image = hab_rvt_authenticate_image_p;
-	hab_rvt_entry = hab_rvt_entry_p;
-	hab_rvt_exit = hab_rvt_exit_p;
-
-	if (is_hab_enabled()) {
-		printf("\nAuthenticate image from DDR location 0x%x...\n",
-		       ddr_start);
-
-		hab_caam_clock_enable(1);
-
-		if (hab_rvt_entry() == HAB_SUCCESS) {
-			/* If not already aligned, Align to ALIGN_SIZE */
-			ivt_offset = (image_size + ALIGN_SIZE - 1) &
-					~(ALIGN_SIZE - 1);
-
-			start = ddr_start;
-			bytes = ivt_offset + IVT_SIZE + CSF_PAD_SIZE;
-#ifdef DEBUG
-			printf("\nivt_offset = 0x%x, ivt addr = 0x%x\n",
-			       ivt_offset, ddr_start + ivt_offset);
-			puts("Dumping IVT\n");
-			print_buffer(ddr_start + ivt_offset,
-				     (void *)(ddr_start + ivt_offset),
-				     4, 0x8, 0);
-
-			puts("Dumping CSF Header\n");
-			print_buffer(ddr_start + ivt_offset+IVT_SIZE,
-				     (void *)(ddr_start + ivt_offset+IVT_SIZE),
-				     4, 0x10, 0);
-
-			get_hab_status();
-
-			puts("\nCalling authenticate_image in ROM\n");
-			printf("\tivt_offset = 0x%x\n", ivt_offset);
-			printf("\tstart = 0x%08lx\n", start);
-			printf("\tbytes = 0x%x\n", bytes);
-#endif
-			/*
-			 * If the MMU is enabled, we have to notify the ROM
-			 * code, or it won't flush the caches when needed.
-			 * This is done, by setting the "pu_irom_mmu_enabled"
-			 * word to 1. You can find its address by looking in
-			 * the ROM map. This is critical for
-			 * authenticate_image(). If MMU is enabled, without
-			 * setting this bit, authentication will fail and may
-			 * crash.
-			 */
-			/* Check MMU enabled */
-			if (is_soc_type(MXC_SOC_MX6) && get_cr() & CR_M) {
-				if (is_cpu_type(MXC_CPU_MX6Q) ||
-				    is_cpu_type(MXC_CPU_MX6D)) {
-					/*
-					 * This won't work on Rev 1.0.0 of
-					 * i.MX6Q/D, since their ROM doesn't
-					 * do cache flushes. don't think any
-					 * exist, so we ignore them.
-					 */
-					writel(1, MX6DQ_PU_IROM_MMU_EN_VAR);
-				} else if (is_cpu_type(MXC_CPU_MX6DL) ||
-					   is_cpu_type(MXC_CPU_MX6SOLO)) {
-					writel(1, MX6DLS_PU_IROM_MMU_EN_VAR);
-				} else if (is_cpu_type(MXC_CPU_MX6SL)) {
-					writel(1, MX6SL_PU_IROM_MMU_EN_VAR);
-				}
-			}
-
-			load_addr = (uint32_t)hab_rvt_authenticate_image(
-					HAB_CID_UBOOT,
-					ivt_offset, (void **)&start,
-					(size_t *)&bytes, NULL);
-			if (hab_rvt_exit() != HAB_SUCCESS) {
-				puts("hab exit function fail\n");
-				load_addr = 0;
-			}
-		} else {
-			puts("hab entry function fail\n");
-		}
-
-		hab_caam_clock_enable(0);
-
-		get_hab_status();
-	} else {
-		puts("hab fuse not enabled\n");
-	}
-
-	if ((!is_hab_enabled()) || (load_addr != 0))
-		result = 1;
-
-	return result;
-}
-
 int do_hab_status(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	if ((argc != 1)) {
@@ -528,3 +390,127 @@ U_BOOT_CMD(
 		"addr - image hex address\n"
 		"ivt_offset - hex offset of IVT in the image"
 	  );
+
+
+#endif /* !defined(CONFIG_SPL_BUILD) */
+
+static bool is_hab_enabled(void)
+{
+	struct imx_sec_config_fuse_t *fuse =
+		(struct imx_sec_config_fuse_t *)&imx_sec_config_fuse;
+	uint32_t reg;
+	int ret;
+
+	ret = fuse_read(fuse->bank, fuse->word, &reg);
+	if (ret) {
+		puts("\nSecure boot fuse read error\n");
+		return ret;
+	}
+
+	return (reg & IS_HAB_ENABLED_BIT) == IS_HAB_ENABLED_BIT;
+}
+
+uint32_t authenticate_image(uint32_t ddr_start, uint32_t image_size)
+{
+	uint32_t load_addr = 0;
+	size_t bytes;
+	ptrdiff_t ivt_offset = 0;
+	int result = 0;
+	ulong start;
+	hab_rvt_authenticate_image_t *hab_rvt_authenticate_image;
+	hab_rvt_entry_t *hab_rvt_entry;
+	hab_rvt_exit_t *hab_rvt_exit;
+
+	hab_rvt_authenticate_image = hab_rvt_authenticate_image_p;
+	hab_rvt_entry = hab_rvt_entry_p;
+	hab_rvt_exit = hab_rvt_exit_p;
+
+	if (is_hab_enabled()) {
+		printf("\nAuthenticate image from DDR location 0x%x...\n",
+		       ddr_start);
+
+		hab_caam_clock_enable(1);
+
+		if (hab_rvt_entry() == HAB_SUCCESS) {
+			/* If not already aligned, Align to ALIGN_SIZE */
+			ivt_offset = (image_size + ALIGN_SIZE - 1) &
+					~(ALIGN_SIZE - 1);
+
+			start = ddr_start;
+			bytes = ivt_offset + IVT_SIZE + CSF_PAD_SIZE;
+#ifdef DEBUG
+			printf("\nivt_offset = 0x%x, ivt addr = 0x%x\n",
+			       ivt_offset, ddr_start + ivt_offset);
+			puts("Dumping IVT\n");
+			print_buffer(ddr_start + ivt_offset,
+				     (void *)(ddr_start + ivt_offset),
+				     4, 0x8, 0);
+
+			puts("Dumping CSF Header\n");
+			print_buffer(ddr_start + ivt_offset+IVT_SIZE,
+				     (void *)(ddr_start + ivt_offset+IVT_SIZE),
+				     4, 0x10, 0);
+
+#if  !defined(CONFIG_SPL_BUILD)
+			get_hab_status();
+#endif
+
+			puts("\nCalling authenticate_image in ROM\n");
+			printf("\tivt_offset = 0x%x\n", ivt_offset);
+			printf("\tstart = 0x%08lx\n", start);
+			printf("\tbytes = 0x%x\n", bytes);
+#endif
+			/*
+			 * If the MMU is enabled, we have to notify the ROM
+			 * code, or it won't flush the caches when needed.
+			 * This is done, by setting the "pu_irom_mmu_enabled"
+			 * word to 1. You can find its address by looking in
+			 * the ROM map. This is critical for
+			 * authenticate_image(). If MMU is enabled, without
+			 * setting this bit, authentication will fail and may
+			 * crash.
+			 */
+			/* Check MMU enabled */
+			if (is_soc_type(MXC_SOC_MX6) && get_cr() & CR_M) {
+				if (is_mx6dq()) {
+					/*
+					 * This won't work on Rev 1.0.0 of
+					 * i.MX6Q/D, since their ROM doesn't
+					 * do cache flushes. don't think any
+					 * exist, so we ignore them.
+					 */
+					if (!is_mx6dqp())
+						writel(1, MX6DQ_PU_IROM_MMU_EN_VAR);
+				} else if (is_mx6sdl()) {
+					writel(1, MX6DLS_PU_IROM_MMU_EN_VAR);
+				} else if (is_mx6sl()) {
+					writel(1, MX6SL_PU_IROM_MMU_EN_VAR);
+				}
+			}
+
+			load_addr = (uint32_t)hab_rvt_authenticate_image(
+					HAB_CID_UBOOT,
+					ivt_offset, (void **)&start,
+					(size_t *)&bytes, NULL);
+			if (hab_rvt_exit() != HAB_SUCCESS) {
+				puts("hab exit function fail\n");
+				load_addr = 0;
+			}
+		} else {
+			puts("hab entry function fail\n");
+		}
+
+		hab_caam_clock_enable(0);
+
+#if !defined(CONFIG_SPL_BUILD)
+		get_hab_status();
+#endif
+	} else {
+		puts("hab fuse not enabled\n");
+	}
+
+	if ((!is_hab_enabled()) || (load_addr != 0))
+		result = 1;
+
+	return result;
+}

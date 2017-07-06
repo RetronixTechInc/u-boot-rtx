@@ -46,7 +46,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int dram_init(void)
 {
-	gd->ram_size = get_ram_size((void *)PHYS_SDRAM, PHYS_SDRAM_SIZE);
+	gd->ram_size = imx_ddr_size();
 
 	return 0;
 }
@@ -62,7 +62,7 @@ static void setup_iomux_uart(void)
 }
 
 static struct fsl_esdhc_cfg usdhc_cfg[1] = {
-	{USDHC2_BASE_ADDR, 0, 8, 0, 1}, /* fixed 1.8v IO voltage for eMMC chip */
+	{USDHC2_BASE_ADDR},
 };
 
 int board_mmc_getcd(struct mmc *mmc)

@@ -32,7 +32,6 @@
 #endif
 
 /* uart */
-# define CONFIG_BAUDRATE	115200
 /* The following table includes the supported baudrates */
 # define CONFIG_SYS_BAUDRATE_TABLE \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400}
@@ -44,19 +43,6 @@
 #ifdef XILINX_GPIO_BASEADDR
 # define CONFIG_XILINX_GPIO
 # define CONFIG_SYS_GPIO_0_ADDR		XILINX_GPIO_BASEADDR
-#endif
-#define CONFIG_BOARD_LATE_INIT
-
-/* interrupt controller */
-#ifdef XILINX_INTC_BASEADDR
-# define CONFIG_SYS_INTC_0_ADDR		XILINX_INTC_BASEADDR
-# define CONFIG_SYS_INTC_0_NUM		XILINX_INTC_NUM_INTR_INPUTS
-#endif
-
-/* timer */
-#if defined(XILINX_TIMER_BASEADDR) && defined(XILINX_TIMER_IRQ)
-#  define CONFIG_SYS_TIMER_0_ADDR	XILINX_TIMER_BASEADDR
-#  define CONFIG_SYS_TIMER_0_IRQ	XILINX_TIMER_IRQ
 #endif
 
 /* watchdog */
@@ -124,7 +110,6 @@
 #else /* !FLASH */
 
 #ifdef SPIFLASH
-# define CONFIG_SYS_NO_FLASH		1
 # define CONFIG_SYS_SPI_BASE		XILINX_SPI_FLASH_BASEADDR
 # define CONFIG_SPI			1
 # define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
@@ -150,7 +135,6 @@
 #else /* !SPIFLASH */
 
 /* ENV in RAM */
-# define CONFIG_SYS_NO_FLASH	1
 # define CONFIG_ENV_IS_NOWHERE	1
 # define CONFIG_ENV_SIZE	0x1000
 # define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
@@ -184,19 +168,9 @@
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MFSL
 
-#if defined(CONFIG_DCACHE) || defined(CONFIG_ICACHE)
-# define CONFIG_CMD_CACHE
-#else
-# undef CONFIG_CMD_CACHE
-#endif
-
 #if defined(FLASH)
-# define CONFIG_CMD_JFFS2
-# define CONFIG_CMD_UBI
 # undef CONFIG_CMD_UBIFS
 
 # if !defined(RAMENV)
@@ -205,14 +179,11 @@
 
 #else
 #if defined(SPIFLASH)
-# define CONFIG_CMD_SF
 
 # if !defined(RAMENV)
 #  define CONFIG_CMD_SAVES
 # endif
 #else
-# undef CONFIG_CMD_JFFS2
-# undef CONFIG_CMD_UBI
 # undef CONFIG_CMD_UBIFS
 #endif
 #endif
@@ -222,7 +193,6 @@
 #endif
 
 #if defined(CONFIG_CMD_UBIFS)
-# define CONFIG_CMD_UBI
 # define CONFIG_LZO
 #endif
 
@@ -255,19 +225,16 @@
 /* default load address */
 #define	CONFIG_SYS_LOAD_ADDR	0
 
-#define	CONFIG_BOOTDELAY	-1	/* -1 disables auto-boot */
 #define	CONFIG_BOOTARGS		"root=romfs"
 #define	CONFIG_HOSTNAME		XILINX_BOARD_NAME
 #define	CONFIG_BOOTCOMMAND	"base 0;tftp 11000000 image.img;bootm"
-#define	CONFIG_IPADDR		192.168.0.3
-#define	CONFIG_SERVERIP		192.168.0.5
-#define	CONFIG_GATEWAYIP	192.168.0.1
 
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
 
 #define	CONFIG_PREBOOT	"echo U-BOOT for ${hostname};setenv preboot;echo"
 
+#ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define	CONFIG_EXTRA_ENV_SETTINGS	"unlock=yes\0" \
 					"nor0=flash-0\0"\
 					"mtdparts=mtdparts=flash-0:"\
@@ -277,18 +244,15 @@
 					"setenv stdin nc\0" \
 					"serial=setenv stdout serial;"\
 					"setenv stdin serial\0"
+#endif
 
 #define CONFIG_CMDLINE_EDITING
 
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-
 /* Enable flat device tree support */
 #define CONFIG_LMB		1
-#define CONFIG_OF_LIBFDT	1
 
 #if defined(CONFIG_XILINX_AXIEMAC)
 # define CONFIG_MII		1
-# define CONFIG_CMD_MII		1
 # define CONFIG_PHY_GIGE	1
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	1
 # define CONFIG_PHY_ATHEROS	1
@@ -303,32 +267,23 @@
 # define CONFIG_PHY_VITESSE	1
 #else
 # undef CONFIG_MII
-# undef CONFIG_CMD_MII
 #endif
 
 /* SPL part */
 #define CONFIG_CMD_SPL
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_BOARD_INIT
 
 #define CONFIG_SPL_LDSCRIPT	"arch/microblaze/cpu/u-boot-spl.lds"
 
-#define CONFIG_SPL_RAM_DEVICE
 #ifdef CONFIG_SYS_FLASH_BASE
-# define CONFIG_SPL_NOR_SUPPORT
 # define CONFIG_SYS_UBOOT_BASE		CONFIG_SYS_FLASH_BASE
 #endif
 
 /* for booting directly linux */
-#define CONFIG_SPL_OS_BOOT
 
-#define CONFIG_SYS_OS_BASE		(CONFIG_SYS_FLASH_BASE + \
-					 0x60000)
 #define CONFIG_SYS_FDT_BASE		(CONFIG_SYS_FLASH_BASE + \
 					 0x40000)
+#define CONFIG_SYS_FDT_SIZE		(16<<10)
 #define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_TEXT_BASE + \
 					 0x1000000)
 

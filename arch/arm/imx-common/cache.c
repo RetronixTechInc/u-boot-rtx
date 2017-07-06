@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 Freescale Semiconductor, Inc.
+ * Copyright 2015 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:     GPL-2.0+
  */
@@ -8,6 +8,7 @@
 #include <asm/armv7.h>
 #include <asm/pl310.h>
 #include <asm/io.h>
+#include <asm/imx-common/sys_proto.h>
 
 #ifndef CONFIG_SYS_DCACHE_OFF
 void enable_caches(void)
@@ -39,7 +40,8 @@ void enable_caches(void)
 void v7_outer_cache_enable(void)
 {
 	struct pl310_regs *const pl310 = (struct pl310_regs *)L2_PL310_BASE;
-	unsigned int val, cache_id;
+	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
+	unsigned int val;
 
 
 	/*
@@ -55,39 +57,36 @@ void v7_outer_cache_enable(void)
 	 */
 	setbits_le32(&pl310->pl310_aux_ctrl, L310_SHARED_ATT_OVERRIDE_ENABLE);
 
-#if defined(CONFIG_MX6SL) || defined(CONFIG_MX6SLL)
-	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
-	val = readl(&iomux->gpr[11]);
-	if (val & IOMUXC_GPR11_L2CACHE_AS_OCRAM) {
-		/* L2 cache configured as OCRAM, reset it */
-		val &= ~IOMUXC_GPR11_L2CACHE_AS_OCRAM;
-		writel(val, &iomux->gpr[11]);
+	if (is_mx6sl() || is_mx6sll()) {
+		val = readl(&iomux->gpr[11]);
+		if (val & IOMUXC_GPR11_L2CACHE_AS_OCRAM) {
+			/* L2 cache configured as OCRAM, reset it */
+			val &= ~IOMUXC_GPR11_L2CACHE_AS_OCRAM;
+			writel(val, &iomux->gpr[11]);
+		}
 	}
-#endif
 
 	writel(0x132, &pl310->pl310_tag_latency_ctrl);
 	writel(0x132, &pl310->pl310_data_latency_ctrl);
 
 	val = readl(&pl310->pl310_prefetch_ctrl);
 
-	/* Turn on the L2 I/D prefetch, double linefill */
-	/* Set prefetch offset with any value except 23 as per errata 765569 */
-	val |= 0x7000000f;
+	/* Turn on the L2 I/D prefetch */
+	val |= 0x30000000;
 
 	/*
 	 * The L2 cache controller(PL310) version on the i.MX6D/Q is r3p1-50rel0
-	 * The L2 cache controller(PL310) version on the i.MX6DL/SOLO/SL/SX/DQP
-	 * is r3p2.
+	 * The L2 cache controller(PL310) version on the i.MX6DL/SOLO/SL is r3p2
 	 * But according to ARM PL310 errata: 752271
 	 * ID: 752271: Double linefill feature can cause data corruption
 	 * Fault Status: Present in: r3p0, r3p1, r3p1-50rel0. Fixed in r3p2
 	 * Workaround: The only workaround to this erratum is to disable the
 	 * double linefill feature. This is the default behavior.
 	 */
-	cache_id = readl(&pl310->pl310_cache_id);
-	if (((cache_id & L2X0_CACHE_ID_PART_MASK) == L2X0_CACHE_ID_PART_L310)
-	    && ((cache_id & L2X0_CACHE_ID_RTL_MASK) < L2X0_CACHE_ID_RTL_R3P2))
-		val &= ~(1 << 30);
+
+#ifndef CONFIG_MX6Q
+	val |= 0x40800000;
+#endif
 	writel(val, &pl310->pl310_prefetch_ctrl);
 
 	val = readl(&pl310->pl310_power_ctrl);

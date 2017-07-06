@@ -11,6 +11,7 @@
 #ifndef _DM_DEVICE_H
 #define _DM_DEVICE_H
 
+#include <dm/ofnode.h>
 #include <dm/uclass-id.h>
 #include <fdtdec.h>
 #include <linker_lists.h>
@@ -41,6 +42,46 @@ struct driver_info;
 /* Device is bound */
 #define DM_FLAG_BOUND			(1 << 6)
 
+/* Device name is allocated and should be freed on unbind() */
+#define DM_FLAG_NAME_ALLOCED		(1 << 7)
+
+#define DM_FLAG_OF_PLATDATA		(1 << 8)
+
+/*
+ * Call driver remove function to stop currently active DMA transfers or
+ * give DMA buffers back to the HW / controller. This may be needed for
+ * some drivers to do some final stage cleanup before the OS is called
+ * (U-Boot exit)
+ */
+#define DM_FLAG_ACTIVE_DMA		(1 << 9)
+
+/*
+ * Call driver remove function to do some final configuration, before
+ * U-Boot exits and the OS is started
+ */
+#define DM_FLAG_OS_PREPARE		(1 << 10)
+
+/*
+ * One or multiple of these flags are passed to device_remove() so that
+ * a selective device removal as specified by the remove-stage and the
+ * driver flags can be done.
+ */
+enum {
+	/* Normal remove, remove all devices */
+	DM_REMOVE_NORMAL     = 1 << 0,
+
+	/* Remove devices with active DMA */
+	DM_REMOVE_ACTIVE_DMA = DM_FLAG_ACTIVE_DMA,
+
+	/* Remove devices which need some final OS preparation steps */
+	DM_REMOVE_OS_PREPARE = DM_FLAG_OS_PREPARE,
+
+	/* Add more use cases here */
+
+	/* Remove devices with any active flag */
+	DM_REMOVE_ACTIVE_ALL = DM_REMOVE_ACTIVE_DMA | DM_REMOVE_OS_PREPARE,
+};
+
 /**
  * struct udevice - An instance of a driver
  *
@@ -63,7 +104,7 @@ struct driver_info;
  * @platdata: Configuration data for this device
  * @parent_platdata: The parent bus's configuration data for this device
  * @uclass_platdata: The uclass's configuration data for this device
- * @of_offset: Device tree node offset for this device (- for none)
+ * @node: Reference to device tree node for this device
  * @driver_data: Driver data word for the entry that matched this device with
  *		its driver
  * @parent: Parent of this device, or NULL for the top level device
@@ -89,7 +130,7 @@ struct udevice {
 	void *platdata;
 	void *parent_platdata;
 	void *uclass_platdata;
-	int of_offset;
+	ofnode node;
 	ulong driver_data;
 	struct udevice *parent;
 	void *priv;
@@ -115,6 +156,21 @@ struct udevice {
 
 /* Returns non-zero if the device is active (probed and not removed) */
 #define device_active(dev)	((dev)->flags & DM_FLAG_ACTIVATED)
+
+static inline int dev_of_offset(const struct udevice *dev)
+{
+	return ofnode_to_offset(dev->node);
+}
+
+static inline void dev_set_of_offset(struct udevice *dev, int of_offset)
+{
+	dev->node = offset_to_ofnode(of_offset);
+}
+
+static inline bool dev_has_of_node(struct udevice *dev)
+{
+	return ofnode_valid(dev->node);
+}
 
 /**
  * struct udevice_id - Lists the compatible strings supported by a driver
@@ -201,6 +257,10 @@ struct driver {
 /* Declare a new U-Boot driver */
 #define U_BOOT_DRIVER(__name)						\
 	ll_entry_declare(struct driver, __name, driver)
+
+/* Get a pointer to a given driver */
+#define DM_GET_DRIVER(__name)						\
+	ll_entry_get(struct driver, __name, driver)
 
 /**
  * dev_get_platdata() - Get the platform data for a device
@@ -445,26 +505,6 @@ int device_find_first_child(struct udevice *parent, struct udevice **devp);
 int device_find_next_child(struct udevice **devp);
 
 /**
- * dev_get_addr() - Get the reg property of a device
- *
- * @dev: Pointer to a device
- *
- * @return addr
- */
-fdt_addr_t dev_get_addr(struct udevice *dev);
-
-/**
- * dev_get_addr_index() - Get the indexed reg property of a device
- *
- * @dev: Pointer to a device
- * @index: the 'reg' property can hold a list of <addr, size> pairs
- *	   and @index is used to select which one is required
- *
- * @return addr
- */
-fdt_addr_t dev_get_addr_index(struct udevice *dev, int index);
-
-/**
  * device_has_children() - check if a device has any children
  *
  * @dev:	Device to check
@@ -501,6 +541,9 @@ bool device_is_last_sibling(struct udevice *dev);
  * this is unnecessary but for probed devices which don't get a useful name
  * this function can be helpful.
  *
+ * The name is allocated and will be freed automatically when the device is
+ * unbound.
+ *
  * @dev:	Device to update
  * @name:	New name (this string is allocated new memory and attached to
  *		the device)
@@ -508,6 +551,39 @@ bool device_is_last_sibling(struct udevice *dev);
  * string
  */
 int device_set_name(struct udevice *dev, const char *name);
+
+/**
+ * device_set_name_alloced() - note that a device name is allocated
+ *
+ * This sets the DM_FLAG_NAME_ALLOCED flag for the device, so that when it is
+ * unbound the name will be freed. This avoids memory leaks.
+ *
+ * @dev:	Device to update
+ */
+void device_set_name_alloced(struct udevice *dev);
+
+/**
+ * device_is_compatible() - check if the device is compatible with the compat
+ *
+ * This allows to check whether the device is comaptible with the compat.
+ *
+ * @dev:	udevice pointer for which compatible needs to be verified.
+ * @compat:	Compatible string which needs to verified in the given
+ *		device
+ * @return true if OK, false if the compatible is not found
+ */
+bool device_is_compatible(struct udevice *dev, const char *compat);
+
+/**
+ * of_machine_is_compatible() - check if the machine is compatible with
+ *				the compat
+ *
+ * This allows to check whether the machine is comaptible with the compat.
+ *
+ * @compat:	Compatible string which needs to verified
+ * @return true if OK, false if the compatible is not found
+ */
+bool of_machine_is_compatible(const char *compat);
 
 /**
  * device_is_on_pci_bus - Test if a device is on a PCI bus
@@ -531,6 +607,22 @@ static inline bool device_is_on_pci_bus(struct udevice *dev)
  */
 #define device_foreach_child_safe(pos, next, parent)	\
 	list_for_each_entry_safe(pos, next, &parent->child_head, sibling_node)
+
+/**
+ * dm_scan_fdt_dev() - Bind child device in a the device tree
+ *
+ * This handles device which have sub-nodes in the device tree. It scans all
+ * sub-nodes and binds drivers for each node where a driver can be found.
+ *
+ * If this is called prior to relocation, only pre-relocation devices will be
+ * bound (those marked with u-boot,dm-pre-reloc in the device tree, or where
+ * the driver has the DM_FLAG_PRE_RELOC flag set). Otherwise, all devices will
+ * be bound.
+ *
+ * @dev:	Device to scan
+ * @return 0 if OK, -ve on error
+ */
+int dm_scan_fdt_dev(struct udevice *dev);
 
 /* device resource management */
 typedef void (*dr_release_t)(struct udevice *dev, void *res);
@@ -786,26 +878,5 @@ static inline void devm_kfree(struct udevice *dev, void *ptr)
 }
 
 #endif /* ! CONFIG_DEVRES */
-
-/**
- * dm_set_translation_offset() - Set translation offset
- * @offs: Translation offset
- *
- * Some platforms need a special address translation. Those
- * platforms (e.g. mvebu in SPL) can configure a translation
- * offset in the DM by calling this function. It will be
- * added to all addresses returned in dev_get_addr().
- */
-void dm_set_translation_offset(fdt_addr_t offs);
-
-/**
- * dm_get_translation_offset() - Get translation offset
- *
- * This function returns the translation offset that can
- * be configured by calling dm_set_translation_offset().
- *
- * @return translation offset for the device address (0 as default).
- */
-fdt_addr_t dm_get_translation_offset(void);
 
 #endif

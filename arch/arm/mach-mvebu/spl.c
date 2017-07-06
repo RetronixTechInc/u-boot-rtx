@@ -13,8 +13,6 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
 
-DECLARE_GLOBAL_DATA_PTR;
-
 static u32 get_boot_device(void)
 {
 	u32 val;
@@ -57,7 +55,7 @@ u32 spl_boot_device(void)
 }
 
 #ifdef CONFIG_SPL_MMC_SUPPORT
-u32 spl_boot_mode(void)
+u32 spl_boot_mode(const u32 boot_device)
 {
 	return MMCSD_MODE_RAW;
 }
@@ -99,11 +97,14 @@ void board_init_f(ulong dummy)
 
 	timer_init();
 
+	/* Armada 375 does not support SerDes and DDR3 init yet */
+#if !defined(CONFIG_ARMADA_375)
 	/* First init the serdes PHY's */
 	serdes_phy_config();
 
 	/* Setup DDR */
 	ddr3_init();
+#endif
 
 	/*
 	 * Return to the BootROM to continue the Marvell xmodem

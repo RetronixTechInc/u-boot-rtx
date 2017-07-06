@@ -1,7 +1,8 @@
 /*
  * UniPhier SBC (System Bus Controller) registers
  *
- * Copyright (C) 2011-2015 Masahiro Yamada <yamada.masahiro@socionext.com>
+ * Copyright (C) 2011-2014 Panasonic Corporation
+ * Copyright (C) 2015-2016 Socionext Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -74,29 +75,7 @@
 #define	SBCTRL73		SBCTRL(7, 3)
 #define	SBCTRL74		(SBCTRL_BASE + 0x170)
 
-/* slower but LED works */
-#define SBCTRL0_SAVEPIN_PERI_VALUE	0x55450000
-#define SBCTRL1_SAVEPIN_PERI_VALUE	0x07168d00
-#define SBCTRL2_SAVEPIN_PERI_VALUE	0x34000009
-#define SBCTRL4_SAVEPIN_PERI_VALUE	0x02110110
-
-/* faster but LED does not work */
-#define SBCTRL0_SAVEPIN_MEM_VALUE	0x55450000
-#define SBCTRL1_SAVEPIN_MEM_VALUE	0x06057700
-/* NOR flash needs more wait counts than SRAM */
-#define SBCTRL2_SAVEPIN_MEM_VALUE	0x34000009
-#define SBCTRL4_SAVEPIN_MEM_VALUE	0x02110210
-
-#define SBCTRL0_ADMULTIPLX_PERI_VALUE	0x33120000
-#define SBCTRL1_ADMULTIPLX_PERI_VALUE	0x03005500
-#define SBCTRL2_ADMULTIPLX_PERI_VALUE	0x14000020
-
-#define SBCTRL0_ADMULTIPLX_MEM_VALUE	0x33120000
-#define SBCTRL1_ADMULTIPLX_MEM_VALUE	0x03005500
-#define SBCTRL2_ADMULTIPLX_MEM_VALUE	0x14000010
-
 #define PC0CTRL				0x598000c0
-#define ROM_BOOT_ROMRSV2		0x59801208
 
 #ifndef __ASSEMBLY__
 #include <linux/io.h>

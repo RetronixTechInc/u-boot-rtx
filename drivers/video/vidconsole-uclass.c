@@ -190,7 +190,6 @@ static int vidconsole_post_probe(struct udevice *dev)
 {
 	struct vidconsole_priv *priv = dev_get_uclass_priv(dev);
 	struct stdio_dev *sdev = &priv->sdev;
-	int ret;
 
 	if (!priv->tab_width_frac)
 		priv->tab_width_frac = VID_TO_POS(priv->x_charsize) * 8;
@@ -206,11 +205,8 @@ static int vidconsole_post_probe(struct udevice *dev)
 	sdev->putc = vidconsole_putc;
 	sdev->puts = vidconsole_puts;
 	sdev->priv = dev;
-	ret = stdio_register(sdev);
-	if (ret)
-		return ret;
 
-	return 0;
+	return stdio_register(sdev);
 }
 
 UCLASS_DRIVER(vidconsole) = {
@@ -240,8 +236,7 @@ static int do_video_setcursor(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != 3)
 		return CMD_RET_USAGE;
 
-	uclass_first_device(UCLASS_VIDEO_CONSOLE, &dev);
-	if (!dev)
+	if (uclass_first_device_err(UCLASS_VIDEO_CONSOLE, &dev))
 		return CMD_RET_FAILURE;
 	col = simple_strtoul(argv[1], NULL, 10);
 	row = simple_strtoul(argv[2], NULL, 10);
@@ -259,8 +254,7 @@ static int do_video_puts(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != 2)
 		return CMD_RET_USAGE;
 
-	uclass_first_device(UCLASS_VIDEO_CONSOLE, &dev);
-	if (!dev)
+	if (uclass_first_device_err(UCLASS_VIDEO_CONSOLE, &dev))
 		return CMD_RET_FAILURE;
 	for (s = argv[1]; *s; s++)
 		vidconsole_put_char(dev, *s);

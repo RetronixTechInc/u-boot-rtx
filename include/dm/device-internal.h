@@ -11,6 +11,9 @@
 #ifndef _DM_DEVICE_INTERNAL_H
 #define _DM_DEVICE_INTERNAL_H
 
+#include <dm/ofnode.h>
+
+struct device_node;
 struct udevice;
 
 /**
@@ -38,6 +41,29 @@ int device_bind(struct udevice *parent, const struct driver *drv,
 		const char *name, void *platdata, int of_offset,
 		struct udevice **devp);
 
+/**
+ * device_bind_with_driver_data() - Create a device and bind it to a driver
+ *
+ * Called to set up a new device attached to a driver, in the case where the
+ * driver was matched to the device by means of a match table that provides
+ * driver_data.
+ *
+ * Once bound a device exists but is not yet active until device_probe() is
+ * called.
+ *
+ * @parent: Pointer to device's parent, under which this driver will exist
+ * @drv: Device's driver
+ * @name: Name of device (e.g. device tree node name)
+ * @driver_data: The driver_data field from the driver's match table.
+ * @node: Device tree node for this device. This is invalid for devices which
+ * don't use device tree.
+ * @devp: if non-NULL, returns a pointer to the bound device
+ * @return 0 if OK, -ve on error
+ */
+int device_bind_with_driver_data(struct udevice *parent,
+				 const struct driver *drv, const char *name,
+				 ulong driver_data, ofnode node,
+				 struct udevice **devp);
 /**
  * device_bind_by_name: Create a device and bind it to a driver
  *
@@ -72,12 +98,13 @@ int device_probe(struct udevice *dev);
  * children are deactivated first.
  *
  * @dev: Pointer to device to remove
+ * @flags: Flags for selective device removal
  * @return 0 if OK, -ve on error (an error here is normally a very bad thing)
  */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
-int device_remove(struct udevice *dev);
+int device_remove(struct udevice *dev, uint flags);
 #else
-static inline int device_remove(struct udevice *dev) { return 0; }
+static inline int device_remove(struct udevice *dev, uint flags) { return 0; }
 #endif
 
 /**

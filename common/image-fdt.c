@@ -6,8 +6,6 @@
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
- *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -233,7 +231,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 	ulong		fdt_addr;
 	char		*fdt_blob = NULL;
 	void		*buf;
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 	const char	*fit_uname_config = images->fit_uname_cfg;
 	const char	*fit_uname_fdt = NULL;
 	ulong		default_addr;
@@ -248,7 +246,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 	if (argc > 2)
 		select = argv[2];
 	if (select || genimg_has_config(images)) {
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 		if (select) {
 			/*
 			 * If the FDT blob comes from the FIT image and the
@@ -278,7 +276,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 				debug("*  fdt: cmdline image address = 0x%08lx\n",
 				      fdt_addr);
 			}
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 		} else {
 			/* use FIT configuration provided in first bootm
 			 * command argument
@@ -287,7 +285,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			fdt_noffset = fit_get_node_from_config(images,
 							       FIT_FDT_PROP,
 							       fdt_addr);
-			if (fdt_noffset == -ENOLINK)
+			if (fdt_noffset == -ENOENT)
 				return 0;
 			else if (fdt_noffset < 0)
 				return 1;
@@ -353,7 +351,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			 * (libfdt based) and raw FDT blob (also libfdt
 			 * based).
 			 */
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 			/* check FDT blob vs FIT blob */
 			if (fit_check_format(buf)) {
 				ulong load, len;
@@ -419,34 +417,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			debug("## No Flattened Device Tree\n");
 			goto no_fdt;
 		}
-	}
-#ifdef CONFIG_ANDROID_BOOT_IMAGE
-	else if (genimg_get_format((void *)images->os.start) ==
-		IMAGE_FORMAT_ANDROID) {
-		ulong fdt_data, fdt_len;
-		android_image_get_fdt((void *)images->os.start,
-		 &fdt_data, &fdt_len);
-
-		if (fdt_len) {
-			fdt_blob = (char *)fdt_data;
-			printf("   Booting using the fdt at 0x%p\n", fdt_blob);
-
-			if (fdt_check_header(fdt_blob) != 0) {
-				fdt_error("image is not a fdt");
-				goto error;
-			}
-
-			if (fdt_totalsize(fdt_blob) != fdt_len) {
-				fdt_error("fdt size != image size");
-				goto error;
-			}
-		} else {
-			debug("## No Flattened Device Tree\n");
-			goto no_fdt;
-		}
-	}
-#endif
-	else {
+	} else {
 		debug("## No Flattened Device Tree\n");
 		goto no_fdt;
 	}
@@ -487,11 +458,6 @@ __weak int ft_verify_fdt(void *fdt)
 	return 1;
 }
 
-__weak int arch_fixup_fdt(void *blob)
-{
-	return 0;
-}
-
 int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		       int of_size, struct lmb *lmb)
 {
@@ -512,6 +478,8 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		printf("ERROR: arch-specific fdt fixup failed\n");
 		goto err;
 	}
+	/* Update ethernet nodes */
+	fdt_fixup_ethernet(blob);
 	if (IMAGE_OF_BOARD_SETUP) {
 		fdt_ret = ft_board_setup(blob, gd->bd);
 		if (fdt_ret) {
@@ -528,13 +496,13 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 			goto err;
 		}
 	}
-	fdt_fixup_ethernet(blob);
 
 	/* Delete the old LMB reservation */
-	lmb_free(lmb, (phys_addr_t)(u32)(uintptr_t)blob,
-		 (phys_size_t)fdt_totalsize(blob));
+	if (lmb)
+		lmb_free(lmb, (phys_addr_t)(u32)(uintptr_t)blob,
+			 (phys_size_t)fdt_totalsize(blob));
 
-	ret = fdt_shrink_to_minimum(blob);
+	ret = fdt_shrink_to_minimum(blob, 0);
 	if (ret < 0)
 		goto err;
 	of_size = ret;
@@ -544,7 +512,8 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		fdt_set_totalsize(blob, of_size);
 	}
 	/* Create a new LMB reservation */
-	lmb_reserve(lmb, (ulong)blob, of_size);
+	if (lmb)
+		lmb_reserve(lmb, (ulong)blob, of_size);
 
 	fdt_initrd(blob, *initrd_start, *initrd_end);
 	if (!ft_verify_fdt(blob))

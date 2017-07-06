@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -9,23 +9,14 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/clock.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/boot_mode.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <miiphy.h>
 #include <netdev.h>
 #include <usb.h>
-#include <asm/arch/sys_proto.h>
-
-#ifdef CONFIG_FSL_FASTBOOT
-#include <fsl_fastboot.h>
-#ifdef CONFIG_ANDROID_RECOVERY
-#include <recovery.h>
-#endif
-#endif /*CONFIG_FSL_FASTBOOT*/
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -40,10 +31,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ENET_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
 	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
 
-#define OTG_ID_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |		\
-	PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |		\
-	PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
-
 int dram_init(void)
 {
 #if defined(CONFIG_MX6DL) && !defined(CONFIG_MX6DL_LPDDR2) && \
@@ -55,16 +42,6 @@ int dram_init(void)
 
 	return 0;
 }
-
-#if defined(CONFIG_MX6DQ_POP_LPDDR2)
-void dram_init_banksize(void)
-{
-	gd->bd->bi_dram[0].start = PHYS_SDRAM_0;
-	gd->bd->bi_dram[0].size = (phys_size_t)CONFIG_DDR_MB * 1024 * 1024;
-	gd->bd->bi_dram[1].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[1].size = (phys_size_t)CONFIG_DDR_MB * 1024 * 1024;
-}
-#endif
 
 iomux_v3_cfg_t const uart4_pads[] = {
 	MX6_PAD_KEY_COL0__UART4_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -82,11 +59,7 @@ iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_DAT5__SD3_DATA5 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT6__SD3_DATA6 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_DAT7__SD3_DATA7 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-#ifdef CONFIG_MX6DQ_POP_LPDDR2
-	MX6_PAD_GPIO_18__SD3_VSELECT | MUX_PAD_CTRL(USDHC_PAD_CTRL),
-#else
 	MX6_PAD_NANDF_CS0__GPIO6_IO11  | MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */
-#endif
 };
 
 iomux_v3_cfg_t const usdhc4_pads[] = {
@@ -142,23 +115,17 @@ int board_mmc_get_env_dev(int devno)
 	return devno - 2;
 }
 
-int mmc_map_to_kernel_blk(int devno)
-{
-	return devno + 2;
-}
-
 int board_mmc_getcd(struct mmc *mmc)
 {
-	int ret = 1;
-#ifndef CONFIG_MX6DQ_POP_LPDDR2
 	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
+	int ret;
 
 	if (cfg->esdhc_base == USDHC3_BASE_ADDR) {
 		gpio_direction_input(IMX_GPIO_NR(6, 11));
 		ret = !gpio_get_value(IMX_GPIO_NR(6, 11));
 	} else /* Don't have the CD GPIO pin on board */
 		ret = 1;
-#endif
+
 	return ret;
 }
 
@@ -258,7 +225,7 @@ int board_eth_init(bd_t *bis)
 
 static iomux_v3_cfg_t const usb_otg_pads[] = {
 	MX6_PAD_EIM_D22__USB_OTG_PWR | MUX_PAD_CTRL(NO_PAD_CTRL),
-	MX6_PAD_GPIO_1__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
+	MX6_PAD_GPIO_1__USB_OTG_ID | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
 
 static void setup_usb(void)
@@ -309,15 +276,6 @@ int board_init(void)
 	return 0;
 }
 
-int board_late_init(void)
-{
-#ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_env_init();
-#endif
-
-	return 0;
-}
-
 int checkboard(void)
 {
 #ifdef CONFIG_MX6DL
@@ -328,36 +286,3 @@ int checkboard(void)
 
 	return 0;
 }
-
-#ifdef CONFIG_LDO_BYPASS_CHECK
-/* no external pmic, always ldo_enable */
-void ldo_mode_set(int ldo_bypass)
-{
-	return;
-}
-#endif
-
-#ifdef CONFIG_FSL_FASTBOOT
-void board_fastboot_setup(void)
-{
-	if (!getenv("fastboot_dev"))
-		setenv("fastboot_dev", "mmc0");
-	if (!getenv("bootcmd"))
-		setenv("bootcmd", "boota mmc0");
-}
-
-#ifdef CONFIG_ANDROID_RECOVERY
-int check_recovery_cmd_file(void) {
-	return 0;
-}
-
-void board_recovery_setup(void)
-{
-	if (!getenv("bootcmd_android_recovery"))
-		setenv("bootcmd_android_recovery", "boota mmc0 recovery");
-
-	printf("setup env for recovery..\n");
-	setenv("bootcmd", "run bootcmd_android_recovery");
-}
-#endif
-#endif

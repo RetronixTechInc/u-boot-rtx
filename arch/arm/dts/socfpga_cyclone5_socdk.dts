@@ -21,7 +21,7 @@
 	};
 
 	aliases {
-		/* this allow the ethaddr uboot environmnet variable contents
+		/* this allow the ethaddr uboot environment variable contents
 		 * to be added to the gmac1 device tree blob.
 		 */
 		ethernet0 = &gmac1;
@@ -54,7 +54,15 @@
 	rxc-skew-ps = <2000>;
 };
 
+&gpio0 {
+	status = "okay";
+};
+
 &gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
 	status = "okay";
 };
 

@@ -10,6 +10,7 @@
  */
 
 #include <common.h>
+#include <asm/io.h>
 #include <fdtdec.h>
 #include <fdt_support.h>
 #include <malloc.h>
@@ -18,6 +19,7 @@
 #include <dm/lists.h>
 #include <dm/pinctrl.h>
 #include <dm/platdata.h>
+#include <dm/read.h>
 #include <dm/uclass.h>
 #include <dm/uclass-internal.h>
 #include <dm/util.h>
@@ -26,9 +28,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int device_bind(struct udevice *parent, const struct driver *drv,
-		const char *name, void *platdata, int of_offset,
-		struct udevice **devp)
+static int device_bind_common(struct udevice *parent, const struct driver *drv,
+			      const char *name, void *platdata,
+			      ulong driver_data, ofnode node,
+			      uint of_platdata_size, struct udevice **devp)
 {
 	struct udevice *dev;
 	struct uclass *uc;
@@ -56,8 +59,9 @@ int device_bind(struct udevice *parent, const struct driver *drv,
 	INIT_LIST_HEAD(&dev->devres_head);
 #endif
 	dev->platdata = platdata;
+	dev->driver_data = driver_data;
 	dev->name = name;
-	dev->of_offset = of_offset;
+	dev->node = node;
 	dev->parent = parent;
 	dev->driver = drv;
 	dev->uclass = uc;
@@ -66,27 +70,42 @@ int device_bind(struct udevice *parent, const struct driver *drv,
 	dev->req_seq = -1;
 	if (CONFIG_IS_ENABLED(OF_CONTROL) && CONFIG_IS_ENABLED(DM_SEQ_ALIAS)) {
 		/*
-		* Some devices, such as a SPI bus, I2C bus and serial ports
-		* are numbered using aliases.
-		*
-		* This is just a 'requested' sequence, and will be
-		* resolved (and ->seq updated) when the device is probed.
-		*/
+		 * Some devices, such as a SPI bus, I2C bus and serial ports
+		 * are numbered using aliases.
+		 *
+		 * This is just a 'requested' sequence, and will be
+		 * resolved (and ->seq updated) when the device is probed.
+		 */
 		if (uc->uc_drv->flags & DM_UC_FLAG_SEQ_ALIAS) {
-			if (uc->uc_drv->name && of_offset != -1) {
-				fdtdec_get_alias_seq(gd->fdt_blob,
-						uc->uc_drv->name, of_offset,
-						&dev->req_seq);
+			if (uc->uc_drv->name && ofnode_valid(node)) {
+				dev_read_alias_seq(dev, &dev->req_seq);
 			}
 		}
 	}
 
-	if (!dev->platdata && drv->platdata_auto_alloc_size) {
-		dev->flags |= DM_FLAG_ALLOC_PDATA;
-		dev->platdata = calloc(1, drv->platdata_auto_alloc_size);
-		if (!dev->platdata) {
-			ret = -ENOMEM;
-			goto fail_alloc1;
+	if (drv->platdata_auto_alloc_size) {
+		bool alloc = !platdata;
+
+		if (CONFIG_IS_ENABLED(OF_PLATDATA)) {
+			if (of_platdata_size) {
+				dev->flags |= DM_FLAG_OF_PLATDATA;
+				if (of_platdata_size <
+						drv->platdata_auto_alloc_size)
+					alloc = true;
+			}
+		}
+		if (alloc) {
+			dev->flags |= DM_FLAG_ALLOC_PDATA;
+			dev->platdata = calloc(1,
+					       drv->platdata_auto_alloc_size);
+			if (!dev->platdata) {
+				ret = -ENOMEM;
+				goto fail_alloc1;
+			}
+			if (CONFIG_IS_ENABLED(OF_PLATDATA) && platdata) {
+				memcpy(dev->platdata, platdata,
+				       of_platdata_size);
+			}
 		}
 	}
 
@@ -193,10 +212,28 @@ fail_alloc1:
 	return ret;
 }
 
+int device_bind_with_driver_data(struct udevice *parent,
+				 const struct driver *drv, const char *name,
+				 ulong driver_data, ofnode node,
+				 struct udevice **devp)
+{
+	return device_bind_common(parent, drv, name, NULL, driver_data, node,
+				  0, devp);
+}
+
+int device_bind(struct udevice *parent, const struct driver *drv,
+		const char *name, void *platdata, int of_offset,
+		struct udevice **devp)
+{
+	return device_bind_common(parent, drv, name, platdata, 0,
+				  offset_to_ofnode(of_offset), 0, devp);
+}
+
 int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
 			const struct driver_info *info, struct udevice **devp)
 {
 	struct driver *drv;
+	uint platdata_size = 0;
 
 	drv = lists_driver_lookup_name(info->name);
 	if (!drv)
@@ -204,8 +241,12 @@ int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
 	if (pre_reloc_only && !(drv->flags & DM_FLAG_PRE_RELOC))
 		return -EPERM;
 
-	return device_bind(parent, drv, info->name, (void *)info->platdata,
-			   -1, devp);
+#if CONFIG_IS_ENABLED(OF_PLATDATA)
+	platdata_size = info->platdata_size;
+#endif
+	return device_bind_common(parent, drv, info->name,
+			(void *)info->platdata, 0, ofnode_null(), platdata_size,
+			devp);
 }
 
 static void *alloc_priv(int size, uint flags)
@@ -214,8 +255,36 @@ static void *alloc_priv(int size, uint flags)
 
 	if (flags & DM_FLAG_ALLOC_PRIV_DMA) {
 		priv = memalign(ARCH_DMA_MINALIGN, size);
-		if (priv)
+		if (priv) {
 			memset(priv, '\0', size);
+
+			/*
+			 * Ensure that the zero bytes are flushed to memory.
+			 * This prevents problems if the driver uses this as
+			 * both an input and an output buffer:
+			 *
+			 * 1. Zeroes written to buffer (here) and sit in the
+			 *	cache
+			 * 2. Driver issues a read command to DMA
+			 * 3. CPU runs out of cache space and evicts some cache
+			 *	data in the buffer, writing zeroes to RAM from
+			 *	the memset() above
+			 * 4. DMA completes
+			 * 5. Buffer now has some DMA data and some zeroes
+			 * 6. Data being read is now incorrect
+			 *
+			 * To prevent this, ensure that the cache is clean
+			 * within this range at the start. The driver can then
+			 * use normal flush-after-write, invalidate-before-read
+			 * procedures.
+			 *
+			 * TODO(sjg@chromium.org): Drop this microblaze
+			 * exception.
+			 */
+#ifndef CONFIG_MICROBLAZE
+			flush_dcache_range((ulong)priv, (ulong)priv + size);
+#endif
+		}
 	} else {
 		priv = calloc(1, size);
 	}
@@ -314,7 +383,7 @@ int device_probe(struct udevice *dev)
 			goto fail;
 	}
 
-	if (drv->ofdata_to_platdata && dev->of_offset >= 0) {
+	if (drv->ofdata_to_platdata && dev_has_of_node(dev)) {
 		ret = drv->ofdata_to_platdata(dev);
 		if (ret)
 			goto fail;
@@ -332,9 +401,12 @@ int device_probe(struct udevice *dev)
 	if (ret)
 		goto fail_uclass;
 
+	if (dev->parent && device_get_uclass_id(dev) == UCLASS_PINCTRL)
+		pinctrl_select_state(dev, "default");
+
 	return 0;
 fail_uclass:
-	if (device_remove(dev)) {
+	if (device_remove(dev, DM_REMOVE_NORMAL)) {
 		dm_warn("%s: Device '%s' failed to remove on error path\n",
 			__func__, dev->name);
 	}
@@ -480,7 +552,7 @@ int device_find_child_by_of_offset(struct udevice *parent, int of_offset,
 	*devp = NULL;
 
 	list_for_each_entry(dev, &parent->child_head, sibling_node) {
-		if (dev->of_offset == of_offset) {
+		if (dev_of_offset(dev) == of_offset) {
 			*devp = dev;
 			return 0;
 		}
@@ -505,7 +577,7 @@ static struct udevice *_device_find_global_by_of_offset(struct udevice *parent,
 {
 	struct udevice *dev, *found;
 
-	if (parent->of_offset == of_offset)
+	if (dev_of_offset(parent) == of_offset)
 		return parent;
 
 	list_for_each_entry(dev, &parent->child_head, sibling_node) {
@@ -583,77 +655,6 @@ const char *dev_get_uclass_name(struct udevice *dev)
 	return dev->uclass->uc_drv->name;
 }
 
-fdt_addr_t dev_get_addr_index(struct udevice *dev, int index)
-{
-#if CONFIG_IS_ENABLED(OF_CONTROL)
-	fdt_addr_t addr;
-
-	if (CONFIG_IS_ENABLED(OF_TRANSLATE)) {
-		const fdt32_t *reg;
-		int len = 0;
-		int na, ns;
-
-		na = fdt_address_cells(gd->fdt_blob, dev->parent->of_offset);
-		if (na < 1) {
-			debug("bad #address-cells\n");
-			return FDT_ADDR_T_NONE;
-		}
-
-		ns = fdt_size_cells(gd->fdt_blob, dev->parent->of_offset);
-		if (ns < 0) {
-			debug("bad #size-cells\n");
-			return FDT_ADDR_T_NONE;
-		}
-
-		reg = fdt_getprop(gd->fdt_blob, dev->of_offset, "reg", &len);
-		if (!reg || (len <= (index * sizeof(fdt32_t) * (na + ns)))) {
-			debug("Req index out of range\n");
-			return FDT_ADDR_T_NONE;
-		}
-
-		reg += index * (na + ns);
-
-		/*
-		 * Use the full-fledged translate function for complex
-		 * bus setups.
-		 */
-		addr = fdt_translate_address((void *)gd->fdt_blob,
-					     dev->of_offset, reg);
-	} else {
-		/*
-		 * Use the "simple" translate function for less complex
-		 * bus setups.
-		 */
-		addr = fdtdec_get_addr_size_auto_parent(gd->fdt_blob,
-							dev->parent->of_offset,
-							dev->of_offset, "reg",
-							index, NULL);
-		if (CONFIG_IS_ENABLED(SIMPLE_BUS) && addr != FDT_ADDR_T_NONE) {
-			if (device_get_uclass_id(dev->parent) ==
-			    UCLASS_SIMPLE_BUS)
-				addr = simple_bus_translate(dev->parent, addr);
-		}
-	}
-
-	/*
-	 * Some platforms need a special address translation. Those
-	 * platforms (e.g. mvebu in SPL) can configure a translation
-	 * offset in the DM by calling dm_set_translation_offset() that
-	 * will get added to all addresses returned by dev_get_addr().
-	 */
-	addr += dm_get_translation_offset();
-
-	return addr;
-#else
-	return FDT_ADDR_T_NONE;
-#endif
-}
-
-fdt_addr_t dev_get_addr(struct udevice *dev)
-{
-	return dev_get_addr_index(dev, 0);
-}
-
 bool device_has_children(struct udevice *dev)
 {
 	return !list_empty(&dev->child_head);
@@ -682,12 +683,32 @@ bool device_is_last_sibling(struct udevice *dev)
 	return list_is_last(&dev->sibling_node, &parent->child_head);
 }
 
+void device_set_name_alloced(struct udevice *dev)
+{
+	dev->flags |= DM_FLAG_NAME_ALLOCED;
+}
+
 int device_set_name(struct udevice *dev, const char *name)
 {
 	name = strdup(name);
 	if (!name)
 		return -ENOMEM;
 	dev->name = name;
+	device_set_name_alloced(dev);
 
 	return 0;
+}
+
+bool device_is_compatible(struct udevice *dev, const char *compat)
+{
+	const void *fdt = gd->fdt_blob;
+
+	return !fdt_node_check_compatible(fdt, dev_of_offset(dev), compat);
+}
+
+bool of_machine_is_compatible(const char *compat)
+{
+	const void *fdt = gd->fdt_blob;
+
+	return !fdt_node_check_compatible(fdt, 0, compat);
 }

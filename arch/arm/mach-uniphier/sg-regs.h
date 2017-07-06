@@ -1,13 +1,15 @@
 /*
  * UniPhier SG (SoC Glue) block registers
  *
- * Copyright (C) 2011-2015 Masahiro Yamada <yamada.masahiro@socionext.com>
+ * Copyright (C) 2011-2015 Copyright (C) 2011-2015 Panasonic Corporation
+ * Copyright (C) 2016-2017 Socionext Inc.
+ *   Author: Masahiro Yamada <yamada.masahiro@socionext.com>
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef ARCH_SG_REGS_H
-#define ARCH_SG_REGS_H
+#ifndef UNIPHIER_SG_REGS_H
+#define UNIPHIER_SG_REGS_H
 
 /* Base Address */
 #define SG_CTRL_BASE			0x5f800000
@@ -15,12 +17,6 @@
 
 /* Revision */
 #define SG_REVISION			(SG_CTRL_BASE | 0x0000)
-#define SG_REVISION_TYPE_SHIFT		16
-#define SG_REVISION_TYPE_MASK		(0xff << SG_REVISION_TYPE_SHIFT)
-#define SG_REVISION_MODEL_SHIFT		8
-#define SG_REVISION_MODEL_MASK		(0x3 << SG_REVISION_MODEL_SHIFT)
-#define SG_REVISION_REV_SHIFT		0
-#define SG_REVISION_REV_MASK		(0x1f << SG_REVISION_REV_SHIFT)
 
 /* Memory Configuration */
 #define SG_MEMCONF			(SG_CTRL_BASE | 0x0400)
@@ -50,13 +46,18 @@
 #define SG_MEMCONF_CH2_SZ_128M		((0x0 << 26) | (0x02 << 16))
 #define SG_MEMCONF_CH2_SZ_256M		((0x0 << 26) | (0x03 << 16))
 #define SG_MEMCONF_CH2_SZ_512M		((0x1 << 26) | (0x00 << 16))
+#define SG_MEMCONF_CH2_SZ_1G		((0x1 << 26) | (0x01 << 16))
 #define SG_MEMCONF_CH2_NUM_MASK		(0x1 << 24)
 #define SG_MEMCONF_CH2_NUM_1		(0x1 << 24)
 #define SG_MEMCONF_CH2_NUM_2		(0x0 << 24)
-/* PH1-LD6b, ProXstream2 only */
+/* PH1-LD6b, ProXstream2, PH1-LD20 only */
 #define SG_MEMCONF_CH2_DISABLE		(0x1 << 21)
 
 #define SG_MEMCONF_SPARSEMEM		(0x1 << 4)
+
+#define SG_USBPHYCTRL			(SG_CTRL_BASE | 0x500)
+#define SG_ETPHYPSHUT			(SG_CTRL_BASE | 0x554)
+#define SG_ETPHYCNT			(SG_CTRL_BASE | 0x550)
 
 /* Pin Control */
 #define SG_PINCTRL_BASE			(SG_CTRL_BASE | 0x1000)
@@ -69,6 +70,7 @@
 
 /* Pin Monitor */
 #define SG_PINMON0			(SG_DBG_BASE | 0x0100)
+#define SG_PINMON2			(SG_DBG_BASE | 0x0108)
 
 #define SG_PINMON0_CLK_MODE_UPLLSRC_MASK	(0x3 << 19)
 #define SG_PINMON0_CLK_MODE_UPLLSRC_DEFAULT	(0x0 << 19)
@@ -115,6 +117,25 @@ static inline void sg_set_pinsel(unsigned pin, unsigned muxval,
 	writel(tmp, reg);
 }
 
+static inline void sg_set_iectrl(unsigned pin)
+{
+	unsigned bit = pin % 32;
+	unsigned long reg = SG_IECTRL + pin / 32 * 4;
+	u32 tmp;
+
+	tmp = readl(reg);
+	tmp |= 1 << bit;
+	writel(tmp, reg);
+}
+
+static inline void sg_set_iectrl_range(unsigned min, unsigned max)
+{
+	int i;
+
+	for (i = min; i <= max; i++)
+		sg_set_iectrl(i);
+}
+
 #endif /* __ASSEMBLY__ */
 
-#endif /* ARCH_SG_REGS_H */
+#endif /* UNIPHIER_SG_REGS_H */

@@ -15,10 +15,6 @@
 #include <post.h>
 #include <u-boot/sha256.h>
 
-#ifdef is_boot_from_usb
-#include <environment.h>
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_DELAY_STOP_STR 32
@@ -186,15 +182,10 @@ static int passwd_abort(uint64_t etime)
  * Watch for 'delay' seconds for autoboot stop or autoboot delay string.
  * returns: 0 -  no key string, allow autoboot 1 - got key string, abort
  */
-static int abortboot_keyed(int bootdelay)
+static int __abortboot(int bootdelay)
 {
 	int abort;
 	uint64_t etime = endtick(bootdelay);
-
-#ifndef CONFIG_ZERO_BOOTDELAY_CHECK
-	if (bootdelay == 0)
-		return 0;
-#endif
 
 #  ifdef CONFIG_AUTOBOOT_PROMPT
 	/*
@@ -208,11 +199,6 @@ static int abortboot_keyed(int bootdelay)
 	if (!abort)
 		debug_bootkeys("key timeout\n");
 
-#ifdef CONFIG_SILENT_CONSOLE
-	if (abort)
-		gd->flags &= ~GD_FLG_SILENT;
-#endif
-
 	return abort;
 }
 
@@ -222,7 +208,7 @@ static int abortboot_keyed(int bootdelay)
 static int menukey;
 #endif
 
-static int abortboot_normal(int bootdelay)
+static int __abortboot(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
@@ -230,23 +216,17 @@ static int abortboot_normal(int bootdelay)
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
-	if (bootdelay >= 0)
-		printf("Hit any key to stop autoboot: %2d ", bootdelay);
+	printf("Hit any key to stop autoboot: %2d ", bootdelay);
 #endif
 
-#if defined CONFIG_ZERO_BOOTDELAY_CHECK
 	/*
 	 * Check if key already pressed
-	 * Don't check if bootdelay < 0
 	 */
-	if (bootdelay >= 0) {
-		if (tstc()) {	/* we got a key press	*/
-			(void) getc();  /* consume input	*/
-			puts("\b\b\b 0");
-			abort = 1;	/* don't auto boot	*/
-		}
+	if (tstc()) {	/* we got a key press	*/
+		(void) getc();  /* consume input	*/
+		puts("\b\b\b 0");
+		abort = 1;	/* don't auto boot	*/
 	}
-#endif
 
 	while ((bootdelay > 0) && (!abort)) {
 		--bootdelay;
@@ -271,22 +251,23 @@ static int abortboot_normal(int bootdelay)
 
 	putc('\n');
 
-#ifdef CONFIG_SILENT_CONSOLE
-	if (abort)
-		gd->flags &= ~GD_FLG_SILENT;
-#endif
-
 	return abort;
 }
 # endif	/* CONFIG_AUTOBOOT_KEYED */
 
 static int abortboot(int bootdelay)
 {
-#ifdef CONFIG_AUTOBOOT_KEYED
-	return abortboot_keyed(bootdelay);
-#else
-	return abortboot_normal(bootdelay);
+	int abort = 0;
+
+	if (bootdelay >= 0)
+		abort = __abortboot(bootdelay);
+
+#ifdef CONFIG_SILENT_CONSOLE
+	if (abort)
+		gd->flags &= ~GD_FLG_SILENT;
 #endif
+
+	return abort;
 }
 
 static void process_fdt_options(const void *blob)
@@ -326,18 +307,6 @@ const char *bootdelay_process(void)
 	s = getenv("bootdelay");
 	bootdelay = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
 
-#if !defined(CONFIG_FSL_FASTBOOT) && defined(is_boot_from_usb)
-	if (is_boot_from_usb()) {
-		disconnect_from_pc();
-		printf("Boot from USB for mfgtools\n");
-		bootdelay = 0;
-		set_default_env("Use default environment for \
-				 mfgtools\n");
-	} else {
-		printf("Normal Boot\n");
-	}
-#endif
-
 #ifdef CONFIG_OF_CONTROL
 	bootdelay = fdtdec_get_config_int(gd->fdt_blob, "bootdelay",
 			bootdelay);
@@ -363,13 +332,6 @@ const char *bootdelay_process(void)
 	} else
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
 		s = getenv("bootcmd");
-
-#if !defined(CONFIG_FSL_FASTBOOT) && defined(is_boot_from_usb)
-	if (is_boot_from_usb()) {
-		s = getenv("bootcmd_mfg");
-		printf("Run bootcmd_mfg: %s\n", s);
-	}
-#endif
 
 	process_fdt_options(gd->fdt_blob);
 	stored_bootdelay = bootdelay;

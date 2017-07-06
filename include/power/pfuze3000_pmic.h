@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2015-2016 Freescale Semiconductor, Inc
+ *  Copyright (C) 2015 Freescale Semiconductor, Inc
  *  Peng Fan <Peng.Fan@freescale.com>
  *
  * SPDX-License-Identifier:     GPL-2.0+
@@ -73,8 +73,11 @@ enum {
 	PMIC_NUM_OF_REGS	= 0x7F,
 };
 
-#define PFUZE3000_SW1AB_SETP(x) (((x) - 700) / 25)
-
 int power_pfuze3000_init(unsigned char bus);
+
+/* Voltage Configuration */
+#define PFUZE3000_SW1AB_SETP(x)    ((x - 7000) / 250)
+#define PFUZE3000_SW3_SETP(x)      ((x - 9000) / 500)
+#define PFUZE3000_VLDO_SETP(x)     ((x - 8000) / 500)
 
 #endif

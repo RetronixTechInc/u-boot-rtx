@@ -11,6 +11,7 @@
 #include <console.h>
 #include <image.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <u-boot/zlib.h>
 #include <div64.h>
 
@@ -105,7 +106,7 @@ void gzwrite_progress_finish(int returnval,
 }
 
 int gzwrite(unsigned char *src, int len,
-	    struct block_dev_desc *dev,
+	    struct blk_desc *dev,
 	    unsigned long szwritebuf,
 	    u64 startoffs,
 	    u64 szexpected)
@@ -193,7 +194,7 @@ int gzwrite(unsigned char *src, int len,
 
 	s.next_in = src + i;
 	s.avail_in = payload_size+8;
-	writebuf = (unsigned char *)malloc(szwritebuf);
+	writebuf = (unsigned char *)malloc_cache_aligned(szwritebuf);
 
 	/* decompress until deflate stream ends or end of file */
 	do {
@@ -232,9 +233,8 @@ int gzwrite(unsigned char *src, int len,
 			gzwrite_progress(iteration++,
 					 totalfilled,
 					 szexpected);
-			blocks_written = dev->block_write(dev, outblock,
-							  writeblocks,
-							  writebuf);
+			blocks_written = blk_dwrite(dev, outblock,
+						    writeblocks, writebuf);
 			outblock += blocks_written;
 			if (ctrlc()) {
 				puts("abort\n");

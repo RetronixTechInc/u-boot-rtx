@@ -6,7 +6,7 @@
  */
 
 #include <common.h>
-#include <clk.h>
+#include <clk-uclass.h>
 #include <dm.h>
 #include <div64.h>
 #include <wait_bit.h>
@@ -330,7 +330,7 @@ static void pic32_clk_init(struct udevice *dev)
 	for (i = REF1CLK; i <= REF5CLK; i++) {
 		snprintf(propname, sizeof(propname),
 			 "microchip,refo%d-frequency", i - REF1CLK + 1);
-		rate = fdtdec_get_int(blob, dev->of_offset, propname, 0);
+		rate = fdtdec_get_int(blob, dev_of_offset(dev), propname, 0);
 		if (rate)
 			pic32_set_refclk(priv, i, pll_hz, rate, ROCLK_SRC_SPLL);
 	}
@@ -339,24 +339,17 @@ static void pic32_clk_init(struct udevice *dev)
 	pic32_mpll_init(priv);
 }
 
-static ulong pic32_clk_get_rate(struct udevice *dev)
+static ulong pic32_get_rate(struct clk *clk)
 {
-	struct pic32_clk_priv *priv = dev_get_priv(dev);
-
-	return pic32_get_cpuclk(priv);
-}
-
-static ulong pic32_get_periph_rate(struct udevice *dev, int periph)
-{
-	struct pic32_clk_priv *priv = dev_get_priv(dev);
+	struct pic32_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong rate;
 
-	switch (periph) {
+	switch (clk->id) {
 	case PB1CLK ... PB7CLK:
-		rate = pic32_get_pbclk(priv, periph);
+		rate = pic32_get_pbclk(priv, clk->id);
 		break;
 	case REF1CLK ... REF5CLK:
-		rate = pic32_get_refclk(priv, periph);
+		rate = pic32_get_refclk(priv, clk->id);
 		break;
 	case PLLCLK:
 		rate = pic32_get_pll_rate(priv);
@@ -372,15 +365,15 @@ static ulong pic32_get_periph_rate(struct udevice *dev, int periph)
 	return rate;
 }
 
-static ulong pic32_set_periph_rate(struct udevice *dev, int periph, ulong rate)
+static ulong pic32_set_rate(struct clk *clk, ulong rate)
 {
-	struct pic32_clk_priv *priv = dev_get_priv(dev);
+	struct pic32_clk_priv *priv = dev_get_priv(clk->dev);
 	ulong pll_hz;
 
-	switch (periph) {
+	switch (clk->id) {
 	case REF1CLK ... REF5CLK:
 		pll_hz = pic32_get_pll_rate(priv);
-		pic32_set_refclk(priv, periph, pll_hz, rate, ROCLK_SRC_SPLL);
+		pic32_set_refclk(priv, clk->id, pll_hz, rate, ROCLK_SRC_SPLL);
 		break;
 	default:
 		break;
@@ -390,9 +383,8 @@ static ulong pic32_set_periph_rate(struct udevice *dev, int periph, ulong rate)
 }
 
 static struct clk_ops pic32_pic32_clk_ops = {
-	.get_rate = pic32_clk_get_rate,
-	.set_periph_rate = pic32_set_periph_rate,
-	.get_periph_rate = pic32_get_periph_rate,
+	.set_rate = pic32_set_rate,
+	.get_rate = pic32_get_rate,
 };
 
 static int pic32_clk_probe(struct udevice *dev)
@@ -401,7 +393,8 @@ static int pic32_clk_probe(struct udevice *dev)
 	fdt_addr_t addr;
 	fdt_size_t size;
 
-	addr = fdtdec_get_addr_size(gd->fdt_blob, dev->of_offset, "reg", &size);
+	addr = fdtdec_get_addr_size(gd->fdt_blob, dev_of_offset(dev), "reg",
+				    &size);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 

@@ -9,6 +9,7 @@
 #include <image.h>
 #include <fdt_support.h>
 #include <asm/addrspace.h>
+#include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -41,7 +42,7 @@ void arch_lmb_reserve(struct lmb *lmb)
 
 	/* adjust sp by 4K to be safe */
 	sp -= 4096;
-	lmb_reserve(lmb, sp, CONFIG_SYS_SDRAM_BASE + gd->ram_size - sp);
+	lmb_reserve(lmb, sp, gd->ram_top - sp);
 }
 
 static void linux_cmdline_init(void)
@@ -252,10 +253,10 @@ static int boot_reloc_fdt(bootm_headers_t *images)
 #endif
 }
 
-int arch_fixup_memory_node(void *blob)
+int arch_fixup_fdt(void *blob)
 {
 #if CONFIG_IS_ENABLED(MIPS_BOOT_FDT) && CONFIG_IS_ENABLED(OF_LIBFDT)
-	u64 mem_start = 0;
+	u64 mem_start = virt_to_phys((void *)gd->bd->bi_memstart);
 	u64 mem_size = gd->ram_size;
 
 	return fdt_fixup_memory_banks(blob, &mem_start, &mem_size, 1);

@@ -14,6 +14,7 @@
 #include <spl.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <asm/arch/bootrom.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/periph.h>
@@ -29,6 +30,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 u32 spl_boot_device(void)
 {
+#if !CONFIG_IS_ENABLED(OF_PLATDATA)
 	const void *blob = gd->fdt_blob;
 	struct udevice *dev;
 	const char *bootdev;
@@ -63,10 +65,15 @@ u32 spl_boot_device(void)
 	}
 
 fallback:
+#elif defined(CONFIG_TARGET_CHROMEBOOK_JERRY) || \
+		defined(CONFIG_TARGET_CHROMEBIT_MICKEY) || \
+		defined(CONFIG_TARGET_CHROMEBOOK_MINNIE)
+	return BOOT_DEVICE_SPI;
+#endif
 	return BOOT_DEVICE_MMC1;
 }
 
-u32 spl_boot_mode(void)
+u32 spl_boot_mode(const u32 boot_device)
 {
 	return MMCSD_MODE_RAW;
 }
@@ -114,7 +121,8 @@ static void configure_l2ctlr(void)
 #ifdef CONFIG_SPL_MMC_SUPPORT
 static int configure_emmc(struct udevice *pinctrl)
 {
-#if !defined(CONFIG_TARGET_ROCK2) && !defined(CONFIG_TARGET_FIREFLY_RK3288)
+#if defined(CONFIG_TARGET_CHROMEBOOK_JERRY)
+
 	struct gpio_desc desc;
 	int ret;
 
@@ -145,7 +153,6 @@ static int configure_emmc(struct udevice *pinctrl)
 		return ret;
 	}
 #endif
-
 	return 0;
 }
 #endif
@@ -157,7 +164,6 @@ void board_init_f(ulong dummy)
 	int ret;
 
 	/* Example code showing how to enable the debug UART on RK3288 */
-#ifdef EARLY_UART
 #include <asm/arch/grf_rk3288.h>
 	/* Enable early UART on the RK3288 */
 #define GRF_BASE	0xff770000
@@ -176,18 +182,17 @@ void board_init_f(ulong dummy)
 	 * printascii("string");
 	 */
 	debug_uart_init();
-#endif
-
-	ret = spl_init();
+	debug("\nspl:debug uart enabled in %s\n", __func__);
+	ret = spl_early_init();
 	if (ret) {
-		debug("spl_init() failed: %d\n", ret);
+		debug("spl_early_init() failed: %d\n", ret);
 		hang();
 	}
 
 	rockchip_timer_init();
 	configure_l2ctlr();
 
-	ret = uclass_get_device(UCLASS_CLK, 0, &dev);
+	ret = rockchip_get_clk(&dev);
 	if (ret) {
 		debug("CLK init failed: %d\n", ret);
 		return;
@@ -198,12 +203,15 @@ void board_init_f(ulong dummy)
 		debug("Pinctrl init failed: %d\n", ret);
 		return;
 	}
-
+	debug("\nspl:init dram\n");
 	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
 	if (ret) {
 		debug("DRAM init failed: %d\n", ret);
 		return;
 	}
+#if defined(CONFIG_ROCKCHIP_SPL_BACK_TO_BROM) && !defined(CONFIG_SPL_BOARD_INIT)
+	back_to_bootrom();
+#endif
 }
 
 static int setup_led(void)
@@ -246,6 +254,7 @@ void spl_board_init(void)
 		debug("%s: Cannot find pinctrl device\n", __func__);
 		goto err;
 	}
+
 #ifdef CONFIG_SPL_MMC_SUPPORT
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_SDCARD);
 	if (ret) {
@@ -267,14 +276,13 @@ void spl_board_init(void)
 	}
 
 	preloader_console_init();
+#ifdef CONFIG_ROCKCHIP_SPL_BACK_TO_BROM
+	back_to_bootrom();
+#endif
 	return;
 err:
 	printf("spl_board_init: Error %d\n", ret);
 
 	/* No way to report error here */
 	hang();
-}
-
-void lowlevel_init(void)
-{
 }

@@ -6,26 +6,15 @@
 #ifndef __CONFIG_SOCFPGA_COMMON_H__
 #define __CONFIG_SOCFPGA_COMMON_H__
 
-
 /* Virtual target or real hardware */
 #undef CONFIG_SOCFPGA_VIRTUAL_TARGET
-
-#define CONFIG_SYS_THUMB_BUILD
 
 /*
  * High level configuration
  */
-#define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO_LATE
-#define CONFIG_ARCH_MISC_INIT
-#define CONFIG_ARCH_EARLY_INIT_R
-#define CONFIG_SYS_NO_FLASH
 #define CONFIG_CLOCKS
 
-#define CONFIG_CRC32_VERIFY
-
-#define CONFIG_FIT
-#define CONFIG_OF_LIBFDT
 #define CONFIG_SYS_BOOTMAPSZ		(64 * 1024 * 1024)
 
 #define CONFIG_TIMESTAMP		/* Print image info with timestamp */
@@ -41,9 +30,13 @@
 #define CONFIG_SYS_MALLOC_LEN		(64 * 1024 * 1024)
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1
 #define CONFIG_SYS_MEMTEST_END		PHYS_SDRAM_1_SIZE
-
+#if defined(CONFIG_TARGET_SOCFPGA_GEN5)
 #define CONFIG_SYS_INIT_RAM_ADDR	0xFFFF0000
 #define CONFIG_SYS_INIT_RAM_SIZE	0x10000
+#elif defined(CONFIG_TARGET_SOCFPGA_ARRIA10)
+#define CONFIG_SYS_INIT_RAM_ADDR	0xFFE00000
+#define CONFIG_SYS_INIT_RAM_SIZE	0x40000 /* 256KB */
+#endif
 #define CONFIG_SYS_INIT_SP_OFFSET		\
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_ADDR			\
@@ -67,35 +60,27 @@
 #define CONFIG_SYS_MAXARGS	32		/* Max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 						/* Boot argument buffer size */
-#define CONFIG_VERSION_VARIABLE			/* U-BOOT version */
 #define CONFIG_AUTO_COMPLETE			/* Command auto complete */
 #define CONFIG_CMDLINE_EDITING			/* Command history etc */
-#define CONFIG_SYS_HUSH_PARSER
 
 #ifndef CONFIG_SYS_HOSTNAME
 #define CONFIG_SYS_HOSTNAME	CONFIG_SYS_BOARD
 #endif
 
+#define CONFIG_CMD_PXE
+#define CONFIG_MENU
+
 /*
  * Cache
  */
-#define CONFIG_SYS_CACHELINE_SIZE 32
 #define CONFIG_SYS_L2_PL310
 #define CONFIG_SYS_PL310_BASE		SOCFPGA_MPUL2_ADDRESS
-
-/*
- * SDRAM controller
- */
-#define CONFIG_ALTERA_SDRAM
 
 /*
  * EPCS/EPCQx1 Serial Flash Controller
  */
 #ifdef CONFIG_ALTERA_SPI
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
 #define CONFIG_SF_DEFAULT_SPEED		30000000
-#define CONFIG_SPI_FLASH_BAR
 /*
  * The base address is configurable in QSys, each board must specify the
  * base address based on it's particular FPGA configuration. Please note
@@ -118,13 +103,14 @@
 /*
  * FPGA Driver
  */
+#ifdef CONFIG_TARGET_SOCFPGA_GEN5
 #ifdef CONFIG_CMD_FPGA
 #define CONFIG_FPGA
 #define CONFIG_FPGA_ALTERA
 #define CONFIG_FPGA_SOCFPGA
 #define CONFIG_FPGA_COUNT		1
 #endif
-
+#endif
 /*
  * L4 OSC1 Timer 0
  */
@@ -152,12 +138,7 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_MMC
 #define CONFIG_BOUNCE_BUFFER
-#define CONFIG_GENERIC_MMC
-#define CONFIG_DWMMC
-#define CONFIG_SOCFPGA_DWMMC
-#define CONFIG_SOCFPGA_DWMMC_FIFO_DEPTH	1024
 /* FIXME */
 /* using smaller max blk cnt to avoid flooding the limited stack we have */
 #define CONFIG_SYS_MMC_MAX_BLK_COUNT	256	/* FIXME -- SPL only? */
@@ -180,7 +161,6 @@
  * I2C support
  */
 #define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_DW
 #define CONFIG_SYS_I2C_BUS_MAX		4
 #define CONFIG_SYS_I2C_BASE		SOCFPGA_I2C0_ADDRESS
 #define CONFIG_SYS_I2C_BASE1		SOCFPGA_I2C1_ADDRESS
@@ -201,7 +181,6 @@
 unsigned int cm_get_l4_sp_clk_hz(void);
 #define IC_CLK				(cm_get_l4_sp_clk_hz() / 1000000)
 #endif
-#define CONFIG_CMD_I2C
 
 /*
  * QSPI support
@@ -220,78 +199,66 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
 #define CONFIG_CQSPI_REF_CLK		cm_get_qspi_controller_clk_hz()
 #endif
 #define CONFIG_CQSPI_DECODER		0
-#define CONFIG_CMD_SF
-#define CONFIG_SPI_FLASH_BAR
+#define CONFIG_BOUNCE_BUFFER
 
 /*
  * Designware SPI support
  */
-#define CONFIG_CMD_SPI
 
 /*
  * Serial Driver
  */
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4
-#define CONFIG_SYS_NS16550_COM1		SOCFPGA_UART0_ADDRESS
 #ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
 #define CONFIG_SYS_NS16550_CLK		1000000
-#else
+#elif defined(CONFIG_TARGET_SOCFPGA_GEN5)
+#define CONFIG_SYS_NS16550_COM1		SOCFPGA_UART0_ADDRESS
 #define CONFIG_SYS_NS16550_CLK		100000000
+#elif defined(CONFIG_TARGET_SOCFPGA_ARRIA10)
+#define CONFIG_SYS_NS16550_COM1        SOCFPGA_UART1_ADDRESS
+#define CONFIG_SYS_NS16550_CLK		50000000
 #endif
 #define CONFIG_CONS_INDEX		1
-#define CONFIG_BAUDRATE			115200
 
 /*
  * USB
  */
 #ifdef CONFIG_CMD_USB
 #define CONFIG_USB_DWC2
-#define CONFIG_USB_STORAGE
 #endif
 
 /*
  * USB Gadget (DFU, UMS)
  */
 #if defined(CONFIG_CMD_DFU) || defined(CONFIG_CMD_USB_MASS_STORAGE)
-#define CONFIG_USB_GADGET
-#define CONFIG_USB_GADGET_DWC2_OTG
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW	2
-
-/* USB Composite download gadget - g_dnl */
-#define CONFIG_USB_GADGET_DOWNLOAD
 #define CONFIG_USB_FUNCTION_MASS_STORAGE
 
-#define CONFIG_USB_FUNCTION_DFU
-#ifdef CONFIG_DM_MMC
-#define CONFIG_DFU_MMC
-#endif
-#define CONFIG_SYS_DFU_DATA_BUF_SIZE	(32 * 1024 * 1024)
+#define CONFIG_SYS_DFU_DATA_BUF_SIZE	(16 * 1024 * 1024)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
 
 /* USB IDs */
-#define CONFIG_G_DNL_VENDOR_NUM		0x0525	/* NetChip */
-#define CONFIG_G_DNL_PRODUCT_NUM	0xA4A5	/* Linux-USB File-backed Storage Gadget */
-#define CONFIG_G_DNL_UMS_VENDOR_NUM	CONFIG_G_DNL_VENDOR_NUM
-#define CONFIG_G_DNL_UMS_PRODUCT_NUM	CONFIG_G_DNL_PRODUCT_NUM
-#ifndef CONFIG_G_DNL_MANUFACTURER
-#define CONFIG_G_DNL_MANUFACTURER	CONFIG_SYS_VENDOR
-#endif
+#define CONFIG_G_DNL_UMS_VENDOR_NUM	0x0525
+#define CONFIG_G_DNL_UMS_PRODUCT_NUM	0xA4A5
 #endif
 
 /*
  * U-Boot environment
  */
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-#define CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
-#define CONFIG_SYS_CONSOLE_ENV_OVERWRITE
-#define CONFIG_ENV_SIZE			4096
+#if !defined(CONFIG_ENV_SIZE)
+#define CONFIG_ENV_SIZE			(8 * 1024)
+#endif
 
 /* Environment for SDMMC boot */
 #if defined(CONFIG_ENV_IS_IN_MMC) && !defined(CONFIG_ENV_OFFSET)
-#define CONFIG_SYS_MMC_ENV_DEV		0	/* device 0 */
-#define CONFIG_ENV_OFFSET		512	/* just after the MBR */
+#define CONFIG_SYS_MMC_ENV_DEV		0 /* device 0 */
+#define CONFIG_ENV_OFFSET		(34 * 512) /* just after the GPT */
+#endif
+
+/* Environment for QSPI boot */
+#if defined(CONFIG_ENV_IS_IN_SPI_FLASH) && !defined(CONFIG_ENV_OFFSET)
+#define CONFIG_ENV_OFFSET		0x00100000
+#define CONFIG_ENV_SECT_SIZE		(64 * 1024)
 #endif
 
 /*
@@ -319,7 +286,6 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
 
 /* UBI and UBIFS support */
 #if defined(CONFIG_CMD_SF) || defined(CONFIG_CMD_NAND)
-#define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS
 #define CONFIG_RBTREE
 #define CONFIG_LZO
@@ -337,43 +303,23 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
  * 0xFFFF_FF00 ...... End of SRAM
  */
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_RAM_DEVICE
 #define CONFIG_SPL_TEXT_BASE		CONFIG_SYS_INIT_RAM_ADDR
-#define CONFIG_SPL_MAX_SIZE		(64 * 1024)
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MALLOC_SIMPLE
-#endif
-
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_WATCHDOG_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#ifdef CONFIG_DM_MMC
-#define CONFIG_SPL_MMC_SUPPORT
-#endif
-#ifdef CONFIG_DM_SPI
-#define CONFIG_SPL_SPI_SUPPORT
-#endif
-#ifdef CONFIG_SPL_NAND_DENALI
-#define CONFIG_SPL_NAND_SUPPORT
-#endif
+#define CONFIG_SPL_MAX_SIZE		CONFIG_SYS_INIT_RAM_SIZE
 
 /* SPL SDMMC boot support */
 #ifdef CONFIG_SPL_MMC_SUPPORT
 #if defined(CONFIG_SPL_FAT_SUPPORT) || defined(CONFIG_SPL_EXT_SUPPORT)
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	2
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME		"u-boot-dtb.img"
-#define CONFIG_SPL_LIBDISK_SUPPORT
+#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	1
+#endif
 #else
-#define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION	3
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0xa00 /* offset 2560 sect (1M+256k) */
-#define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS	800 /* 400 KB */
+#ifndef CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION
+#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION	1
 #endif
 #endif
 
 /* SPL QSPI boot support */
 #ifdef CONFIG_SPL_SPI_SUPPORT
-#define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x40000
 #endif
@@ -389,5 +335,42 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
  * Stack setup
  */
 #define CONFIG_SPL_STACK		CONFIG_SYS_INIT_SP_ADDR
+
+/* Extra Environment */
+#ifndef CONFIG_SPL_BUILD
+#include <config_distro_defaults.h>
+
+#ifdef CONFIG_CMD_PXE
+#define BOOT_TARGET_DEVICES_PXE(func) func(PXE, pxe, na)
+#else
+#define BOOT_TARGET_DEVICES_PXE(func)
+#endif
+
+#ifdef CONFIG_CMD_MMC
+#define BOOT_TARGET_DEVICES_MMC(func) func(MMC, mmc, 0)
+#else
+#define BOOT_TARGET_DEVICES_MMC(func)
+#endif
+
+#define BOOT_TARGET_DEVICES(func) \
+	BOOT_TARGET_DEVICES_MMC(func) \
+	BOOT_TARGET_DEVICES_PXE(func) \
+	func(DHCP, dhcp, na)
+
+#include <config_distro_bootcmd.h>
+
+#ifndef CONFIG_EXTRA_ENV_SETTINGS
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
+	"bootm_size=0xa000000\0" \
+	"kernel_addr_r="__stringify(CONFIG_SYS_LOAD_ADDR)"\0" \
+	"fdt_addr_r=0x02000000\0" \
+	"scriptaddr=0x02100000\0" \
+	"pxefile_addr_r=0x02200000\0" \
+	"ramdisk_addr_r=0x02300000\0" \
+	BOOTENV
+
+#endif
+#endif
 
 #endif	/* __CONFIG_SOCFPGA_COMMON_H__ */

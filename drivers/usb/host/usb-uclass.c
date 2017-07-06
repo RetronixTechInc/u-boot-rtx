@@ -14,7 +14,6 @@
 #include <usb.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
-#include <dm/root.h>
 #include <dm/uclass-internal.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -155,11 +154,15 @@ int usb_stop(void)
 	uc_priv = uc->priv;
 
 	uclass_foreach_dev(bus, uc) {
-		ret = device_remove(bus);
+		ret = device_remove(bus, DM_REMOVE_NORMAL);
 		if (ret && !err)
 			err = ret;
 	}
-
+#ifdef CONFIG_BLK
+	ret = blk_unbind_all(IF_TYPE_USB);
+	if (ret && !err)
+		err = ret;
+#endif
 #ifdef CONFIG_SANDBOX
 	struct udevice *dev;
 
@@ -345,12 +348,6 @@ struct usb_device *usb_get_dev_index(struct udevice *bus, int index)
 }
 #endif
 
-int usb_post_bind(struct udevice *dev)
-{
-	/* Scan the bus for devices */
-	return dm_scan_fdt_node(dev, gd->fdt_blob, dev->of_offset, false);
-}
-
 int usb_setup_ehci_gadget(struct ehci_ctrl **ctlrp)
 {
 	struct usb_platdata *plat;
@@ -361,7 +358,7 @@ int usb_setup_ehci_gadget(struct ehci_ctrl **ctlrp)
 	ret = uclass_find_device_by_seq(UCLASS_USB, 0, true, &dev);
 	if (ret)
 		return ret;
-	ret = device_remove(dev);
+	ret = device_remove(dev, DM_REMOVE_NORMAL);
 	if (ret)
 		return ret;
 
@@ -686,19 +683,18 @@ int usb_detect_change(void)
 int usb_child_post_bind(struct udevice *dev)
 {
 	struct usb_dev_platdata *plat = dev_get_parent_platdata(dev);
-	const void *blob = gd->fdt_blob;
 	int val;
 
-	if (dev->of_offset == -1)
+	if (!dev_of_valid(dev))
 		return 0;
 
 	/* We only support matching a few things */
-	val = fdtdec_get_int(blob, dev->of_offset, "usb,device-class", -1);
+	val = dev_read_u32_default(dev, "usb,device-class", -1);
 	if (val != -1) {
 		plat->id.match_flags |= USB_DEVICE_ID_MATCH_DEV_CLASS;
 		plat->id.bDeviceClass = val;
 	}
-	val = fdtdec_get_int(blob, dev->of_offset, "usb,interface-class", -1);
+	val = dev_read_u32_default(dev, "usb,interface-class", -1);
 	if (val != -1) {
 		plat->id.match_flags |= USB_DEVICE_ID_MATCH_INT_CLASS;
 		plat->id.bInterfaceClass = val;
@@ -764,7 +760,7 @@ UCLASS_DRIVER(usb) = {
 	.id		= UCLASS_USB,
 	.name		= "usb",
 	.flags		= DM_UC_FLAG_SEQ_ALIAS,
-	.post_bind	= usb_post_bind,
+	.post_bind	= dm_scan_fdt_dev,
 	.priv_auto_alloc_size = sizeof(struct usb_uclass_priv),
 	.per_child_auto_alloc_size = sizeof(struct usb_device),
 	.per_device_auto_alloc_size = sizeof(struct usb_bus_priv),

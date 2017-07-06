@@ -5,7 +5,7 @@
  * on behalf of DENX Software Engineering GmbH
  *
  * Based on code from LTIB:
- * Copyright (C) 2010-2016 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2010 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -14,7 +14,7 @@
 
 #include <common.h>
 #include <malloc.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
@@ -126,10 +126,10 @@ static int mxs_dma_enable(int channel)
 		return 0;
 	}
 
-	if (list_empty(&pchan->active))
+	pdesc = list_first_entry(&pchan->active, struct mxs_dma_desc, node);
+	if (pdesc == NULL)
 		return -EFAULT;
 
-	pdesc = list_first_entry(&pchan->active, struct mxs_dma_desc, node);
 	if (pchan->flags & MXS_DMA_FLAGS_BUSY) {
 		if (!(pdesc->cmd.data & MXS_DMA_DESC_CHAIN))
 			return 0;
@@ -573,14 +573,6 @@ void mxs_dma_init(void)
 {
 	struct mxs_apbh_regs *apbh_regs =
 		(struct mxs_apbh_regs *)MXS_APBH_BASE;
-
-#ifdef CONFIG_MX6
-	if (check_module_fused(MX6_MODULE_APBHDMA)) {
-		printf("NAND APBH-DMA@0x%x is fused, disable it\n",
-			MXS_APBH_BASE);
-		return;
-	}
-#endif
 
 	mxs_reset_block(&apbh_regs->hw_apbh_ctrl0_reg);
 

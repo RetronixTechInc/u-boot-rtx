@@ -5,6 +5,7 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <clk.h>
 #include <common.h>
 #include <debug_uart.h>
 #include <dm.h>
@@ -14,7 +15,6 @@
 #include <asm/io.h>
 #include <linux/compiler.h>
 #include <serial.h>
-#include <asm/arch/clk.h>
 #include <asm/arch/hardware.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -108,7 +108,29 @@ static int _uart_zynq_serial_putc(struct uart_zynq *regs, const char c)
 int zynq_serial_setbrg(struct udevice *dev, int baudrate)
 {
 	struct zynq_uart_priv *priv = dev_get_priv(dev);
-	unsigned long clock = get_uart_clk(0);
+	unsigned long clock;
+
+	int ret;
+	struct clk clk;
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret < 0) {
+		dev_err(dev, "failed to get clock\n");
+		return ret;
+	}
+
+	clock = clk_get_rate(&clk);
+	if (IS_ERR_VALUE(clock)) {
+		dev_err(dev, "failed to get rate\n");
+		return clock;
+	}
+	debug("%s: CLK %ld\n", __func__, clock);
+
+	ret = clk_enable(&clk);
+	if (ret && ret != -ENOSYS) {
+		dev_err(dev, "failed to enable clock\n");
+		return ret;
+	}
 
 	_uart_zynq_serial_setbrg(priv->regs, clock, baudrate);
 
@@ -157,7 +179,7 @@ static int zynq_serial_ofdata_to_platdata(struct udevice *dev)
 {
 	struct zynq_uart_priv *priv = dev_get_priv(dev);
 
-	priv->regs = (struct uart_zynq *)dev_get_addr(dev);
+	priv->regs = (struct uart_zynq *)devfdt_get_addr(dev);
 
 	return 0;
 }

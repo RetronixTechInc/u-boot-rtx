@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -17,11 +17,6 @@
 #include <asm/arch/crm_regs.h>
 #include <dm.h>
 #include <imx_thermal.h>
-#include <mxsfb.h>
-#if defined(CONFIG_FSL_FASTBOOT) && defined(CONFIG_ANDROID_RECOVERY)
-#include <recovery.h>
-#endif
-
 
 #if defined(CONFIG_IMX_THERMAL)
 static const struct imx_thermal_plat imx7_thermal_plat = {
@@ -108,8 +103,9 @@ struct imx_sec_config_fuse_t const imx_sec_config_fuse = {
  */
 #define OCOTP_TESTER3_SPEED_SHIFT	8
 #define OCOTP_TESTER3_SPEED_800MHZ	0
-#define OCOTP_TESTER3_SPEED_850MHZ	1
+#define OCOTP_TESTER3_SPEED_500MHZ	1
 #define OCOTP_TESTER3_SPEED_1GHZ	2
+#define OCOTP_TESTER3_SPEED_1P2GHZ	3
 
 u32 get_cpu_speed_grade_hz(void)
 {
@@ -125,11 +121,13 @@ u32 get_cpu_speed_grade_hz(void)
 
 	switch(val) {
 	case OCOTP_TESTER3_SPEED_800MHZ:
-		return 792000000;
-	case OCOTP_TESTER3_SPEED_850MHZ:
-		return 852000000;
+		return 800000000;
+	case OCOTP_TESTER3_SPEED_500MHZ:
+		return 500000000;
 	case OCOTP_TESTER3_SPEED_1GHZ:
-		return 996000000;
+		return 1000000000;
+	case OCOTP_TESTER3_SPEED_1P2GHZ:
+		return 1200000000;
 	}
 	return 0;
 }
@@ -170,12 +168,30 @@ u32 get_cpu_temp_grade(int *minc, int *maxc)
 	return val;
 }
 
+static bool is_mx7d(void)
+{
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank *bank = &ocotp->bank[1];
+	struct fuse_bank1_regs *fuse =
+		(struct fuse_bank1_regs *)bank->fuse_regs;
+	int val;
+
+	val = readl(&fuse->tester4);
+	if (val & 1)
+		return false;
+	else
+		return true;
+}
+
 u32 get_cpu_rev(void)
 {
 	struct mxc_ccm_anatop_reg *ccm_anatop = (struct mxc_ccm_anatop_reg *)
 						 ANATOP_BASE_ADDR;
 	u32 reg = readl(&ccm_anatop->digprog);
 	u32 type = (reg >> 16) & 0xff;
+
+	if (!is_mx7d())
+		type = MXC_CPU_MX7S;
 
 	reg &= 0xff;
 	return (type << 12) | reg;
@@ -214,35 +230,6 @@ static void imx_enet_mdio_fixup(void)
 	}
 }
 
-static void set_epdc_qos(void)
-{
-#define REGS_QOS_BASE     QOSC_IPS_BASE_ADDR
-#define REGS_QOS_EPDC     (QOSC_IPS_BASE_ADDR + 0x3400)
-#define REGS_QOS_PXP0     (QOSC_IPS_BASE_ADDR + 0x2C00)
-#define REGS_QOS_PXP1     (QOSC_IPS_BASE_ADDR + 0x3C00)
-
-	writel(0, REGS_QOS_BASE);  /*  Disable clkgate & soft_reset */
-	writel(0, REGS_QOS_BASE + 0x60);  /*  Enable all masters */
-	writel(0, REGS_QOS_EPDC);   /*  Disable clkgate & soft_reset */
-	writel(0, REGS_QOS_PXP0);   /*  Disable clkgate & soft_reset */
-	writel(0, REGS_QOS_PXP1);   /*  Disable clkgate & soft_reset */
-
-	writel(0x0f020722, REGS_QOS_EPDC + 0xd0);   /*  WR, init = 7 with red flag */
-	writel(0x0f020722, REGS_QOS_EPDC + 0xe0);   /*  RD,  init = 7 with red flag */
-
-	writel(1, REGS_QOS_PXP0);   /*  OT_CTRL_EN =1 */
-	writel(1, REGS_QOS_PXP1);   /*  OT_CTRL_EN =1 */
-
-	writel(0x0f020222, REGS_QOS_PXP0 + 0x50);   /*  WR,  init = 2 with red flag */
-	writel(0x0f020222, REGS_QOS_PXP1 + 0x50);   /*  WR,  init = 2 with red flag */
-	writel(0x0f020222, REGS_QOS_PXP0 + 0x60);   /*  rD,  init = 2 with red flag */
-	writel(0x0f020222, REGS_QOS_PXP1 + 0x60);   /*  rD,  init = 2 with red flag */
-	writel(0x0f020422, REGS_QOS_PXP0 + 0x70);   /*  tOTAL,  init = 4 with red flag */
-	writel(0x0f020422, REGS_QOS_PXP1 + 0x70);   /*  TOTAL,  init = 4 with red flag */
-
-	writel(0xe080, IOMUXC_GPR_BASE_ADDR + 0x0034); /* EPDC AW/AR CACHE ENABLE */
-}
-
 int arch_cpu_init(void)
 {
 	init_aips();
@@ -253,19 +240,30 @@ int arch_cpu_init(void)
 
 	imx_enet_mdio_fixup();
 
-	set_epdc_qos();
-
 #ifdef CONFIG_APBH_DMA
 	/* Start APBH DMA */
 	mxs_dma_init();
 #endif
 
-#ifdef CONFIG_IMX_RDC
-	isolate_resource();
+	if (IS_ENABLED(CONFIG_IMX_RDC))
+		isolate_resource();
+
+	return 0;
+}
+
+#ifdef CONFIG_ARCH_MISC_INIT
+int arch_misc_init(void)
+{
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	if (is_mx7d())
+		setenv("soc", "imx7d");
+	else
+		setenv("soc", "imx7s");
 #endif
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_SERIAL_TAG
 void get_board_serial(struct tag_serialnr *serialnr)
@@ -467,59 +465,4 @@ void reset_misc(void)
 	lcdif_power_down();
 #endif
 }
-
-#ifdef CONFIG_FSL_FASTBOOT
-#ifdef CONFIG_ANDROID_RECOVERY
-#define ANDROID_RECOVERY_BOOT	(1 << 7)
-/*
- * check if the recovery bit is set by kernel, it can be set by kernel
- * issue a command '# reboot recovery'
- */
-int recovery_check_and_clean_flag(void)
-{
-	int flag_set = 0;
-	u32 reg;
-	reg = readl(SNVS_BASE_ADDR + SNVS_LPGPR);
-
-	flag_set = !!(reg & ANDROID_RECOVERY_BOOT);
-	printf("check_and_clean: reg %x, flag_set %d\n", reg, flag_set);
-	/* clean it in case looping infinite here.... */
-	if (flag_set) {
-		reg &= ~ANDROID_RECOVERY_BOOT;
-		writel(reg, SNVS_BASE_ADDR + SNVS_LPGPR);
-	}
-
-	return flag_set;
-}
-#endif /*CONFIG_ANDROID_RECOVERY*/
-
-#define ANDROID_FASTBOOT_BOOT  (1 << 8)
-/*
- * check if the recovery bit is set by kernel, it can be set by kernel
- * issue a command '# reboot fastboot'
- */
-int fastboot_check_and_clean_flag(void)
-{
-	int flag_set = 0;
-	u32 reg;
-
-	reg = readl(SNVS_BASE_ADDR + SNVS_LPGPR);
-
-	flag_set = !!(reg & ANDROID_FASTBOOT_BOOT);
-
-	/* clean it in case looping infinite here.... */
-	if (flag_set) {
-		reg &= ~ANDROID_FASTBOOT_BOOT;
-		writel(reg, SNVS_BASE_ADDR + SNVS_LPGPR);
-	}
-
-	return flag_set;
-}
-
-void fastboot_enable_flag(void)
-{
-	setbits_le32(SNVS_BASE_ADDR + SNVS_LPGPR,
-		ANDROID_FASTBOOT_BOOT);
-}
-#endif /*CONFIG_FSL_FASTBOOT*/
 

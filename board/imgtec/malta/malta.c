@@ -12,13 +12,14 @@
 #include <pci_gt64120.h>
 #include <pci_msc01.h>
 #include <rtc.h>
-#include <serial.h>
 
 #include <asm/addrspace.h>
 #include <asm/io.h>
 #include <asm/malta.h>
 
 #include "superio.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 enum core_card {
 	CORE_UNKNOWN,
@@ -84,9 +85,11 @@ static enum sys_con malta_sys_con(void)
 	}
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
-	return CONFIG_SYS_MEM_SIZE;
+	gd->ram_size = CONFIG_SYS_MEM_SIZE;
+
+	return 0;
 }
 
 int checkboard(void)
@@ -159,18 +162,6 @@ int misc_init_r(void)
 	rtc_reset();
 
 	return 0;
-}
-
-struct serial_device *default_serial_console(void)
-{
-	switch (malta_sys_con()) {
-	case SYSCON_GT64120:
-		return &eserial1_device;
-
-	default:
-	case SYSCON_MSC01:
-		return &eserial2_device;
-	}
 }
 
 void pci_init_board(void)

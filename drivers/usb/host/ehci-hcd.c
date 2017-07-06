@@ -2,7 +2,6 @@
  * Copyright (c) 2007-2008, Juniper Networks, Inc.
  * Copyright (c) 2008, Excito Elektronik i Skåne AB
  * Copyright (c) 2008, Michael Trimarchi <trimarchimichael@yahoo.it>
- * Copyright (C) 2016 Freescale Semiconductor, Inc.
  *
  * All rights reserved.
  *
@@ -1618,6 +1617,12 @@ int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
 	ret = ehci_reset(ctrl);
 	if (ret)
 		goto err;
+
+	if (ctrl->ops.init_after_reset) {
+		ret = ctrl->ops.init_after_reset(ctrl);
+		if (ret)
+			goto err;
+	}
 
 	ret = ehci_common_init(ctrl, tweaks);
 	if (ret)

@@ -13,7 +13,6 @@
 
 #include "exynos-common.h"
 
-#define CONFIG_SYS_CACHELINE_SIZE	64
 #define CONFIG_EXYNOS_SPL
 
 #ifdef FTRACE
@@ -27,7 +26,6 @@
 
 /* Enable ACE acceleration for SHA1 and SHA256 */
 #define CONFIG_EXYNOS_ACE_SHA
-#define CONFIG_SHA_HW_ACCEL
 
 /* Power Down Modes */
 #define S5P_CHECK_SLEEP			0x00000BAD
@@ -41,27 +39,14 @@
 #define INFORM3_OFFSET			0x80c
 
 /* select serial console configuration */
-#define CONFIG_BAUDRATE			115200
 #define EXYNOS5_DEFAULT_UART_OFFSET	0x010000
-#define CONFIG_SILENT_CONSOLE
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-#define CONFIG_CONSOLE_MUX
-
-#define CONFIG_CMD_HASH
 
 /* Thermal Management Unit */
 #define CONFIG_EXYNOS_TMU
-#define CONFIG_CMD_DTT
-#define CONFIG_TMU_CMD_DTT
 
 /* MMC SPL */
 #define COPY_BL2_FNPTR_ADDR	0x02020030
 #define CONFIG_SUPPORT_EMMC_BOOT
-
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
 
 /* specific .lds file */
 #define CONFIG_SPL_LDSCRIPT	"board/samsung/common/exynos-uboot-spl.lds"
@@ -121,16 +106,12 @@
 #define SPI_FLASH_UBOOT_POS	(CONFIG_SEC_FW_SIZE + CONFIG_BL1_SIZE)
 
 /* I2C */
-#define CONFIG_CMD_I2C
 #define CONFIG_SYS_I2C_S3C24X0
 #define CONFIG_SYS_I2C_S3C24X0_SPEED	100000		/* 100 Kbps */
 #define CONFIG_SYS_I2C_S3C24X0_SLAVE    0x0
-#define CONFIG_I2C_EDID
 
 /* SPI */
 #ifdef CONFIG_SPI_FLASH
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SPI
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define CONFIG_SF_DEFAULT_SPEED		50000000
 #endif
@@ -150,20 +131,9 @@
 #define CONFIG_ENV_SROM_BANK		1
 #endif /*CONFIG_CMD_NET*/
 
-/* SHA hashing */
-#define CONFIG_CMD_HASH
-#define CONFIG_HASH_VERIFY
-#define CONFIG_SHA1
-#define CONFIG_SHA256
-
 /* Enable Time Command */
-#define CONFIG_CMD_TIME
-
 
 /* USB */
-#define CONFIG_CMD_USB
-#define CONFIG_USB_STORAGE
-#define CONFIG_USB_XHCI_DWC3
 #define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	3
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS	2
 
@@ -177,10 +147,6 @@
 #define EXYNOS_COPY_USB_FNPTR_ADDR	0x02020070
 #define EXYNOS_USB_SECONDARY_BOOT	0xfeed0002
 #define EXYNOS_IRAM_SECONDARY_BASE	0x02020018
-
-/* Enable FIT support and comparison */
-#define CONFIG_FIT
-#define CONFIG_FIT_BEST_MATCH
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 1) \

@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <sys/file.h>
 #include <unistd.h>
+#include "fw_env_private.h"
 #include "fw_env.h"
 
 #define CMD_PRINTENV	"fw_printenv"
@@ -46,12 +47,17 @@ static struct option long_options[] = {
 	{"help", no_argument, NULL, 'h'},
 	{"script", required_argument, NULL, 's'},
 	{"noheader", required_argument, NULL, 'n'},
+	{"lock", required_argument, NULL, 'l'},
 	{NULL, 0, NULL, 0}
 };
 
-struct common_args common_args;
-struct printenv_args printenv_args;
-struct setenv_args setenv_args;
+static struct env_opts env_opts;
+
+/* setenv options */
+static int noheader;
+
+/* getenv options */
+static char *script_file;
 
 void usage_printenv(void)
 {
@@ -68,6 +74,7 @@ void usage_printenv(void)
 		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
 #endif
 		" -n, --noheader       do not repeat variable name in output\n"
+		" -l, --lock           lock node, default:/var/lock\n"
 		"\n");
 }
 
@@ -84,6 +91,7 @@ void usage_setenv(void)
 #ifdef CONFIG_FILE
 		" -c, --config         configuration file, default:" CONFIG_FILE "\n"
 #endif
+		" -l, --lock           lock node, default:/var/lock\n"
 		" -s, --script         batch mode to minimize writes\n"
 		"\n"
 		"Examples:\n"
@@ -93,7 +101,7 @@ void usage_setenv(void)
 		"\n"
 		"Script Syntax:\n"
 		"  key [space] value\n"
-		"  lines starting with '#' are treated as commment\n"
+		"  lines starting with '#' are treated as comment\n"
 		"\n"
 		"  A variable without value will be deleted. Any number of spaces are\n"
 		"  allowed between key and value. Space inside of the value is treated\n"
@@ -112,24 +120,27 @@ static void parse_common_args(int argc, char *argv[])
 	int c;
 
 #ifdef CONFIG_FILE
-	common_args.config_file = CONFIG_FILE;
+	env_opts.config_file = CONFIG_FILE;
 #endif
 
-	while ((c = getopt_long(argc, argv, ":a:c:h", long_options, NULL)) !=
+	while ((c = getopt_long(argc, argv, ":a:c:l:h", long_options, NULL)) !=
 	       EOF) {
 		switch (c) {
 		case 'a':
-			if (parse_aes_key(optarg, common_args.aes_key)) {
+			if (parse_aes_key(optarg, env_opts.aes_key)) {
 				fprintf(stderr, "AES key parse error\n");
 				exit(EXIT_FAILURE);
 			}
-			common_args.aes_flag = 1;
+			env_opts.aes_flag = 1;
 			break;
 #ifdef CONFIG_FILE
 		case 'c':
-			common_args.config_file = optarg;
+			env_opts.config_file = optarg;
 			break;
 #endif
+		case 'l':
+			env_opts.lockname = optarg;
+			break;
 		case 'h':
 			do_printenv ? usage_printenv() : usage_setenv();
 			exit(EXIT_SUCCESS);
@@ -151,15 +162,16 @@ int parse_printenv_args(int argc, char *argv[])
 
 	parse_common_args(argc, argv);
 
-	while ((c = getopt_long(argc, argv, "a:c:ns:h", long_options, NULL)) !=
-	       EOF) {
+	while ((c = getopt_long(argc, argv, "a:c:ns:l:h", long_options, NULL))
+		!= EOF) {
 		switch (c) {
 		case 'n':
-			printenv_args.name_suppress = 1;
+			noheader = 1;
 			break;
 		case 'a':
 		case 'c':
 		case 'h':
+		case 'l':
 			/* ignore common options */
 			break;
 		default: /* '?' */
@@ -177,15 +189,16 @@ int parse_setenv_args(int argc, char *argv[])
 
 	parse_common_args(argc, argv);
 
-	while ((c = getopt_long(argc, argv, "a:c:ns:h", long_options, NULL)) !=
-	       EOF) {
+	while ((c = getopt_long(argc, argv, "a:c:ns:l:h", long_options, NULL))
+		!= EOF) {
 		switch (c) {
 		case 's':
-			setenv_args.script_file = optarg;
+			script_file = optarg;
 			break;
 		case 'a':
 		case 'c':
 		case 'h':
+		case 'l':
 			/* ignore common options */
 			break;
 		default: /* '?' */
@@ -199,7 +212,7 @@ int parse_setenv_args(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-	const char *lockname = "/var/lock/" CMD_PRINTENV ".lock";
+	char *lockname = "/var/lock/" CMD_PRINTENV ".lock";
 	int lockfd = -1;
 	int retval = EXIT_SUCCESS;
 	char *_cmdname;
@@ -231,6 +244,18 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	if (env_opts.lockname) {
+		lockname = malloc(sizeof(env_opts.lockname) +
+				sizeof(CMD_PRINTENV) + 10);
+		if (!lockname) {
+			fprintf(stderr, "Unable allocate memory");
+			exit(EXIT_FAILURE);
+		}
+
+		sprintf(lockname, "%s/%s.lock",
+			env_opts.lockname, CMD_PRINTENV);
+	}
+
 	lockfd = open(lockname, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	if (-1 == lockfd) {
 		fprintf(stderr, "Error opening lock file %s\n", lockname);
@@ -244,17 +269,20 @@ int main(int argc, char *argv[])
 	}
 
 	if (do_printenv) {
-		if (fw_printenv(argc, argv) != 0)
+		if (fw_printenv(argc, argv, noheader, &env_opts) != 0)
 			retval = EXIT_FAILURE;
 	} else {
-		if (!setenv_args.script_file) {
-			if (fw_setenv(argc, argv) != 0)
+		if (!script_file) {
+			if (fw_setenv(argc, argv, &env_opts) != 0)
 				retval = EXIT_FAILURE;
 		} else {
-			if (fw_parse_script(setenv_args.script_file) != 0)
+			if (fw_parse_script(script_file, &env_opts) != 0)
 				retval = EXIT_FAILURE;
 		}
 	}
+
+	if (env_opts.lockname)
+		free(lockname);
 
 	flock(lockfd, LOCK_UN);
 	close(lockfd);

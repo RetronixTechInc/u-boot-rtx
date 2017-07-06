@@ -8,6 +8,7 @@
 #include <dm.h>
 #include <dm/lists.h>
 #include <dm/device-internal.h>
+#include <clk.h>
 #include <errno.h>
 #include <timer.h>
 
@@ -42,9 +43,19 @@ unsigned long notrace timer_get_rate(struct udevice *dev)
 static int timer_pre_probe(struct udevice *dev)
 {
 	struct timer_dev_priv *uc_priv = dev_get_uclass_priv(dev);
+	struct clk timer_clk;
+	int err;
+	ulong ret;
 
-	uc_priv->clock_rate = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
-					     "clock-frequency", 0);
+	err = clk_get_by_index(dev, 0, &timer_clk);
+	if (!err) {
+		ret = clk_get_rate(&timer_clk);
+		if (IS_ERR_VALUE(ret))
+			return ret;
+		uc_priv->clock_rate = ret;
+	} else
+		uc_priv->clock_rate = fdtdec_get_int(gd->fdt_blob,
+				dev_of_offset(dev),	"clock-frequency", 0);
 
 	return 0;
 }
@@ -82,11 +93,9 @@ int notrace dm_timer_init(void)
 	node = fdtdec_get_chosen_node(blob, "tick-timer");
 	if (node < 0) {
 		/* No chosen timer, trying first available timer */
-		ret = uclass_first_device(UCLASS_TIMER, &dev);
+		ret = uclass_first_device_err(UCLASS_TIMER, &dev);
 		if (ret)
 			return ret;
-		if (!dev)
-			return -ENODEV;
 	} else {
 		if (uclass_get_device_by_of_offset(UCLASS_TIMER, node, &dev)) {
 			/*
@@ -94,7 +103,8 @@ int notrace dm_timer_init(void)
 			 * relocation, bind it anyway.
 			 */
 			if (node > 0 &&
-			    !lists_bind_fdt(gd->dm_root, blob, node, &dev)) {
+			    !lists_bind_fdt(gd->dm_root, offset_to_ofnode(node),
+					    &dev)) {
 				ret = device_probe(dev);
 				if (ret)
 					return ret;

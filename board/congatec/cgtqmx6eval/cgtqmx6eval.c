@@ -71,6 +71,7 @@ static iomux_v3_cfg_t const uart2_pads[] = {
 	IOMUX_PADS(PAD_EIM_D27__UART2_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL)),
 };
 
+#ifndef CONFIG_SPL_BUILD
 static iomux_v3_cfg_t const usdhc2_pads[] = {
 	IOMUX_PADS(PAD_SD2_CLK__SD2_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL)),
 	IOMUX_PADS(PAD_SD2_CMD__SD2_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL)),
@@ -94,6 +95,7 @@ static iomux_v3_cfg_t const usdhc3_pads[] = {
 	IOMUX_PADS(PAD_SD3_DAT7__SD3_DATA7 | MUX_PAD_CTRL(USDHC_PAD_CTRL)),
 	IOMUX_PADS(PAD_SD3_RST__SD3_RESET | MUX_PAD_CTRL(USDHC_PAD_CTRL)),
 };
+#endif
 
 static iomux_v3_cfg_t const usdhc4_pads[] = {
 	IOMUX_PADS(PAD_SD4_CLK__SD4_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL)),
@@ -678,14 +680,6 @@ int overwrite_console(void)
 	return 1;
 }
 
-static bool is_mx6q(void)
-{
-	if (is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D))
-		return true;
-	else
-		return false;
-}
-
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
@@ -703,7 +697,7 @@ int board_init(void)
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
 
-	if (is_mx6q())
+	if (is_mx6dq())
 		setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &mx6q_i2c_pad_info1);
 	else
 		setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &mx6dl_i2c_pad_info1);
@@ -760,7 +754,7 @@ int misc_init_r(void)
 int board_late_init(void)
 {
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-	if (is_mx6q())
+	if (is_mx6dq())
 		setenv("board_rev", "MX6Q");
 	else
 		setenv("board_rev", "MX6DL");
@@ -1045,6 +1039,8 @@ static void spl_dram_init(int width)
 		.bi_on = 1,
 		.sde_to_rst = 0x0d,
 		.rst_to_cke = 0x20,
+		.refsel = 1,	/* Refresh cycles at 32KHz */
+		.refr = 7,	/* 8 refresh commands per refresh cycle */
 	};
 
 	if (is_cpu_type(MXC_CPU_MX6Q) && is_2gb()) {
@@ -1053,7 +1049,7 @@ static void spl_dram_init(int width)
 		return;
 	}
 
-	if (is_mx6q()) {
+	if (is_mx6dq()) {
 		mx6dq_dram_iocfg(width, &mx6q_ddr_ioregs, &mx6q_grp_ioregs);
 		mx6_dram_cfg(&sysinfo, &mx6q_mmcd_calib, &mem_ddr_2g);
 	} else if (is_cpu_type(MXC_CPU_MX6SOLO)) {

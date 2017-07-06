@@ -2,8 +2,6 @@
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
  *
- * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -44,6 +42,14 @@ enum mxc_clock {
 	MXC_I2C_CLK,
 };
 
+enum ldb_di_clock {
+	MXC_PLL5_CLK = 0,
+	MXC_PLL2_PFD0_CLK,
+	MXC_PLL2_PFD2_CLK,
+	MXC_MMDC_CH1_CLK,
+	MXC_PLL3_SW_CLK,
+};
+
 enum enet_freq {
 	ENET_25MHZ,
 	ENET_50MHZ,
@@ -68,11 +74,10 @@ int enable_spi_clk(unsigned char enable, unsigned spi_num);
 void enable_ipu_clock(void);
 int enable_fec_anatop_clock(int fec_id, enum enet_freq freq);
 void enable_enet_clk(unsigned char enable);
-int enable_lcdif_clock(u32 base_addr);
-int enable_lvds_bridge(u32 lcd_base_addr);
+int enable_lcdif_clock(u32 base_addr, bool enable);
 void enable_qspi_clk(int qspi_num);
 void enable_thermal_clk(void);
-void enable_epdc_clock(void);
 void mxs_set_lcdclk(u32 base_addr, u32 freq);
-void mxs_set_vadcclk(void);
+void select_ldb_di_clock_source(enum ldb_di_clock clk);
+void enable_eim_clk(unsigned char enable);
 #endif /* __ASM_ARCH_CLOCK_H */

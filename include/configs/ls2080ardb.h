@@ -1,4 +1,5 @@
 /*
+ * Copyright 2017 NXP
  * Copyright 2015 Freescale Semiconductor
  *
  * SPDX-License-Identifier:	GPL-2.0+
@@ -12,13 +13,34 @@
 #undef CONFIG_CONS_INDEX
 #define CONFIG_CONS_INDEX       2
 
-#define CONFIG_DISPLAY_BOARDINFO
+#ifdef CONFIG_FSL_QSPI
+#ifdef CONFIG_TARGET_LS2081ARDB
+#define CONFIG_QIXIS_I2C_ACCESS
+#endif
+#define CONFIG_SYS_I2C_EARLY_INIT
+#define CONFIG_DISPLAY_BOARDINFO_LATE
+#endif
+
+#define I2C_MUX_CH_VOL_MONITOR		0xa
+#define I2C_VOL_MONITOR_ADDR		0x38
+#define CONFIG_VOL_MONITOR_IR36021_READ
+#define CONFIG_VOL_MONITOR_IR36021_SET
+
+#define CONFIG_VID_FLS_ENV		"ls2080ardb_vdd_mv"
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_VID
+#endif
+/* step the IR regulator in 5mV increments */
+#define IR_VDD_STEP_DOWN		5
+#define IR_VDD_STEP_UP			5
+/* The lowest and highest voltage allowed for LS2080ARDB */
+#define VDD_MV_MIN			819
+#define VDD_MV_MAX			1212
 
 #ifndef __ASSEMBLY__
 unsigned long get_board_sys_clk(void);
 #endif
 
-#define CONFIG_SYS_FSL_CLK
 #define CONFIG_SYS_CLK_FREQ		get_board_sys_clk()
 #define CONFIG_DDR_CLK_FREQ		133333333
 #define COUNTER_FREQUENCY_REAL		(CONFIG_SYS_CLK_FREQ/4)
@@ -46,11 +68,7 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_LIBATA
 #define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
-#define CONFIG_CMD_SCSI
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_EXT2
-#define CONFIG_DOS_PARTITION
-#define CONFIG_BOARD_LATE_INIT
+#define CONFIG_SCSI
 
 #define CONFIG_SYS_SATA1			AHCI_BASE_ADDR1
 #define CONFIG_SYS_SATA2			AHCI_BASE_ADDR2
@@ -60,6 +78,7 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_SCSI_MAX_DEVICE		(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
 						CONFIG_SYS_SCSI_MAX_LUN)
 
+#ifndef CONFIG_FSL_QSPI
 /* undefined CONFIG_FSL_DDR_SYNC_REFRESH for simulator */
 
 #define CONFIG_SYS_NOR0_CSPR_EXT	(0x0)
@@ -90,7 +109,7 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_NOR_FTIM3	0x04000000
 #define CONFIG_SYS_IFC_CCR	0x01000000
 
-#ifndef CONFIG_SYS_NO_FLASH
+#ifdef CONFIG_MTD_NOR_FLASH
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_CFI
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
@@ -110,7 +129,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_NAND_FSL_IFC
 #define CONFIG_SYS_NAND_MAX_ECCPOS	256
 #define CONFIG_SYS_NAND_MAX_OOBFREE	2
-
 
 #define CONFIG_SYS_NAND_CSPR_EXT	(0x0)
 #define CONFIG_SYS_NAND_CSPR	(CSPR_PHYS_ADDR(CONFIG_SYS_NAND_BASE_PHYS) \
@@ -149,7 +167,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_CMD_NAND
 
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(512 * 1024)
-
 #define CONFIG_FSL_QIXIS	/* use common QIXIS code */
 #define QIXIS_LBMAP_SWITCH		0x06
 #define QIXIS_LBMAP_MASK		0x0f
@@ -234,7 +251,7 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_CS2_FTIM3		CONFIG_SYS_NAND_FTIM3
 
 #define CONFIG_ENV_IS_IN_FLASH
-#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE + 0x200000)
+#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE + 0x300000)
 #define CONFIG_ENV_SECT_SIZE		0x20000
 #define CONFIG_ENV_SIZE			0x2000
 #endif
@@ -242,12 +259,31 @@ unsigned long get_board_sys_clk(void);
 /* Debug Server firmware */
 #define CONFIG_SYS_DEBUG_SERVER_FW_IN_NOR
 #define CONFIG_SYS_DEBUG_SERVER_FW_ADDR	0x580D00000ULL
-
+#endif
 #define CONFIG_SYS_LS_MC_BOOT_TIMEOUT_MS 5000
+
+#ifdef CONFIG_TARGET_LS2081ARDB
+#define CONFIG_FSL_QIXIS	/* use common QIXIS code */
+#define QIXIS_QMAP_MASK			0x07
+#define QIXIS_QMAP_SHIFT		5
+#define QIXIS_LBMAP_DFLTBANK		0x00
+#define QIXIS_LBMAP_QSPI		0x00
+#define QIXIS_RCW_SRC_QSPI		0x62
+#define QIXIS_LBMAP_ALTBANK		0x20
+#define QIXIS_RST_CTL_RESET		0x31
+#define QIXIS_RCFG_CTL_RECONFIG_IDLE	0x20
+#define QIXIS_RCFG_CTL_RECONFIG_START	0x21
+#define QIXIS_RCFG_CTL_WATCHDOG_ENBLE	0x08
+#define QIXIS_LBMAP_MASK		0x0f
+#define QIXIS_RST_CTL_RESET_EN		0x30
+#endif
 
 /*
  * I2C
  */
+#ifdef CONFIG_TARGET_LS2081ARDB
+#define CONFIG_SYS_I2C_FPGA_ADDR	0x66
+#endif
 #define I2C_MUX_PCA_ADDR		0x75
 #define I2C_MUX_PCA_ADDR_PRI		0x75 /* Primary Mux*/
 
@@ -255,23 +291,36 @@ unsigned long get_board_sys_clk(void);
 #define I2C_MUX_CH_DEFAULT      0x8
 
 /* SPI */
-#ifdef CONFIG_FSL_DSPI
-#define CONFIG_CMD_SF
+#if defined(CONFIG_FSL_QSPI) || defined(CONFIG_FSL_DSPI)
 #define CONFIG_SPI_FLASH
-#define CONFIG_SPI_FLASH_BAR
+#ifdef CONFIG_FSL_QSPI
+#define CONFIG_SPI_FLASH_STMICRO
+#endif
+#ifdef CONFIG_FSL_QSPI
+#ifdef CONFIG_TARGET_LS2081ARDB
+#define CONFIG_SPI_FLASH_STMICRO
+#else
+#define CONFIG_SPI_FLASH_SPANSION
+#endif
+#define FSL_QSPI_FLASH_SIZE		SZ_64M	/* 64MB */
+#define FSL_QSPI_FLASH_NUM		2
+#endif
 #endif
 
 /*
  * RTC configuration
  */
 #define RTC
+#ifdef CONFIG_TARGET_LS2081ARDB
+#define CONFIG_RTC_PCF8563		1
+#define CONFIG_SYS_I2C_RTC_ADDR         0x51
+#else
 #define CONFIG_RTC_DS3231               1
 #define CONFIG_SYS_I2C_RTC_ADDR         0x68
-#define CONFIG_CMD_DATE
+#endif
 
 /* EEPROM */
 #define CONFIG_ID_EEPROM
-#define CONFIG_CMD_EEPROM
 #define CONFIG_SYS_I2C_EEPROM_NXID
 #define CONFIG_SYS_EEPROM_BUS_NUM	0
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x57
@@ -280,24 +329,16 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 5
 
 #define CONFIG_FSL_MEMAC
-#define CONFIG_PCI		/* Enable PCIE */
-#define CONFIG_PCIE_LAYERSCAPE	/* Use common FSL Layerscape PCIe code */
 
 #ifdef CONFIG_PCI
-#define CONFIG_PCI_PNP
 #define CONFIG_PCI_SCAN_SHOW
 #define CONFIG_CMD_PCI
 #endif
 
 /*  MMC  */
-#define CONFIG_MMC
 #ifdef CONFIG_MMC
-#define CONFIG_CMD_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_MMC_HAS_CAPBLT_VS33
-#define CONFIG_GENERIC_MMC
-#define CONFIG_CMD_FAT
-#define CONFIG_DOS_PARTITION
 #endif
 
 #define CONFIG_MISC_INIT_R
@@ -306,36 +347,110 @@ unsigned long get_board_sys_clk(void);
  * USB
  */
 #define CONFIG_HAS_FSL_XHCI_USB
-#define CONFIG_USB_XHCI
 #define CONFIG_USB_XHCI_FSL
-#define CONFIG_USB_XHCI_DWC3
 #define CONFIG_USB_MAX_CONTROLLER_COUNT         2
 #define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS      2
-#define CONFIG_CMD_USB
-#define CONFIG_USB_STORAGE
-#define CONFIG_CMD_EXT2
+
+#undef CONFIG_CMDLINE_EDITING
+#include <config_distro_defaults.h>
+
+#define BOOT_TARGET_DEVICES(func) \
+	func(USB, usb, 0) \
+	func(MMC, mmc, 0) \
+	func(SCSI, scsi, 0) \
+	func(DHCP, dhcp, na)
+#include <config_distro_bootcmd.h>
 
 /* Initial environment variables */
 #undef CONFIG_EXTRA_ENV_SETTINGS
+#ifdef CONFIG_SECURE_BOOT
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"hwconfig=fsl_ddr:bank_intlv=auto\0"	\
+	"scriptaddr=0x80800000\0"		\
+	"kernel_addr_r=0x81000000\0"		\
+	"pxefile_addr_r=0x81000000\0"		\
+	"fdt_addr_r=0x88000000\0"		\
+	"ramdisk_addr_r=0x89000000\0"		\
 	"loadaddr=0x80100000\0"			\
 	"kernel_addr=0x100000\0"		\
 	"ramdisk_addr=0x800000\0"		\
 	"ramdisk_size=0x2000000\0"		\
 	"fdt_high=0xa0000000\0"			\
 	"initrd_high=0xffffffffffffffff\0"	\
-	"kernel_start=0x581100000\0"		\
+	"kernel_start=0x581000000\0"		\
 	"kernel_load=0xa0000000\0"		\
 	"kernel_size=0x2800000\0"		\
-	"mcinitcmd=fsl_mc start mc 0x580300000"	\
-	" 0x580800000 \0"
+	"mcmemsize=0x40000000\0"		\
+	"fdtfile=fsl-ls2080a-rdb.dtb\0"		\
+	"mcinitcmd=esbc_validate 0x580700000;"  \
+	"esbc_validate 0x580740000;"            \
+	"fsl_mc start mc 0x580a00000"           \
+	" 0x580e00000 \0"                       \
+	BOOTENV
+#else
+#ifdef CONFIG_QSPI_BOOT
+#define CONFIG_EXTRA_ENV_SETTINGS		\
+	"hwconfig=fsl_ddr:bank_intlv=auto\0"	\
+	"scriptaddr=0x80800000\0"		\
+	"kernel_addr_r=0x81000000\0"		\
+	"pxefile_addr_r=0x81000000\0"		\
+	"fdt_addr_r=0x88000000\0"		\
+	"ramdisk_addr_r=0x89000000\0"		\
+	"loadaddr=0x80100000\0"			\
+	"kernel_addr=0x100000\0"		\
+	"ramdisk_size=0x2000000\0"		\
+	"fdt_high=0xa0000000\0"			\
+	"initrd_high=0xffffffffffffffff\0"	\
+	"kernel_start=0x21000000\0"		\
+	"mcmemsize=0x40000000\0"		\
+	"mcinitcmd=fsl_mc start mc 0x20a00000" \
+	" 0x20e00000 \0"                       \
+	BOOTENV
+#else
+#define CONFIG_EXTRA_ENV_SETTINGS		\
+	"hwconfig=fsl_ddr:bank_intlv=auto\0"	\
+	"scriptaddr=0x80800000\0"		\
+	"kernel_addr_r=0x81000000\0"		\
+	"pxefile_addr_r=0x81000000\0"		\
+	"fdt_addr_r=0x88000000\0"		\
+	"ramdisk_addr_r=0x89000000\0"		\
+	"loadaddr=0x80100000\0"			\
+	"kernel_addr=0x100000\0"		\
+	"ramdisk_addr=0x800000\0"		\
+	"ramdisk_size=0x2000000\0"		\
+	"fdt_high=0xa0000000\0"			\
+	"initrd_high=0xffffffffffffffff\0"	\
+	"kernel_start=0x581000000\0"		\
+	"kernel_load=0xa0000000\0"		\
+	"kernel_size=0x2800000\0"		\
+	"mcmemsize=0x40000000\0"		\
+	"fdtfile=fsl-ls2080a-rdb.dtb\0"		\
+	"mcinitcmd=fsl_mc start mc 0x580a00000" \
+	" 0x580e00000 \0"                       \
+	BOOTENV
+#endif
+#endif
+
 
 #undef CONFIG_BOOTARGS
 #define CONFIG_BOOTARGS		"console=ttyS1,115200 root=/dev/ram0 " \
-				"earlycon=uart8250,mmio,0x21c0600" \
+				"earlycon=uart8250,mmio,0x21c0600 " \
 				"ramdisk_size=0x2000000 default_hugepagesz=2m" \
 				" hugepagesz=2m hugepages=256"
+
+#undef CONFIG_BOOTCOMMAND
+#ifdef CONFIG_QSPI_BOOT
+/* Try to boot an on-QSPI kernel first, then do normal distro boot */
+#define CONFIG_BOOTCOMMAND "run mcinitcmd && fsl_mc lazyapply dpl 0x20d00000" \
+			   " && bootm $kernel_start" \
+			   " || run distro_bootcmd"
+#else
+/* Try to boot an on-NOR kernel first, then do normal distro boot */
+#define CONFIG_BOOTCOMMAND "run mcinitcmd && fsl_mc lazyapply dpl 0x580d00000" \
+			   " && cp.b $kernel_start $kernel_load $kernel_size" \
+			   " && bootm $kernel_load" \
+			   " || run distro_bootcmd"
+#endif
 
 /* MAC/PHY configuration */
 #ifdef CONFIG_FSL_MC_ENET
@@ -344,7 +459,11 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_PHY_CORTINA
 #define CONFIG_PHYLIB
 #define	CONFIG_SYS_CORTINA_FW_IN_NOR
-#define CONFIG_CORTINA_FW_ADDR		0x581000000
+#ifdef CONFIG_QSPI_BOOT
+#define CONFIG_CORTINA_FW_ADDR		0x20980000
+#else
+#define CONFIG_CORTINA_FW_ADDR		0x580980000
+#endif
 #define CONFIG_CORTINA_FW_LENGTH	0x40000
 
 #define CORTINA_PHY_ADDR1	0x10
@@ -355,11 +474,14 @@ unsigned long get_board_sys_clk(void);
 #define AQ_PHY_ADDR2		0x01
 #define AQ_PHY_ADDR3		0x02
 #define AQ_PHY_ADDR4		0x03
+#define AQR405_IRQ_MASK		0x36
 
 #define CONFIG_MII
-#define CONFIG_ETHPRIME		"DPNI1"
+#define CONFIG_ETHPRIME		"DPMAC1@xgmii"
 #define CONFIG_PHY_GIGE
 #define CONFIG_PHY_AQUANTIA
 #endif
+
+#include <asm/fsl_secure_boot.h>
 
 #endif /* __LS2_RDB_H */

@@ -271,6 +271,21 @@ static int mvebu_spi_set_speed(struct udevice *bus, uint hz)
 
 static int mvebu_spi_set_mode(struct udevice *bus, uint mode)
 {
+	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+	struct kwspi_registers *reg = plat->spireg;
+	u32 data = readl(&reg->cfg);
+
+	data &= ~(KWSPI_CPHA | KWSPI_CPOL | KWSPI_RXLSBF | KWSPI_TXLSBF);
+
+	if (mode & SPI_CPHA)
+		data |= KWSPI_CPHA;
+	if (mode & SPI_CPOL)
+		data |= KWSPI_CPOL;
+	if (mode & SPI_LSB_FIRST)
+		data |= (KWSPI_RXLSBF | KWSPI_TXLSBF);
+
+	writel(data, &reg->cfg);
+
 	return 0;
 }
 
@@ -281,6 +296,19 @@ static int mvebu_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
 
 	return _spi_xfer(plat->spireg, bitlen, dout, din, flags);
+}
+
+static int mvebu_spi_claim_bus(struct udevice *dev)
+{
+	struct udevice *bus = dev->parent;
+	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
+
+	/* Configure the chip-select in the CTRL register */
+	clrsetbits_le32(&plat->spireg->ctrl,
+			KWSPI_CS_MASK << KWSPI_CS_SHIFT,
+			spi_chip_select(dev) << KWSPI_CS_SHIFT);
+
+	return 0;
 }
 
 static int mvebu_spi_probe(struct udevice *bus)
@@ -299,12 +327,13 @@ static int mvebu_spi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct mvebu_spi_platdata *plat = dev_get_platdata(bus);
 
-	plat->spireg = (struct kwspi_registers *)dev_get_addr(bus);
+	plat->spireg = (struct kwspi_registers *)devfdt_get_addr(bus);
 
 	return 0;
 }
 
 static const struct dm_spi_ops mvebu_spi_ops = {
+	.claim_bus	= mvebu_spi_claim_bus,
 	.xfer		= mvebu_spi_xfer,
 	.set_speed	= mvebu_spi_set_speed,
 	.set_mode	= mvebu_spi_set_mode,
@@ -315,6 +344,7 @@ static const struct dm_spi_ops mvebu_spi_ops = {
 };
 
 static const struct udevice_id mvebu_spi_ids[] = {
+	{ .compatible = "marvell,armada-375-spi" },
 	{ .compatible = "marvell,armada-380-spi" },
 	{ .compatible = "marvell,armada-xp-spi" },
 	{ }

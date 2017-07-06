@@ -36,6 +36,8 @@ OBJCOPYFLAGS		+= -O $(64bit-bfd)
 endif
 
 PLATFORM_CPPFLAGS += -D__MIPS__
+PLATFORM_ELFENTRY = "__start"
+PLATFORM_ELFFLAGS += -B mips $(OBJCOPYFLAGS)
 
 #
 # From Linux arch/mips/Makefile
@@ -65,7 +67,7 @@ else
 PF_ABICALLS			:= -mabicalls
 PF_PIC				:= -fpic
 PF_PIE				:= -pie
-PF_OBJCOPY			:= -j .got -j .u_boot_list -j .rel.dyn -j .padding
+PF_OBJCOPY			:= -j .got -j .rel.dyn -j .padding
 PF_OBJCOPY			+= -j .dtb.init.rodata
 endif
 
@@ -74,4 +76,5 @@ PLATFORM_CPPFLAGS		+= -msoft-float
 PLATFORM_LDFLAGS		+= -G 0 -static -n -nostdlib
 PLATFORM_RELFLAGS		+= -ffunction-sections -fdata-sections
 LDFLAGS_FINAL			+= --gc-sections $(PF_PIE)
-OBJCOPYFLAGS			+= -j .text -j .rodata -j .data $(PF_OBJCOPY)
+OBJCOPYFLAGS			+= -j .text -j .rodata -j .data -j .u_boot_list
+OBJCOPYFLAGS			+= $(PF_OBJCOPY)

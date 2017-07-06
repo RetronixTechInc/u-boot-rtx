@@ -118,7 +118,7 @@ static void sdram_set_rule(struct sdram_prot_rule *prule)
 
 	/* Obtain the address bits */
 	lo_addr_bits = prule->sdram_start >> 20ULL;
-	hi_addr_bits = prule->sdram_end >> 20ULL;
+	hi_addr_bits = (prule->sdram_end - 1) >> 20ULL;
 
 	debug("sdram set rule start %x, %d\n", lo_addr_bits,
 	      prule->sdram_start);
@@ -418,6 +418,9 @@ static void sdr_load_regs(const struct socfpga_sdram_config *cfg)
 
 	debug("Configuring DRAMODT\n");
 	writel(cfg->dram_odt, &sdr_ctrl->dram_odt);
+
+	debug("Configuring EXTRATIME1\n");
+	writel(cfg->extratime1, &sdr_ctrl->extratime1);
 }
 
 /**

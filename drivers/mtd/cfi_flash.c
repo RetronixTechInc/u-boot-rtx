@@ -608,7 +608,7 @@ static int flash_full_status_check (flash_info_t * info, flash_sect_t sector,
 	case CFI_CMDSET_INTEL_EXTENDED:
 	case CFI_CMDSET_INTEL_STANDARD:
 		if ((retcode == ERR_OK)
-		    && !flash_isequal (info, sector, 0, FLASH_STATUS_DONE)) {
+		    && !flash_isset(info, sector, 0, FLASH_STATUS_DONE)) {
 			retcode = ERR_INVAL;
 			printf ("Flash %s error at address %lx\n", prompt,
 				info->start[sector]);
@@ -979,7 +979,7 @@ static int flash_write_cfibuffer (flash_info_t * info, ulong dest, uchar * cp,
 
 	case CFI_CMDSET_AMD_STANDARD:
 	case CFI_CMDSET_AMD_EXTENDED:
-		flash_unlock_seq(info,0);
+		flash_unlock_seq(info, sector);
 
 #ifdef CONFIG_FLASH_SPANSION_S29WS_N
 		offset = ((unsigned long)dst - info->start[sector]) >> shift;
@@ -1456,8 +1456,8 @@ static int cfi_protect_bugfix(flash_info_t *info, long sector, int prot)
 				cmd = FLASH_CMD_PROTECT_SET;
 			else
 				cmd = FLASH_CMD_PROTECT_CLEAR;
-				flash_write_cmd(info, sector, 0,
-					  FLASH_CMD_PROTECT);
+
+			flash_write_cmd(info, sector, 0, FLASH_CMD_PROTECT);
 			flash_write_cmd(info, sector, 0, cmd);
 			/* re-enable interrupts if necessary */
 			if (flag)
@@ -2203,6 +2203,8 @@ ulong flash_get_size (phys_addr_t base, int banknum)
 						flash_isset (info, sect_cnt,
 							     FLASH_OFFSET_PROTECT,
 							     FLASH_STATUS_PROTECT);
+					flash_write_cmd(info, sect_cnt, 0,
+							FLASH_CMD_RESET);
 					break;
 				case CFI_CMDSET_AMD_EXTENDED:
 				case CFI_CMDSET_AMD_STANDARD:
@@ -2439,14 +2441,14 @@ unsigned long flash_init (void)
 static int cfi_flash_probe(struct udevice *dev)
 {
 	void *blob = (void *)gd->fdt_blob;
-	int node = dev->of_offset;
+	int node = dev_of_offset(dev);
 	const fdt32_t *cell;
 	phys_addr_t addr;
 	int parent, addrc, sizec;
 	int len, idx;
 
 	parent = fdt_parent_offset(blob, node);
-	of_bus_default_count_cells(blob, parent, &addrc, &sizec);
+	fdt_support_default_count_cells(blob, parent, &addrc, &sizec);
 	/* decode regs, there may be multiple reg tuples. */
 	cell = fdt_getprop(blob, node, "reg", &len);
 	if (!cell)

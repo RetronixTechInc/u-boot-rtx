@@ -33,7 +33,13 @@ static void serial_find_console_or_panic(void)
 	struct udevice *dev;
 	int node;
 
-	if (CONFIG_IS_ENABLED(OF_CONTROL) && blob) {
+	if (CONFIG_IS_ENABLED(OF_PLATDATA)) {
+		uclass_first_device(UCLASS_SERIAL, &dev);
+		if (dev) {
+			gd->cur_serial_dev = dev;
+			return;
+		}
+	} else if (CONFIG_IS_ENABLED(OF_CONTROL) && blob) {
 		/* Check for a chosen console */
 		node = fdtdec_get_chosen_node(blob, "stdout-path");
 		if (node < 0) {
@@ -68,7 +74,8 @@ static void serial_find_console_or_panic(void)
 		 * bind it anyway.
 		 */
 		if (node > 0 &&
-		    !lists_bind_fdt(gd->dm_root, blob, node, &dev)) {
+		    !lists_bind_fdt(gd->dm_root, offset_to_ofnode(node),
+				    &dev)) {
 			if (!device_probe(dev)) {
 				gd->cur_serial_dev = dev;
 				return;
@@ -115,7 +122,7 @@ int serial_init(void)
 /* Called after relocation */
 void serial_initialize(void)
 {
-	serial_find_console_or_panic();
+	serial_init();
 }
 
 static void _serial_putc(struct udevice *dev, char ch)
@@ -123,11 +130,12 @@ static void _serial_putc(struct udevice *dev, char ch)
 	struct dm_serial_ops *ops = serial_get_ops(dev);
 	int err;
 
+	if (ch == '\n')
+		_serial_putc(dev, '\r');
+
 	do {
 		err = ops->putc(dev, ch);
 	} while (err == -EAGAIN);
-	if (ch == '\n')
-		_serial_putc(dev, '\r');
 }
 
 static void _serial_puts(struct udevice *dev, const char *str)
@@ -339,10 +347,10 @@ static int serial_post_probe(struct udevice *dev)
 
 static int serial_pre_remove(struct udevice *dev)
 {
-#ifdef CONFIG_SYS_STDIO_DEREGISTER
+#if CONFIG_IS_ENABLED(SYS_STDIO_DEREGISTER)
 	struct serial_dev_priv *upriv = dev_get_uclass_priv(dev);
 
-	if (stdio_deregister_dev(upriv->sdev, 0))
+	if (stdio_deregister_dev(upriv->sdev, true))
 		return -EPERM;
 #endif
 

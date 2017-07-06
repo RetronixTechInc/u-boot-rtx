@@ -3,7 +3,7 @@
  * Copyright (C) 2009 by Jan Weitzel Phytec Messtechnik GmbH,
  *			<armlinux@phytec.de>
  *
- * Copyright (C) 2011, 2016 Freescale Semiconductor, Inc.
+ * Copyright (C) 2011 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -39,7 +39,7 @@
  * MUX_CTRL_OFS:	    0..11 (12)
  * PAD_CTRL_OFS:	   12..23 (12)
  * SEL_INPUT_OFS:	   24..35 (12)
- * MUX_MODE + SION:	   36..41  (6)
+ * MUX_MODE + SION + LPSR: 36..41  (6)
  * PAD_CTRL + NO_PAD_CTRL: 42..59 (18)
  * SEL_INP:		   60..63  (4)
 */
@@ -144,11 +144,12 @@ typedef u64 iomux_v3_cfg_t;
 #define PAD_CTL_DSE_40ohm	(6 << 3)
 #define PAD_CTL_DSE_34ohm	(7 << 3)
 
-#if defined(CONFIG_MX6SL) || defined(CONFIG_MX6SLL)
+/* i.MX6SL/SLL */
 #define PAD_CTL_LVE		(1 << 1)
 #define PAD_CTL_LVE_BIT		(1 << 22)
+
+/* i.MX6SLL */
 #define PAD_CTL_IPD_BIT		(1 << 27)
-#endif
 
 #elif defined(CONFIG_VF610)
 
@@ -164,7 +165,10 @@ typedef u64 iomux_v3_cfg_t;
 #define PAD_CTL_ODE		(1 << 10)
 
 #define PAD_CTL_DSE_150ohm	(1 << 6)
+#define PAD_CTL_DSE_75ohm	(2 << 6)
 #define PAD_CTL_DSE_50ohm	(3 << 6)
+#define PAD_CTL_DSE_37ohm	(4 << 6)
+#define PAD_CTL_DSE_30ohm	(5 << 6)
 #define PAD_CTL_DSE_25ohm	(6 << 6)
 #define PAD_CTL_DSE_20ohm	(7 << 6)
 
@@ -247,6 +251,12 @@ if (is_cpu_type(MXC_CPU_MX6Q) || is_cpu_type(MXC_CPU_MX6D)) {				\
 #define IOMUX_PADS(x) MX6Q_##x
 #define SETUP_IOMUX_PAD(def)					\
 	imx_iomux_v3_setup_pad(MX6Q_##def);
+#define SETUP_IOMUX_PADS(x)					\
+	imx_iomux_v3_setup_multiple_pads(x, ARRAY_SIZE(x))
+#elif defined(CONFIG_MX6UL)
+#define IOMUX_PADS(x) MX6_##x
+#define SETUP_IOMUX_PAD(def)					\
+	imx_iomux_v3_setup_pad(MX6_##def);
 #define SETUP_IOMUX_PADS(x)					\
 	imx_iomux_v3_setup_multiple_pads(x, ARRAY_SIZE(x))
 #else

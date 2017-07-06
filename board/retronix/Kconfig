@@ -1,9 +1,0 @@
-
-source "board/retronix/rtx_adlink_mx6dl/Kconfig"
-source "board/retronix/rtx_a6plus_mx6q/Kconfig"
-source "board/retronix/rtx_a6_mx6q/Kconfig"
-source "board/retronix/rtx_pitx_mx6q/Kconfig"
-source "board/retronix/rtx_q7_mx6q/Kconfig"
-source "board/retronix/rtx-valor111-plus-mx6dl/Kconfig"
-source "board/retronix/rtx-treadmill-mx6q/Kconfig"
-

@@ -5,7 +5,7 @@
  * (C) Copyright 2001 Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Andreas Heppel <aheppel@sysgo.de>
  *
- * Copyright 2011-2016 Freescale Semiconductor, Inc.
+ * Copyright 2011 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -15,7 +15,7 @@
  *
  * The "environment" is stored on external storage as a list of '\0'
  * terminated "name=value" strings. The end of the list is marked by
- * a double '\0'. The environment is preceeded by a 32 bit CRC over
+ * a double '\0'. The environment is preceded by a 32 bit CRC over
  * the data part and, in case of redundant environment, a byte of
  * flags.
  *
@@ -45,16 +45,17 @@ DECLARE_GLOBAL_DATA_PTR;
 	!defined(CONFIG_ENV_IS_IN_DATAFLASH)	&& \
 	!defined(CONFIG_ENV_IS_IN_MMC)		&& \
 	!defined(CONFIG_ENV_IS_IN_FAT)		&& \
+	!defined(CONFIG_ENV_IS_IN_EXT4)		&& \
 	!defined(CONFIG_ENV_IS_IN_NAND)		&& \
 	!defined(CONFIG_ENV_IS_IN_NVRAM)	&& \
 	!defined(CONFIG_ENV_IS_IN_ONENAND)	&& \
+	!defined(CONFIG_ENV_IS_IN_SATA)		&& \
 	!defined(CONFIG_ENV_IS_IN_SPI_FLASH)	&& \
 	!defined(CONFIG_ENV_IS_IN_REMOTE)	&& \
 	!defined(CONFIG_ENV_IS_IN_UBI)		&& \
-	!defined(CONFIG_ENV_IS_IN_SATA)		&& \
 	!defined(CONFIG_ENV_IS_NOWHERE)
-# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|DATAFLASH|ONENAND|\
-SPI_FLASH|NVRAM|MMC|FAT|REMOTE|UBI|SATA} or CONFIG_ENV_IS_NOWHERE
+# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|DATAFLASH|MMC|FAT|EXT4|\
+NAND|NVRAM|ONENAND|SATA|SPI_FLASH|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
 #endif
 
 /*
@@ -233,7 +234,6 @@ static int _do_env_set(int flag, int argc, char * const argv[], int env_flag)
 	}
 	debug("Final value for argc=%d\n", argc);
 	name = argv[1];
-	value = argv[2];
 
 	if (strchr(name, '=')) {
 		printf("## Error: illegal character '='"
@@ -837,7 +837,7 @@ static int do_env_delete(cmd_tbl_t *cmdtp, int flag,
  * With "-c" and size is NOT given, then the export command will
  * format the data as currently used for the persistent storage,
  * i. e. it will use CONFIG_ENV_SECT_SIZE as output block size and
- * prepend a valid CRC32 checksum and, in case of resundant
+ * prepend a valid CRC32 checksum and, in case of redundant
  * environment, a "current" redundancy flag. If size is given, this
  * value will be used instead of CONFIG_ENV_SECT_SIZE; again, CRC32
  * checksum and redundancy flag will be inserted.
@@ -846,12 +846,12 @@ static int do_env_delete(cmd_tbl_t *cmdtp, int flag,
  * terminating '\0' byte) will be written; here the optional size
  * argument will be used to make sure not to overflow the user
  * provided buffer; the command will abort if the size is not
- * sufficient. Any remainign space will be '\0' padded.
+ * sufficient. Any remaining space will be '\0' padded.
  *
  * On successful return, the variable "filesize" will be set.
  * Note that filesize includes the trailing/terminating '\0' byte(s).
  *
- * Usage szenario:  create a text snapshot/backup of the current settings:
+ * Usage scenario:  create a text snapshot/backup of the current settings:
  *
  *	=> env export -t 100000
  *	=> era ${backup_addr} +${filesize}
@@ -969,7 +969,7 @@ sep_err:
 /*
  * env import [-d] [-t [-r] | -b | -c] addr [size]
  *	-d:	delete existing environment before importing;
- *		otherwise overwrite / append to existion definitions
+ *		otherwise overwrite / append to existing definitions
  *	-t:	assume text format; either "size" must be given or the
  *		text data must be '\0' terminated
  *	-r:	handle CRLF like LF, that means exported variables with

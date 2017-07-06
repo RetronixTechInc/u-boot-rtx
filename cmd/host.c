@@ -5,10 +5,11 @@
  */
 
 #include <common.h>
+#include <dm.h>
 #include <fs.h>
 #include <part.h>
 #include <sandboxblockdev.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 static int host_curr_device = -1;
 
@@ -22,6 +23,12 @@ static int do_host_ls(cmd_tbl_t *cmdtp, int flag, int argc,
 			   char * const argv[])
 {
 	return do_ls(cmdtp, flag, argc, argv, FS_TYPE_SANDBOX);
+}
+
+static int do_host_size(cmd_tbl_t *cmdtp, int flag, int argc,
+			   char * const argv[])
+{
+	return do_size(cmdtp, flag, argc, argv, FS_TYPE_SANDBOX);
 }
 
 static int do_host_save(cmd_tbl_t *cmdtp, int flag, int argc,
@@ -67,7 +74,7 @@ static int do_host_info(cmd_tbl_t *cmdtp, int flag, int argc,
 	int dev;
 	printf("%3s %12s %s\n", "dev", "blocks", "path");
 	for (dev = min_dev; dev <= max_dev; dev++) {
-		block_dev_desc_t *blk_dev;
+		struct blk_desc *blk_dev;
 		int ret;
 
 		printf("%3d ", dev);
@@ -80,7 +87,13 @@ static int do_host_info(cmd_tbl_t *cmdtp, int flag, int argc,
 
 			continue;
 		}
-		struct host_block_dev *host_dev = blk_dev->priv;
+		struct host_block_dev *host_dev;
+
+#ifdef CONFIG_BLK
+		host_dev = dev_get_priv(blk_dev->bdev);
+#else
+		host_dev = blk_dev->priv;
+#endif
 		printf("%12lu %s\n", (unsigned long)blk_dev->lba,
 		       host_dev->filename);
 	}
@@ -92,7 +105,7 @@ static int do_host_dev(cmd_tbl_t *cmdtp, int flag, int argc,
 {
 	int dev;
 	char *ep;
-	block_dev_desc_t *blk_dev;
+	struct blk_desc *blk_dev;
 	int ret;
 
 	if (argc < 1 || argc > 3)
@@ -131,6 +144,7 @@ static cmd_tbl_t cmd_host_sub[] = {
 	U_BOOT_CMD_MKENT(load, 7, 0, do_host_load, "", ""),
 	U_BOOT_CMD_MKENT(ls, 3, 0, do_host_ls, "", ""),
 	U_BOOT_CMD_MKENT(save, 6, 0, do_host_save, "", ""),
+	U_BOOT_CMD_MKENT(size, 3, 0, do_host_size, "", ""),
 	U_BOOT_CMD_MKENT(bind, 3, 0, do_host_bind, "", ""),
 	U_BOOT_CMD_MKENT(info, 3, 0, do_host_info, "", ""),
 	U_BOOT_CMD_MKENT(dev, 0, 1, do_host_dev, "", ""),
@@ -167,6 +181,7 @@ U_BOOT_CMD(
 	"host ls hostfs - <filename>                    - list files on host\n"
 	"host save hostfs - <addr> <filename> <bytes> [<offset>] - "
 		"save a file to host\n"
+	"host size hostfs - <filename> - determine size of file on host\n"
 	"host bind <dev> [<filename>] - bind \"host\" device to file\n"
 	"host info [<dev>]            - show device binding & info\n"
 	"host dev [<dev>] - Set or retrieve the current host device\n"

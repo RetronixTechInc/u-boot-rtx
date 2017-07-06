@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2011 Sebastian Andrzej Siewior <bigeasy@linutronix.de>
  *
- * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
- *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -11,7 +9,6 @@
 #include <android_image.h>
 #include <malloc.h>
 #include <errno.h>
-#include <asm/bootm.h>
 
 #define ANDROID_IMAGE_DEFAULT_KERNEL_ADDR	0x10008000
 
@@ -71,6 +68,7 @@ int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 
 	int len = 0;
 	if (*hdr->cmdline) {
+		printf("Kernel command line: %s\n", hdr->cmdline);
 		len += strlen(hdr->cmdline);
 	}
 
@@ -87,25 +85,12 @@ int android_image_get_kernel(const struct andr_img_hdr *hdr, int verify,
 
 	if (bootargs) {
 		strcpy(newbootargs, bootargs);
-	} else if (*hdr->cmdline) {
-		strcat(newbootargs, hdr->cmdline);
+		strcat(newbootargs, " ");
 	}
+	if (*hdr->cmdline)
+		strcat(newbootargs, hdr->cmdline);
 
-	printf("Kernel command line: %s\n", newbootargs);
-#ifdef CONFIG_SERIAL_TAG
-	struct tag_serialnr serialnr;
-	char commandline[ANDR_BOOT_ARGS_SIZE];
-	get_board_serial(&serialnr);
-
-	sprintf(commandline,
-					"%s androidboot.serialno=%08x%08x",
-					newbootargs,
-					serialnr.high,
-					serialnr.low);
-	setenv("bootargs", commandline);
-#else
 	setenv("bootargs", newbootargs);
-#endif
 
 	if (os_data) {
 		*os_data = (ulong)hdr;
@@ -161,20 +146,40 @@ int android_image_get_ramdisk(const struct andr_img_hdr *hdr,
 	return 0;
 }
 
-int android_image_get_fdt(const struct andr_img_hdr *hdr,
-			      ulong *fdt_data, ulong *fdt_len)
+#if !defined(CONFIG_SPL_BUILD)
+/**
+ * android_print_contents - prints out the contents of the Android format image
+ * @hdr: pointer to the Android format image header
+ *
+ * android_print_contents() formats a multi line Android image contents
+ * description.
+ * The routine prints out Android image properties
+ *
+ * returns:
+ *     no returned results
+ */
+void android_print_contents(const struct andr_img_hdr *hdr)
 {
-	if (!hdr->second_size)
-		return -1;
+	const char * const p = IMAGE_INDENT_STRING;
+	/* os_version = ver << 11 | lvl */
+	u32 os_ver = hdr->os_version >> 11;
+	u32 os_lvl = hdr->os_version & ((1U << 11) - 1);
 
-	printf("FDT load addr 0x%08x size %u KiB\n",
-	       hdr->second_addr, DIV_ROUND_UP(hdr->second_size, 1024));
-
-	*fdt_data = (unsigned long)hdr;
-	*fdt_data += hdr->page_size;
-	*fdt_data += ALIGN(hdr->kernel_size, hdr->page_size);
-	*fdt_data += ALIGN(hdr->ramdisk_size, hdr->page_size);
-
-	*fdt_len = hdr->second_size;
-	return 0;
+	printf("%skernel size:      %x\n", p, hdr->kernel_size);
+	printf("%skernel address:   %x\n", p, hdr->kernel_addr);
+	printf("%sramdisk size:     %x\n", p, hdr->ramdisk_size);
+	printf("%sramdisk addrress: %x\n", p, hdr->ramdisk_addr);
+	printf("%ssecond size:      %x\n", p, hdr->second_size);
+	printf("%ssecond address:   %x\n", p, hdr->second_addr);
+	printf("%stags address:     %x\n", p, hdr->tags_addr);
+	printf("%spage size:        %x\n", p, hdr->page_size);
+	/* ver = A << 14 | B << 7 | C         (7 bits for each of A, B, C)
+	 * lvl = ((Y - 2000) & 127) << 4 | M  (7 bits for Y, 4 bits for M) */
+	printf("%sos_version:       %x (ver: %u.%u.%u, level: %u.%u)\n",
+	       p, hdr->os_version,
+	       (os_ver >> 7) & 0x7F, (os_ver >> 14) & 0x7F, os_ver & 0x7F,
+	       (os_lvl >> 4) + 2000, os_lvl & 0x0F);
+	printf("%sname:             %s\n", p, hdr->name);
+	printf("%scmdline:          %s\n", p, hdr->cmdline);
 }
+#endif

@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2012 Boundary Devices Inc.
- * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -8,7 +7,7 @@
 #include <malloc.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
 #include <asm/imx-common/mxc_i2c.h>
 #include <watchdog.h>
@@ -34,36 +33,13 @@ int force_idle_bus(void *priv)
 
 	printf("%s: sda=%d scl=%d sda.gp=0x%x scl.gp=0x%x\n", __func__,
 		sda, scl, p->sda.gp, p->scl.gp);
-	gpio_direction_output(p->scl.gp, 1);
-	udelay(1000);
 	/* Send high and low on the SCL line */
 	for (i = 0; i < 9; i++) {
-		gpio_direction_output(p->scl.gp, 1);
-		udelay(50);
 		gpio_direction_output(p->scl.gp, 0);
 		udelay(50);
+		gpio_direction_input(p->scl.gp);
+		udelay(50);
 	}
-
-	/* Simulate the NACK */
-	gpio_direction_output(p->sda.gp, 1);
-	udelay(50);
-	gpio_direction_output(p->scl.gp, 1);
-	udelay(50);
-	gpio_direction_output(p->scl.gp, 0);
-	udelay(50);
-
-	/* Simulate the STOP signal */
-	gpio_direction_output(p->sda.gp, 0);
-	udelay(50);
-	gpio_direction_output(p->scl.gp, 1);
-	udelay(50);
-	gpio_direction_output(p->sda.gp, 1);
-	udelay(50);
-
-	/* Get the bus status */
-	gpio_direction_input(p->sda.gp);
-	gpio_direction_input(p->scl.gp);
-
 	start_time = get_timer(0);
 	for (;;) {
 		sda = gpio_get_value(p->sda.gp);

@@ -16,19 +16,7 @@
  * CPU
  */
 
-#define CONFIG_SYS_CACHELINE_SIZE	64
-
 #define CONFIG_ARM_ARCH_CP15_ERRATA
-#define CONFIG_ARM_ERRATA_454179
-#define CONFIG_ARM_ERRATA_430973
-#define CONFIG_ARM_ERRATA_621766
-
-/*
- * Platform
- */
-
-#define CONFIG_OMAP
-#define CONFIG_OMAP_COMMON
 
 /*
  * Board
@@ -68,17 +56,6 @@
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024 + CONFIG_ENV_SIZE)
 
 /*
- * GPIO
- */
-
-#define CONFIG_OMAP_GPIO
-#define CONFIG_OMAP3_GPIO_2
-#define CONFIG_OMAP3_GPIO_3
-#define CONFIG_OMAP3_GPIO_4
-#define CONFIG_OMAP3_GPIO_5
-#define CONFIG_OMAP3_GPIO_6
-
-/*
  * I2C
  */
 
@@ -88,42 +65,11 @@
 #define CONFIG_SYS_I2C_OMAP34XX
 #define CONFIG_I2C_MULTI_BUS
 
-#define CONFIG_CMD_I2C
-
-/*
- * Flash
- */
-
-#define CONFIG_SYS_NO_FLASH
-
-/*
- * MMC
- */
-
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_OMAP_HSMMC
-
-#define CONFIG_CMD_MMC
-
-/*
- * Power
- */
-
-#define CONFIG_TWL4030_POWER
-
 /*
  * Input
  */
 
 #define CONFIG_TWL4030_INPUT
-
-/*
- * Partitions
- */
-
-#define CONFIG_PARTITION_UUIDS
-#define CONFIG_CMD_PART
 
 /*
  * SPL
@@ -132,44 +78,22 @@
 #define CONFIG_SPL_FRAMEWORK
 
 #define CONFIG_SPL_TEXT_BASE		0x40200000
-#define CONFIG_SPL_MAX_SIZE		(54 * 1024)
+#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
+					 CONFIG_SPL_TEXT_BASE)
 #define CONFIG_SPL_BSS_START_ADDR	0x80000000
 #define CONFIG_SPL_BSS_MAX_SIZE		(512 * 1024)
 #define CONFIG_SYS_SPL_MALLOC_START	0x80208000
 #define CONFIG_SYS_SPL_MALLOC_SIZE	(1024 * 1024)
 #define CONFIG_SPL_STACK		LOW_LEVEL_SRAM_STACK
 
-#define CONFIG_SPL_LDSCRIPT		"$(CPUDIR)/omap-common/u-boot-spl.lds"
-#define CONFIG_SPL_BOARD_INIT
-
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBDISK_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_POWER_SUPPORT
-#define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-#define CONFIG_SPL_MMC_SUPPORT
-#define CONFIG_SPL_FAT_SUPPORT
-
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION	2
+#define CONFIG_SPL_LDSCRIPT		"arch/arm/mach-omap2/u-boot-spl.lds"
 
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION		1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME			"u-boot.img"
 
-/*
- * Console
- */
-
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
-
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
-
 #define CONFIG_AUTO_COMPLETE
 
 #define CONFIG_SYS_LONGHELP
-#define CONFIG_SYS_HUSH_PARSER
 
 #define CONFIG_SYS_MAXARGS	16
 #define CONFIG_SYS_CBSIZE	512
@@ -189,7 +113,6 @@
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
 #define CONFIG_CONS_INDEX		3
 
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 4800, 9600, 19200, 38400, 57600, \
 					  115200 }
 
@@ -200,20 +123,6 @@
 #define CONFIG_USB_MUSB_PIO_ONLY
 #define CONFIG_USB_MUSB_OMAP2PLUS
 #define CONFIG_TWL4030_USB
-
-#define CONFIG_USB_GADGET
-#define CONFIG_USB_GADGET_DUALSPEED
-#define CONFIG_USB_GADGET_VBUS_DRAW	0
-
-/*
- * Download
- */
-
-#define CONFIG_USB_GADGET_DOWNLOAD
-
-#define CONFIG_G_DNL_VENDOR_NUM		0x0451
-#define CONFIG_G_DNL_PRODUCT_NUM	0xd022
-#define CONFIG_G_DNL_MANUFACTURER	"Texas Instruments"
 
 /*
  * Fastboot
@@ -252,7 +161,7 @@
 	"recovery_mmc_part=4\0" \
 	"fdtfile=omap3-sniper.dtb\0" \
 	"bootfile=/boot/extlinux/extlinux.conf\0" \
-	"bootargs=console=ttyO2 vram=5M,0x9FA00000 omapfb.vram=0:5M\0"
+	"bootargs=console=ttyO2,115200 vram=5M,0x9FA00000 omapfb.vram=0:5M\0"
 
 /*
  * ATAGs

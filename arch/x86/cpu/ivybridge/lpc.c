@@ -12,12 +12,15 @@
 #include <fdtdec.h>
 #include <rtc.h>
 #include <pci.h>
-#include <asm/acpi.h>
+#include <asm/intel_regs.h>
 #include <asm/interrupt.h>
 #include <asm/io.h>
 #include <asm/ioapic.h>
+#include <asm/lpc_common.h>
 #include <asm/pci.h>
 #include <asm/arch/pch.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define NMI_OFF				0
 
@@ -83,7 +86,7 @@ static int pch_pirq_init(struct udevice *pch)
 {
 	uint8_t route[8], *ptr;
 
-	if (fdtdec_get_byte_array(gd->fdt_blob, pch->of_offset,
+	if (fdtdec_get_byte_array(gd->fdt_blob, dev_of_offset(pch),
 				  "intel,pirq-routing", route, sizeof(route)))
 		return -EINVAL;
 	ptr = route;
@@ -110,7 +113,7 @@ static int pch_gpi_routing(struct udevice *pch)
 	u32 reg;
 	int gpi;
 
-	if (fdtdec_get_byte_array(gd->fdt_blob, pch->of_offset,
+	if (fdtdec_get_byte_array(gd->fdt_blob, dev_of_offset(pch),
 				  "intel,gpi-routing", route, sizeof(route)))
 		return -EINVAL;
 
@@ -125,7 +128,7 @@ static int pch_gpi_routing(struct udevice *pch)
 static int pch_power_options(struct udevice *pch)
 {
 	const void *blob = gd->fdt_blob;
-	int node = pch->of_offset;
+	int node = dev_of_offset(pch);
 	u8 reg8;
 	u16 reg16, pmbase;
 	u32 reg32;
@@ -212,10 +215,10 @@ static int pch_power_options(struct udevice *pch)
 	dm_pci_read_config16(pch, 0x40, &pmbase);
 	pmbase &= 0xfffe;
 
-	writel(pmbase + GPE0_EN, fdtdec_get_int(blob, node,
-						"intel,gpe0-enable", 0));
-	writew(pmbase + ALT_GP_SMI_EN, fdtdec_get_int(blob, node,
-						"intel,alt-gp-smi-enable", 0));
+	writel(fdtdec_get_int(blob, node, "intel,gpe0-enable", 0),
+	       (ulong)pmbase + GPE0_EN);
+	writew(fdtdec_get_int(blob, node, "intel,alt-gp-smi-enable", 0),
+	       (ulong)pmbase + ALT_GP_SMI_EN);
 
 	/* Set up power management block and determine sleep mode */
 	reg32 = inl(pmbase + 0x04); /* PM1_CNT */
@@ -354,10 +357,10 @@ static void enable_clock_gating(struct udevice *pch)
 	reg16 |= (1 << 2) | (1 << 11);
 	dm_pci_write_config16(pch, GEN_PMCON_1, reg16);
 
-	pch_iobp_update(pch, 0xEB007F07, ~0UL, (1 << 31));
-	pch_iobp_update(pch, 0xEB004000, ~0UL, (1 << 7));
-	pch_iobp_update(pch, 0xEC007F07, ~0UL, (1 << 31));
-	pch_iobp_update(pch, 0xEC004000, ~0UL, (1 << 7));
+	pch_iobp_update(pch, 0xeb007f07, ~0U, 1 << 31);
+	pch_iobp_update(pch, 0xeb004000, ~0U, 1 << 7);
+	pch_iobp_update(pch, 0xec007f07, ~0U, 1 << 31);
+	pch_iobp_update(pch, 0xec004000, ~0U, 1 << 7);
 
 	reg32 = readl(RCB_REG(CG));
 	reg32 |= (1 << 31);
@@ -404,26 +407,6 @@ static void pch_fixups(struct udevice *pch)
 	setbits_le32(RCB_REG(0x21a8), 0x3);
 }
 
-/*
- * Enable Prefetching and Caching.
- */
-static void enable_spi_prefetch(struct udevice *pch)
-{
-	u8 reg8;
-
-	dm_pci_read_config8(pch, 0xdc, &reg8);
-	reg8 &= ~(3 << 2);
-	reg8 |= (2 << 2); /* Prefetching and Caching Enabled */
-	dm_pci_write_config8(pch, 0xdc, reg8);
-}
-
-static void enable_port80_on_lpc(struct udevice *pch)
-{
-	/* Enable port 80 POST on LPC */
-	dm_pci_write_config32(pch, PCH_RCBA_BASE, DEFAULT_RCBA | 1);
-	clrbits_le32(RCB_REG(GCS), 4);
-}
-
 static void set_spi_speed(void)
 {
 	u32 fdod;
@@ -440,59 +423,9 @@ static void set_spi_speed(void)
 	clrsetbits_8(RCB_REG(SPI_FREQ_SWSEQ), 7, fdod);
 }
 
-/**
- * lpc_early_init() - set up LPC serial ports and other early things
- *
- * @dev:	LPC device
- * @return 0 if OK, -ve on error
- */
-static int lpc_early_init(struct udevice *dev)
-{
-	struct reg_info {
-		u32 base;
-		u32 size;
-	} values[4], *ptr;
-	int count;
-	int i;
-
-	count = fdtdec_get_int_array_count(gd->fdt_blob, dev->of_offset,
-			"intel,gen-dec", (u32 *)values,
-			sizeof(values) / sizeof(u32));
-	if (count < 0)
-		return -EINVAL;
-
-	/* Set COM1/COM2 decode range */
-	dm_pci_write_config16(dev->parent, LPC_IO_DEC, 0x0010);
-
-	/* Enable PS/2 Keyboard/Mouse, EC areas and COM1 */
-	dm_pci_write_config16(dev->parent, LPC_EN, KBC_LPC_EN | MC_LPC_EN |
-			      GAMEL_LPC_EN | COMA_LPC_EN);
-
-	/* Write all registers but use 0 if we run out of data */
-	count = count * sizeof(u32) / sizeof(values[0]);
-	for (i = 0, ptr = values; i < ARRAY_SIZE(values); i++, ptr++) {
-		u32 reg = 0;
-
-		if (i < count)
-			reg = ptr->base | PCI_COMMAND_IO | (ptr->size << 16);
-		dm_pci_write_config32(dev->parent, LPC_GENX_DEC(i), reg);
-	}
-
-	enable_spi_prefetch(dev->parent);
-
-	/* This is already done in start.S, but let's do it in C */
-	enable_port80_on_lpc(dev->parent);
-
-	set_spi_speed();
-
-	return 0;
-}
-
 static int lpc_init_extra(struct udevice *dev)
 {
 	struct udevice *pch = dev->parent;
-	const void *blob = gd->fdt_blob;
-	int node;
 
 	debug("pch: lpc_init\n");
 	dm_pci_write_bar32(pch, 0, 0);
@@ -500,10 +433,6 @@ static int lpc_init_extra(struct udevice *dev)
 	dm_pci_write_bar32(pch, 2, 0xfec00000);
 	dm_pci_write_bar32(pch, 3, 0x800);
 	dm_pci_write_bar32(pch, 4, 0x900);
-
-	node = fdtdec_next_compatible(blob, 0, COMPAT_INTEL_PCH);
-	if (node < 0)
-		return -ENOENT;
 
 	/* Set the value for PCI command register. */
 	dm_pci_write_config16(pch, PCI_COMMAND, 0x000f);
@@ -550,9 +479,12 @@ static int lpc_init_extra(struct udevice *dev)
 
 static int bd82x6x_lpc_early_init(struct udevice *dev)
 {
+	set_spi_speed();
+
 	/* Setting up Southbridge. In the northbridge code. */
 	debug("Setting up static southbridge registers\n");
-	dm_pci_write_config32(dev->parent, PCH_RCBA_BASE, DEFAULT_RCBA | 1);
+	dm_pci_write_config32(dev->parent, PCH_RCBA_BASE,
+			      RCB_BASE_ADDRESS | 1);
 	dm_pci_write_config32(dev->parent, PMBASE, DEFAULT_PMBASE | 1);
 
 	/* Enable ACPI BAR */
@@ -573,7 +505,7 @@ static int bd82x6x_lpc_probe(struct udevice *dev)
 	int ret;
 
 	if (!(gd->flags & GD_FLG_RELOC)) {
-		ret = lpc_early_init(dev);
+		ret = lpc_common_early_init(dev);
 		if (ret) {
 			debug("%s: lpc_early_init() failed\n", __func__);
 			return ret;

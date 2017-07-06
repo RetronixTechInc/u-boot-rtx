@@ -2,7 +2,7 @@
  * FSL SD/MMC Defines
  *-------------------------------------------------------------------
  *
- * Copyright 2007-2008, 2010-2016 Freescale Semiconductor, Inc.
+ * Copyright 2007-2008,2010-2011 Freescale Semiconductor, Inc
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -10,7 +10,7 @@
 #ifndef  __FSL_ESDHC_H__
 #define	__FSL_ESDHC_H__
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/byteorder.h>
 
 /* needed for the mmc_cfg definition */
@@ -36,10 +36,10 @@
 #define SYSCTL_RSTD		0x04000000
 
 #define VENDORSPEC_CKEN		0x00004000
-#define VENDORSPEC_PEREN		0x00002000
-#define VENDORSPEC_HCKEN		0x00001000
-#define VENDORSPEC_IPGEN		0x00000800
-#define VENDORSPEC_INIT     0x20007809
+#define VENDORSPEC_PEREN	0x00002000
+#define VENDORSPEC_HCKEN	0x00001000
+#define VENDORSPEC_IPGEN	0x00000800
+#define VENDORSPEC_INIT		0x20007809
 
 #define IRQSTAT			0x0002e030
 #define IRQSTAT_DMAE		(0x10000000)
@@ -174,15 +174,10 @@
 #define ESDHC_VENDORSPEC_VSELECT 0x00000002 /* Use 1.8V */
 
 struct fsl_esdhc_cfg {
-#ifdef CONFIG_FSL_LAYERSCAPE
-	u64	esdhc_base;
-#else
-	u32	esdhc_base;
-#endif
+	phys_addr_t esdhc_base;
 	u32	sdhc_clk;
 	u8	max_bus_width;
 	u8	wp_enable;
-	u8	vs18_enable; /*default use 1.8v if this var is not 0*/
 	struct mmc_config cfg;
 };
 

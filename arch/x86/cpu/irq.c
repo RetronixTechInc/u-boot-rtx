@@ -13,10 +13,9 @@
 #include <asm/irq.h>
 #include <asm/pci.h>
 #include <asm/pirq_routing.h>
+#include <asm/tables.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-static struct irq_routing_table *pirq_routing_table;
 
 bool pirq_check_irq_routed(struct udevice *dev, int link, u8 irq)
 {
@@ -27,7 +26,7 @@ bool pirq_check_irq_routed(struct udevice *dev, int link, u8 irq)
 	if (priv->config == PIRQ_VIA_PCI)
 		dm_pci_read_config8(dev->parent, LINK_N2V(link, base), &pirq);
 	else
-		pirq = readb(priv->ibase + LINK_N2V(link, base));
+		pirq = readb((uintptr_t)priv->ibase + LINK_N2V(link, base));
 
 	pirq &= 0xf;
 
@@ -57,7 +56,7 @@ void pirq_assign_irq(struct udevice *dev, int link, u8 irq)
 	if (priv->config == PIRQ_VIA_PCI)
 		dm_pci_write_config8(dev->parent, LINK_N2V(link, base), irq);
 	else
-		writeb(irq, priv->ibase + LINK_N2V(link, base));
+		writeb(irq, (uintptr_t)priv->ibase + LINK_N2V(link, base));
 }
 
 static struct irq_info *check_dup_entry(struct irq_info *slot_base,
@@ -97,16 +96,17 @@ static int create_pirq_routing_table(struct udevice *dev)
 	int i;
 	int ret;
 
-	node = dev->of_offset;
+	node = dev_of_offset(dev);
 
 	/* extract the bdf from fdt_pci_addr */
 	priv->bdf = dm_pci_get_bdf(dev->parent);
 
-	ret = fdt_find_string(blob, node, "intel,pirq-config", "pci");
+	ret = fdt_stringlist_search(blob, node, "intel,pirq-config", "pci");
 	if (!ret) {
 		priv->config = PIRQ_VIA_PCI;
 	} else {
-		ret = fdt_find_string(blob, node, "intel,pirq-config", "ibase");
+		ret = fdt_stringlist_search(blob, node, "intel,pirq-config",
+					    "ibase");
 		if (!ret)
 			priv->config = PIRQ_VIA_IBASE;
 		else
@@ -120,6 +120,11 @@ static int create_pirq_routing_table(struct udevice *dev)
 
 	priv->irq_mask = fdtdec_get_int(blob, node,
 					"intel,pirq-mask", PIRQ_BITMAP);
+
+	if (IS_ENABLED(CONFIG_GENERATE_ACPI_TABLE)) {
+		/* Reserve IRQ9 for SCI */
+		priv->irq_mask &= ~(1 << 9);
+	}
 
 	if (priv->config == PIRQ_VIA_IBASE) {
 		int ibase_off;
@@ -141,6 +146,9 @@ static int create_pirq_routing_table(struct udevice *dev)
 		dm_pci_read_config32(dev->parent, ibase_off, &priv->ibase);
 		priv->ibase &= ~0xf;
 	}
+
+	priv->actl_8bit = fdtdec_get_bool(blob, node, "intel,actl-8bit");
+	priv->actl_addr = fdtdec_get_int(blob, node, "intel,actl-addr", 0);
 
 	cell = fdt_getprop(blob, node, "intel,pirq-routing", &len);
 	if (!cell || len % sizeof(struct pirq_routing))
@@ -206,9 +214,28 @@ static int create_pirq_routing_table(struct udevice *dev)
 
 	rt->size = irq_entries * sizeof(struct irq_info) + 32;
 
-	pirq_routing_table = rt;
+	/* Fix up the table checksum */
+	rt->checksum = table_compute_checksum(rt, rt->size);
+
+	gd->arch.pirq_routing_table = rt;
 
 	return 0;
+}
+
+static void irq_enable_sci(struct udevice *dev)
+{
+	struct irq_router *priv = dev_get_priv(dev);
+
+	if (priv->actl_8bit) {
+		/* Bit7 must be turned on to enable ACPI */
+		dm_pci_write_config8(dev->parent, priv->actl_addr, 0x80);
+	} else {
+		/* Write 0 to enable SCI on IRQ9 */
+		if (priv->config == PIRQ_VIA_PCI)
+			dm_pci_write_config32(dev->parent, priv->actl_addr, 0);
+		else
+			writel(0, (uintptr_t)priv->ibase + priv->actl_addr);
+	}
 }
 
 int irq_router_common_init(struct udevice *dev)
@@ -221,8 +248,11 @@ int irq_router_common_init(struct udevice *dev)
 		return ret;
 	}
 	/* Route PIRQ */
-	pirq_route_irqs(dev, pirq_routing_table->slots,
-			get_irq_slot_count(pirq_routing_table));
+	pirq_route_irqs(dev, gd->arch.pirq_routing_table->slots,
+			get_irq_slot_count(gd->arch.pirq_routing_table));
+
+	if (IS_ENABLED(CONFIG_GENERATE_ACPI_TABLE))
+		irq_enable_sci(dev);
 
 	return 0;
 }
@@ -232,12 +262,12 @@ int irq_router_probe(struct udevice *dev)
 	return irq_router_common_init(dev);
 }
 
-u32 write_pirq_routing_table(u32 addr)
+ulong write_pirq_routing_table(ulong addr)
 {
-	if (!pirq_routing_table)
+	if (!gd->arch.pirq_routing_table)
 		return addr;
 
-	return copy_pirq_routing_table(addr, pirq_routing_table);
+	return copy_pirq_routing_table(addr, gd->arch.pirq_routing_table);
 }
 
 static const struct udevice_id irq_router_ids[] = {

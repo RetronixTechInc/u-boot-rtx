@@ -39,7 +39,12 @@ class StateTestEnv(object):
             Nothing.
         """
 
-        response = self.u_boot_console.run_command('printenv')
+        if self.u_boot_console.config.buildconfig.get(
+                'config_version_variable', 'n') == 'y':
+            with self.u_boot_console.disable_check('main_signon'):
+                response = self.u_boot_console.run_command('printenv')
+        else:
+            response = self.u_boot_console.run_command('printenv')
         self.env = {}
         for l in response.splitlines():
             if not '=' in l:
@@ -159,6 +164,7 @@ def test_env_echo_exists(state_test_env):
     value = state_test_env.env[var]
     validate_set(state_test_env, var, value)
 
+@pytest.mark.buildconfigspec('cmd_echo')
 def test_env_echo_non_existent(state_test_env):
     """Test echoing a variable that doesn't exist."""
 
@@ -174,6 +180,7 @@ def test_env_printenv_non_existent(state_test_env):
         response = c.run_command('printenv %s' % var)
     assert(response == '## Error: "%s" not defined' % var)
 
+@pytest.mark.buildconfigspec('cmd_echo')
 def test_env_unset_non_existent(state_test_env):
     """Test unsetting a nonexistent variable."""
 
@@ -197,6 +204,7 @@ def test_env_set_existing(state_test_env):
     set_var(state_test_env, var, value)
     validate_set(state_test_env, var, value)
 
+@pytest.mark.buildconfigspec('cmd_echo')
 def test_env_unset_existing(state_test_env):
     """Test unsetting a variable."""
 

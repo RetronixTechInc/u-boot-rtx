@@ -8,13 +8,11 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
-#include <fdtdec.h>
 #include <inttypes.h>
 #include <pci.h>
 #include <asm/io.h>
-#include <dm/lists.h>
-#include <dm/root.h>
 #include <dm/device-internal.h>
+#include <dm/lists.h>
 #if defined(CONFIG_X86) && defined(CONFIG_HAVE_FSP)
 #include <asm/fsp/fsp_support.h>
 #endif
@@ -30,11 +28,9 @@ int pci_get_bus(int busnum, struct udevice **busp)
 
 	/* Since buses may not be numbered yet try a little harder with bus 0 */
 	if (ret == -ENODEV) {
-		ret = uclass_first_device(UCLASS_PCI, busp);
+		ret = uclass_first_device_err(UCLASS_PCI, busp);
 		if (ret)
 			return ret;
-		else if (!*busp)
-			return -ENODEV;
 		ret = uclass_get_device_by_seq(UCLASS_PCI, busnum, busp);
 	}
 
@@ -252,6 +248,21 @@ int pci_bus_write_config(struct udevice *bus, pci_dev_t bdf, int offset,
 	return ops->write_config(bus, bdf, offset, value, size);
 }
 
+int pci_bus_clrset_config32(struct udevice *bus, pci_dev_t bdf, int offset,
+			    u32 clr, u32 set)
+{
+	ulong val;
+	int ret;
+
+	ret = pci_bus_read_config(bus, bdf, offset, &val, PCI_SIZE_32);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return pci_bus_write_config(bus, bdf, offset, val, PCI_SIZE_32);
+}
+
 int pci_write_config(pci_dev_t bdf, int offset, unsigned long value,
 		     enum pci_size_t size)
 {
@@ -275,7 +286,6 @@ int dm_pci_write_config(struct udevice *dev, int offset, unsigned long value,
 	return pci_bus_write_config(bus, dm_pci_get_bdf(dev), offset, value,
 				    size);
 }
-
 
 int pci_write_config32(pci_dev_t bdf, int offset, u32 value)
 {
@@ -420,6 +430,48 @@ int dm_pci_read_config32(struct udevice *dev, int offset, u32 *valuep)
 	return 0;
 }
 
+int dm_pci_clrset_config8(struct udevice *dev, int offset, u32 clr, u32 set)
+{
+	u8 val;
+	int ret;
+
+	ret = dm_pci_read_config8(dev, offset, &val);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return dm_pci_write_config8(dev, offset, val);
+}
+
+int dm_pci_clrset_config16(struct udevice *dev, int offset, u32 clr, u32 set)
+{
+	u16 val;
+	int ret;
+
+	ret = dm_pci_read_config16(dev, offset, &val);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return dm_pci_write_config16(dev, offset, val);
+}
+
+int dm_pci_clrset_config32(struct udevice *dev, int offset, u32 clr, u32 set)
+{
+	u32 val;
+	int ret;
+
+	ret = dm_pci_read_config32(dev, offset, &val);
+	if (ret)
+		return ret;
+	val &= ~clr;
+	val |= set;
+
+	return dm_pci_write_config32(dev, offset, val);
+}
+
 static void set_vga_bridge_bits(struct udevice *dev)
 {
 	struct udevice *parent = dev->parent;
@@ -498,9 +550,10 @@ int dm_pci_hose_probe_bus(struct udevice *bus)
  * pci_match_one_device - Tell if a PCI device structure has a matching
  *                        PCI device id structure
  * @id: single PCI device id structure to match
- * @dev: the PCI device structure to match against
+ * @find: the PCI device id structure to match against
  *
- * Returns the matching pci_device_id structure or %NULL if there is no match.
+ * Returns true if the finding pci_device_id structure matched or false if
+ * there is no match.
  */
 static bool pci_match_one_id(const struct pci_device_id *id,
 			     const struct pci_device_id *find)
@@ -606,6 +659,7 @@ static int pci_find_and_bind_driver(struct udevice *parent,
 	ret = device_bind_driver(parent, drv, str, devp);
 	if (ret) {
 		debug("%s: Failed to bind generic driver: %d\n", __func__, ret);
+		free(str);
 		return ret;
 	}
 	debug("%s: No match found: bound generic driver instead\n", __func__);
@@ -628,7 +682,7 @@ int pci_bind_bus_devices(struct udevice *bus)
 	found_multi = false;
 	end = PCI_BDF(bus->seq, PCI_MAX_PCI_DEVICES - 1,
 		      PCI_MAX_PCI_FUNCTIONS - 1);
-	for (bdf = PCI_BDF(bus->seq, 0, 0); bdf < end;
+	for (bdf = PCI_BDF(bus->seq, 0, 0); bdf <= end;
 	     bdf += PCI_BDF(0, 0, 1)) {
 		struct pci_child_platdata *pplat;
 		struct udevice *dev;
@@ -699,29 +753,8 @@ error:
 	return ret;
 }
 
-static int pci_uclass_post_bind(struct udevice *bus)
-{
-	/*
-	 * If there is no pci device listed in the device tree,
-	 * don't bother scanning the device tree.
-	 */
-	if (bus->of_offset == -1)
-		return 0;
-
-	/*
-	 * Scan the device tree for devices. This does not probe the PCI bus,
-	 * as this is not permitted while binding. It just finds devices
-	 * mentioned in the device tree.
-	 *
-	 * Before relocation, only bind devices marked for pre-relocation
-	 * use.
-	 */
-	return dm_scan_fdt_node(bus, gd->fdt_blob, bus->of_offset,
-				gd->flags & GD_FLG_RELOC ? false : true);
-}
-
-static int decode_regions(struct pci_controller *hose, const void *blob,
-			  int parent_node, int node)
+static int decode_regions(struct pci_controller *hose, ofnode parent_node,
+			  ofnode node)
 {
 	int pci_addr_cells, addr_cells, size_cells;
 	phys_addr_t base = 0, size;
@@ -730,12 +763,12 @@ static int decode_regions(struct pci_controller *hose, const void *blob,
 	int len;
 	int i;
 
-	prop = fdt_getprop(blob, node, "ranges", &len);
+	prop = ofnode_read_prop(node, "ranges", &len);
 	if (!prop)
 		return -EINVAL;
-	pci_addr_cells = fdt_address_cells(blob, node);
-	addr_cells = fdt_address_cells(blob, parent_node);
-	size_cells = fdt_size_cells(blob, node);
+	pci_addr_cells = ofnode_read_addr_cells(node);
+	addr_cells = ofnode_read_addr_cells(parent_node);
+	size_cells = ofnode_read_size_cells(node);
 
 	/* PCI addresses are always 3-cells */
 	len /= sizeof(u32);
@@ -805,10 +838,10 @@ static int pci_uclass_pre_probe(struct udevice *bus)
 	hose = bus->uclass_priv;
 
 	/* For bridges, use the top-level PCI controller */
-	if (device_get_uclass_id(bus->parent) == UCLASS_ROOT) {
+	if (!device_is_on_pci_bus(bus)) {
 		hose->ctlr = bus;
-		ret = decode_regions(hose, gd->fdt_blob, bus->parent->of_offset,
-				bus->of_offset);
+		ret = decode_regions(hose, dev_ofnode(bus->parent),
+				     dev_ofnode(bus));
 		if (ret) {
 			debug("%s: Cannot decode regions\n", __func__);
 			return ret;
@@ -871,7 +904,7 @@ static int pci_uclass_child_post_bind(struct udevice *dev)
 	struct fdt_pci_addr addr;
 	int ret;
 
-	if (dev->of_offset == -1)
+	if (!dev_of_valid(dev))
 		return 0;
 
 	/*
@@ -879,8 +912,8 @@ static int pci_uclass_child_post_bind(struct udevice *dev)
 	 * just check the address.
 	 */
 	pplat = dev_get_parent_platdata(dev);
-	ret = fdtdec_get_pci_addr(gd->fdt_blob, dev->of_offset,
-				  FDT_PCI_SPACE_CONFIG, "reg", &addr);
+	ret = ofnode_read_pci_addr(dev_ofnode(dev), FDT_PCI_SPACE_CONFIG, "reg",
+				   &addr);
 
 	if (ret) {
 		if (ret != -ENOENT)
@@ -1200,7 +1233,7 @@ UCLASS_DRIVER(pci) = {
 	.id		= UCLASS_PCI,
 	.name		= "pci",
 	.flags		= DM_UC_FLAG_SEQ_ALIAS,
-	.post_bind	= pci_uclass_post_bind,
+	.post_bind	= dm_scan_fdt_dev,
 	.pre_probe	= pci_uclass_pre_probe,
 	.post_probe	= pci_uclass_post_probe,
 	.child_post_bind = pci_uclass_child_post_bind,

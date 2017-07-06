@@ -4,6 +4,15 @@
 
 menu "Serial drivers"
 
+config BAUDRATE
+	int "Default baudrate"
+	default 115200
+	help
+	  Select a default baudrate, where "default" has a driver-specific
+	  meaning of either setting the baudrate for the early debug UART
+	  in the SPL stage (most drivers) or for choosing a default baudrate
+	  in the absence of an environment setting (serial_mxc.c).
+
 config REQUIRE_SERIAL_CONSOLE
 	bool "Require a serial port for console"
 	# Running without a serial console is not supported by the
@@ -35,11 +44,42 @@ config SPL_SERIAL_PRESENT
 	  This option enables the full UART in SPL, so if is it disabled,
 	  the full UART driver will be omitted, thus saving space.
 
+config CONS_INDEX
+	int "UART used for console"
+	depends on ARCH_SUNXI
+	default 2 if MACH_SUN5I
+	default 5 if MACH_SUN8I_A23 || MACH_SUN8I_A33
+	default 1
+	help
+	  Configures the console index.
+	  For Allwinner SoC., default values are 2 for SUN5I and 5 for A23/A33.
+	  Otherwise, the index equals 1.
+
 config DM_SERIAL
 	bool "Enable Driver Model for serial drivers"
 	depends on DM
 	help
 	  Enable driver model for serial. This replaces
+	  drivers/serial/serial.c with the serial uclass, which
+	  implements serial_putc() etc. The uclass interface is
+	  defined in include/serial.h.
+
+config SPL_DM_SERIAL
+	bool "Enable Driver Model for serial drivers in SPL"
+	depends on DM_SERIAL
+	default y if SPL && DM_SERIAL
+	help
+	  Enable driver model for serial in SPL. This replaces
+	  drivers/serial/serial.c with the serial uclass, which
+	  implements serial_putc() etc. The uclass interface is
+	  defined in include/serial.h.
+
+config TPL_DM_SERIAL
+	bool "Enable Driver Model for serial drivers in TPL"
+	depends on DM_SERIAL
+	default y if TPL && DM_SERIAL
+	help
+	  Enable driver model for serial in TPL. This replaces
 	  drivers/serial/serial.c with the serial uclass, which
 	  implements serial_putc() etc. The uclass interface is
 	  defined in include/serial.h.
@@ -89,6 +129,30 @@ config DEBUG_UART_ALTERA_UART
 	  You will need to provide parameters to make this work. The driver will
 	  be available until the real driver model serial is running.
 
+config DEBUG_UART_AR933X
+	bool "QCA/Atheros ar933x"
+	depends on AR933X_UART
+	help
+	  Select this to enable a debug UART using the ar933x uart driver.
+	  You will need to provide parameters to make this work. The
+	  driver will be available until the real driver model serial is
+	  running.
+
+config DEBUG_UART_ATMEL
+	bool "Atmel USART"
+	help
+	  Select this to enable a debug UART using the atmel usart driver. You
+	  will need to provide parameters to make this work. The driver will
+	  be available until the real driver-model serial is running.
+
+config DEBUG_UART_BCM6345
+	bool "BCM6345 UART"
+	depends on BCM6345_SERIAL
+	help
+	  Select this to enable a debug UART on BCM6345 SoCs. You
+	  will need to provide parameters to make this work. The driver will
+	  be available until the real driver model serial is running.
+
 config DEBUG_UART_NS16550
 	bool "ns16550"
 	help
@@ -112,6 +176,14 @@ config DEBUG_UART_S5P
 	  will need to provide parameters to make this work. The driver will
 	  be available until the real driver-model serial is running.
 
+config DEBUG_UART_MESON
+	bool "Amlogic Meson"
+	depends on MESON_SERIAL
+	help
+	  Select this to enable a debug UART using the serial_meson driver. You
+	  will need to provide parameters to make this work. The driver will
+	  be available until the real driver-model serial is running.
+
 config DEBUG_UART_UARTLITE
 	bool "Xilinx Uartlite"
 	help
@@ -129,6 +201,13 @@ config DEBUG_UART_ARM_DCC
 	  Every ARM core has own DCC port which is the part of debug interface.
 	  This port is available at least on ARMv6, ARMv7, ARMv8 and XScale
 	  architectures.
+
+config DEBUG_MVEBU_A3700_UART
+	bool "Marvell Armada 3700"
+	help
+	  Select this to enable a debug UART using the serial_mvebu driver. You
+	  will need to provide parameters to make this work. The driver will
+	  be available until the real driver-model serial is running.
 
 config DEBUG_UART_ZYNQ
 	bool "Xilinx Zynq"
@@ -168,6 +247,22 @@ config DEBUG_UART_PIC32
 	  Select this to enable a debug UART using the serial_pic32 driver. You
 	  will need to provide parameters to make this work. The driver will
 	  be available until the real driver model serial is running.
+
+config DEBUG_UART_UNIPHIER
+	bool "UniPhier on-chip UART"
+	depends on ARCH_UNIPHIER
+	help
+	  Select this to enable a debug UART using the UniPhier on-chip UART.
+	  You will need to provide DEBUG_UART_BASE to make this work.  The
+	  driver will be available until the real driver-model serial is
+	  running.
+
+config DEBUG_UART_OMAP
+	bool "OMAP uart"
+	help
+	  Select this to enable a debug UART using the omap ns16550 driver.
+	  You will need to provide parameters to make this work. The driver
+	  will be available until the real driver model serial is running.
 
 endchoice
 
@@ -254,11 +349,47 @@ config ALTERA_UART
 	  Select this to enable an UART for Altera devices. Please find
 	  details on the "Embedded Peripherals IP User Guide" of Altera.
 
+config AR933X_UART
+	bool "QCA/Atheros ar933x UART support"
+	depends on DM_SERIAL && SOC_AR933X
+	help
+	  Select this to enable UART support for QCA/Atheros ar933x
+	  devices. This driver uses driver model and requires a device
+	  tree binding to operate, please refer to the document at
+	  doc/device-tree-bindings/serial/qca,ar9330-uart.txt.
+
+config ATMEL_USART
+	bool "Atmel USART support"
+	help
+	  Select this to enable USART support for Atmel SoCs. It can be
+	  configured in the device tree, and input clock frequency can
+	  be got from the clk node.
+
+config BCM6345_SERIAL
+	bool "Support for BCM6345 UART"
+	depends on DM_SERIAL && ARCH_BMIPS
+	help
+	  Select this to enable UART on BCM6345 SoCs.
+
 config FSL_LPUART
 	bool "Freescale LPUART support"
 	help
 	  Select this to enable a Low Power UART for Freescale VF610 and
 	  QorIQ Layerscape devices.
+
+config MVEBU_A3700_UART
+	bool "UART support for Armada 3700"
+	default n
+	help
+	  Choose this option to add support for UART driver on the Marvell
+	  Armada 3700 SoC. The base address is configured via DT.
+
+config MXC_UART
+	bool "IMX serial port support"
+	depends on MX5 || MX6
+	help
+	  If you have a machine based on a Motorola IMX CPU you
+	  can enable its onboard serial port by enabling this option.
 
 config PIC32_SERIAL
 	bool "Support for Microchip PIC32 on-chip UART"
@@ -276,6 +407,24 @@ config SYS_NS16550
 	  CONFIG_SYS_NS16550_CLK defined in a legacy board header file will
 	  be used. It can be a constant or a function to get clock, eg,
 	  get_serial_clock().
+
+config INTEL_MID_SERIAL
+	bool "Intel MID platform UART support"
+	depends on DM_SERIAL && OF_CONTROL
+	depends on INTEL_MID
+	select SYS_NS16550
+	help
+	  Select this to enable a UART for Intel MID platforms.
+	  This uses the ns16550 driver as a library.
+
+config ROCKCHIP_SERIAL
+	bool "Rockchip on-chip UART support"
+	depends on DM_SERIAL && SPL_OF_PLATDATA
+	help
+	  Select this to enable a debug UART for Rockchip devices when using
+	  CONFIG_SPL_OF_PLATDATA (i.e. a compiled-in device tree replacemenmt).
+	  This uses the ns16550 driver, converting the platdata from of-platdata
+	  to the ns16550 format.
 
 config SANDBOX_SERIAL
 	bool "Sandbox UART support"
@@ -300,6 +449,7 @@ config SANDBOX_SERIAL
 config UNIPHIER_SERIAL
 	bool "Support for UniPhier on-chip UART"
 	depends on ARCH_UNIPHIER
+	default y
 	help
 	  If you have a UniPhier based board and want to use the on-chip
 	  serial ports, say Y to this option. If unsure, say N.
@@ -310,5 +460,35 @@ config XILINX_UARTLITE
 	help
 	  If you have a Xilinx based board and want to use the uartlite
 	  serial ports, say Y to this option. If unsure, say N.
+
+config MESON_SERIAL
+	bool "Support for Amlogic Meson UART"
+	depends on DM_SERIAL && ARCH_MESON
+	help
+	  If you have an Amlogic Meson based board and want to use the on-chip
+	  serial ports, say Y to this option. If unsure, say N.
+
+config MSM_SERIAL
+	bool "Qualcomm on-chip UART"
+	depends on DM_SERIAL
+	help
+	  Support Data Mover UART used on Qualcomm Snapdragon SoCs.
+	  It should support all Qualcomm devices with UARTDM version 1.4,
+	  for example APQ8016 and MSM8916.
+	  Single baudrate is supported in current implementation (115200).
+
+config PXA_SERIAL
+	bool "PXA serial port support"
+	help
+	  If you have a machine based on a Marvell XScale PXA2xx CPU you
+	  can enable its onboard serial ports by enabling this option.
+
+config STI_ASC_SERIAL
+	bool "STMicroelectronics on-chip UART"
+	depends on DM_SERIAL && ARCH_STI
+	help
+	  Select this to enable Asynchronous Serial Controller available
+	  on STiH410 SoC. This is a basic implementation,  it supports
+	  following baudrate 9600, 19200, 38400, 57600 and 115200.
 
 endmenu

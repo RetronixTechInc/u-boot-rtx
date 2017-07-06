@@ -24,7 +24,7 @@
 #define sec_in16(a)       in_be16(a)
 #define sec_clrbits32     clrbits_be32
 #define sec_setbits32     setbits_be32
-#else
+#elif defined(CONFIG_SYS_FSL_HAS_SEC)
 #error Neither CONFIG_SYS_FSL_SEC_LE nor CONFIG_SYS_FSL_SEC_BE is defined
 #endif
 
@@ -294,8 +294,6 @@ struct sg_entry {
 
 #endif
 
-int sec_init(void);
-
 /* blob_dek:
  * Encapsulates the src in a secure blob and stores it dst
  * @src: reference to the plaintext
@@ -305,6 +303,10 @@ int sec_init(void);
  */
 int blob_dek(const u8 *src, u8 *dst, u8 len);
 
+#if defined(CONFIG_ARCH_C29X)
+int sec_init_idx(uint8_t);
+#endif
+int sec_init(void);
 #endif
 
 #endif /* __FSL_SEC_H */

@@ -20,10 +20,6 @@
 #ifndef _CONFIG_KM_ARM_H
 #define _CONFIG_KM_ARM_H
 
-
-/* We got removed from Linux mach-types.h */
-#define MACH_TYPE_KM_KIRKWOOD          2255
-
 /*
  * High Level Configuration Options (easy to change)
  */
@@ -41,7 +37,6 @@
 #include "keymile-common.h"
 
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_SF
 
 /* SPI NOR Flash default params, used by sf commands */
 #define CONFIG_SF_DEFAULT_SPEED		8100000
@@ -93,9 +88,6 @@
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* disable board lowlevel_init */
 #define CONFIG_MISC_INIT_R
 
-/* Pass open firmware flat tree */
-#define CONFIG_OF_LIBFDT
-
 /*
  * NS16550 Configuration
  */
@@ -129,11 +121,6 @@
 #define CONFIG_CMD_MTDPARTS
 
 /*
- * Without NOR FLASH we need this
- */
-#define CONFIG_SYS_NO_FLASH
-
-/*
  * NAND Flash configuration
  */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
@@ -150,10 +137,7 @@
 /*
  * Other required minimal configurations
  */
-#define CONFIG_CONSOLE_INFO_QUIET	/* some code reduction */
 #define CONFIG_ARCH_CPU_INIT		/* call arch_cpu_init() */
-#define CONFIG_ARCH_MISC_INIT		/* call arch_misc_init() */
-#define CONFIG_DISPLAY_CPUINFO		/* Display cpu info */
 #define CONFIG_NR_DRAM_BANKS	4
 #define CONFIG_SYS_RESET_ADDRESS 0xffff0000	/* Rst Vector Adr */
 
@@ -162,7 +146,6 @@
  */
 #define CONFIG_NETCONSOLE	/* include NetConsole support   */
 #define CONFIG_MII		/* expose smi ove miiphy interface */
-#define CONFIG_CMD_MII		/* to debug mdio phy config */
 #define CONFIG_MVGBE		/* Enable Marvell Gbe Controller Driver */
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	/* detect link using phy */
 #define CONFIG_MVGBE_PORTS	{1, 0}	/* enable port 0 only */
@@ -304,7 +287,7 @@ int get_scl(void);
 	"arch=arm\0"							\
 	""
 
-#if defined(CONFIG_SYS_NO_FLASH)
+#if !defined(CONFIG_MTD_NOR_FLASH)
 #undef	CONFIG_FLASH_CFI_MTD
 #undef	CONFIG_JFFS2_CMDLINE
 #endif
@@ -312,7 +295,6 @@ int get_scl(void);
 /* additions for new relocation code, must be added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
 /* Do early setups now in board_init_f() */
-#define CONFIG_BOARD_EARLY_INIT_F
 
 /*
  * resereved pram area at the end of memroy [hex]
@@ -328,9 +310,7 @@ int get_scl(void);
 #define CONFIG_POST	(CONFIG_SYS_POST_MEM_REGIONS)
 #define CONFIG_POST_SKIP_ENV_FLAGS
 #define CONFIG_POST_EXTERNAL_WORD_FUNCS
-#define CONFIG_CMD_DIAG
 
 /* we do the whole PCIe FPGA config stuff here */
-#define	CONFIG_BOARD_LATE_INIT
 
 #endif /* _CONFIG_KM_ARM_H */

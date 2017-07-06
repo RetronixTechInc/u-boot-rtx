@@ -13,10 +13,6 @@
 #include <linux/sizes.h>
 #include <asm/arch/cpu.h>
 
-/*
- * Define DevKit3250 machine type by hand until it lands in mach-types
- */
-#define MACH_TYPE_DEVKIT3250		3697
 #define CONFIG_MACH_TYPE		MACH_TYPE_DEVKIT3250
 
 #define CONFIG_SYS_ICACHE_OFF
@@ -24,7 +20,6 @@
 #if !defined(CONFIG_SPL_BUILD)
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #endif
-#define CONFIG_BOARD_EARLY_INIT_F
 
 /*
  * Memory configurations
@@ -46,7 +41,6 @@
  * Serial Driver
  */
 #define CONFIG_SYS_LPC32XX_UART		5   /* UART5 */
-#define CONFIG_BAUDRATE			115200
 
 /*
  * DMA
@@ -61,7 +55,6 @@
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_LPC32XX
 #define CONFIG_SYS_I2C_SPEED		100000
-#define CONFIG_CMD_I2C
 
 /*
  * GPIO
@@ -73,7 +66,6 @@
  */
 #define CONFIG_LPC32XX_SSP
 #define CONFIG_LPC32XX_SSP_TIMEOUT	100000
-#define CONFIG_CMD_SPI
 
 /*
  * Ethernet
@@ -84,9 +76,6 @@
 #define CONFIG_PHYLIB
 #define CONFIG_PHY_ADDR			0x1F
 #define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
 
 /*
  * NOR Flash
@@ -121,7 +110,6 @@
 #define CONFIG_SYS_NAND_PAGE_SIZE		NAND_LARGE_BLOCK_PAGE_SIZE
 #define CONFIG_SYS_NAND_USE_FLASH_BBT
 
-#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_NAND
 
 /*
@@ -129,9 +117,6 @@
  */
 #define CONFIG_USB_OHCI_LPC32XX
 #define CONFIG_USB_ISP1301_I2C_ADDR		0x2d
-#define CONFIG_USB_STORAGE
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_USB
 
 /*
  * U-Boot General Configurations
@@ -145,14 +130,10 @@
 
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_CMDLINE_EDITING
-#define CONFIG_VERSION_VARIABLE
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DOS_PARTITION
 
 /*
  * Pass open firmware flat tree
  */
-#define CONFIG_OF_LIBFDT
 
 /*
  * Environment
@@ -180,15 +161,12 @@
 /*
  * U-Boot Commands
  */
-#define CONFIG_CMD_CACHE
 
 /*
  * Boot Linux
  */
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_ZERO_BOOTDELAY_CHECK
-#define CONFIG_BOOTDELAY		1
 
 #define CONFIG_BOOTFILE			"uImage"
 #define CONFIG_BOOTARGS			"console=ttyS0,115200n8"
@@ -202,20 +180,15 @@
 
 /* SPL will use SRAM as stack */
 #define CONFIG_SPL_STACK		0x0000FFF8
-#define CONFIG_SPL_BOARD_INIT
 
 /* Use the framework and generic lib */
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
 
 /* SPL will use serial */
-#define CONFIG_SPL_SERIAL_SUPPORT
 
 /* SPL loads an image from NAND */
 #define CONFIG_SPL_NAND_SIMPLE
 #define CONFIG_SPL_NAND_RAW_ONLY
-#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_DRIVERS
 
 #define CONFIG_SPL_NAND_ECC

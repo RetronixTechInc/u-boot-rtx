@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2010 Andreas Bießmann <andreas.devel@gmail.com>
+ * (C) Copyright 2010 Andreas Bießmann <andreas@biessmann.org>
  *
  * derived from previous work
  *
@@ -12,6 +12,7 @@
 
 #include <common.h>
 #include <netdev.h>
+#include <asm/mach-types.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_pio.h>
 #include <asm/arch/at91_common.h>

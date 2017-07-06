@@ -33,7 +33,7 @@ void pinmux_init(void)
 	pinmux_config_drvgrp_table(cardhu_padctrl, ARRAY_SIZE(cardhu_padctrl));
 }
 
-#if defined(CONFIG_TEGRA_MMC)
+#if defined(CONFIG_MMC_SDHCI_TEGRA)
 /*
  * Do I2C/PMU writes to bring up SD card bus power
  *
@@ -110,11 +110,11 @@ int tegra_pcie_board_init(void)
 	}
 
 	/* GPIO: PEX = 3.3V */
-	err = gpio_request(GPIO_PL7, "PEX");
+	err = gpio_request(TEGRA_GPIO(L, 7), "PEX");
 	if (err < 0)
 		return err;
 
-	gpio_direction_output(GPIO_PL7, 1);
+	gpio_direction_output(TEGRA_GPIO(L, 7), 1);
 
 	/* TPS659110: LDO2_REG = 1.05V, ACTIVE */
 	data[0] = 0x15;
