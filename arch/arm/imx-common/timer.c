@@ -49,6 +49,8 @@ static inline int gpt_has_clk_source_osc(void)
 		return 1;
 
 	return 0;
+#elif defined(CONFIG_MX7)
+	return 1;
 #else
 	return 0;
 #endif
@@ -56,6 +58,9 @@ static inline int gpt_has_clk_source_osc(void)
 
 static inline ulong gpt_get_clk(void)
 {
+#if defined(CONFIG_MX7)
+	return MXC_HCLK >> 3;
+#else
 #ifdef CONFIG_MXC_GPT_HCLK
 	if (gpt_has_clk_source_osc())
 		return MXC_HCLK >> 3;
@@ -63,6 +68,7 @@ static inline ulong gpt_get_clk(void)
 		return mxc_get_clock(MXC_IPG_PERCLK);
 #else
 	return MXC_CLK32;
+#endif
 #endif
 }
 
@@ -104,6 +110,9 @@ int timer_init(void)
 	i |= GPTCR_CLKSOURCE_32 | GPTCR_TEN;
 #endif
 	__raw_writel(i, &cur_gpt->control);
+
+	gd->arch.tbl = __raw_readl(&cur_gpt->counter);
+	gd->arch.tbu = 0;
 
 	return 0;
 }
