@@ -19,10 +19,7 @@
 #ifdef CONFIG_BOOT_SYSTEM
 	#include <rtx/bootsel.h>
 #endif
-
-#ifdef CONFIG_MCU_WDOG_BUS
-	#include <rtx/efm32.h>
-#endif
+#include <rtx/efm32.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

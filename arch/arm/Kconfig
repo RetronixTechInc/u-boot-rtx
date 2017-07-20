@@ -89,6 +89,10 @@ config TARGET_RTX_TREADMILL_MX6Q
 	bool "Support Retronix TREADMILL Board (imx6q SOC)"
 	select CPU_V7
 
+config TARGET_ADVANTECH_ROM7420_MX6Q
+	bool "Support Advantech ROM7420 Board (imx6q SOC)"
+	select CPU_V7
+
 config TARGET_INTEGRATORAP_CM720T
 	bool "Support integratorap_cm720t"
 	select CPU_ARM720T
@@ -938,6 +942,7 @@ source "board/retronix/rtx_pitx_mx6q/Kconfig"
 source "board/retronix/rtx_q7_mx6q/Kconfig"
 source "board/retronix/rtx-valor111-plus-mx6dl/Kconfig"
 source "board/retronix/rtx-treadmill-mx6q/Kconfig"
+source "board/advantech/advantech_rom7420_mx6q/Kconfig"
 source "board/samsung/smdk2410/Kconfig"
 source "board/sandisk/sansa_fuze_plus/Kconfig"
 source "board/scb9328/Kconfig"

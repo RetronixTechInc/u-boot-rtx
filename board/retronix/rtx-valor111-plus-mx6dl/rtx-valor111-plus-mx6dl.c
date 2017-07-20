@@ -52,10 +52,8 @@
 #endif
 #endif /*CONFIG_FSL_FASTBOOT*/
 
-#ifdef CONFIG_MCU_WDOG_BUS
-	#include <rtx/efm32.h>
-#endif
-	#include <rtx/bootsel.h>
+#include <rtx/efm32.h>
+#include <rtx/bootsel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -1256,7 +1254,7 @@ static const struct boot_mode board_boot_modes[] = {
 
 int board_late_init(void)
 {
-#if defined(CONFIG_TARGET_RTX_A6_MX6Q_MFG) && defined(CONFIG_MCU_WDOG_BUS)
+#if defined(CONFIG_TARGET_RTX_A6_MX6Q_MFG)
 	disable_efm32_watchdog( ) ;
 #endif
 
@@ -1381,9 +1379,7 @@ void board_recovery_setup(void)
 		return;
 	}
 
-	#ifdef CONFIG_MCU_WDOG_BUS
-		disable_efm32_watchdog( ) ;
-	#endif
+	disable_efm32_watchdog( ) ;
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");
 }
