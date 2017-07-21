@@ -1,0 +1,327 @@
+menu "Retronix Zero Partition Memory Map and Size"
+
+	config RTX_PARTITION_BLOCK_SIZE
+		hex "Read/Write Block Size"
+		default 0x200
+
+	config RTX_PARTITION_0_MBR_OFFSET
+		hex "MBR Offset"
+		default 0
+
+	config RTX_PARTITION_0_MBR_SIZE
+		hex "MBR Sizes"
+		default 0x2
+
+	config RTX_PARTITION_0_UBOOT_OFFSET
+		hex "Boot Loader Offset"
+		default 0x2
+
+	config RTX_PARTITION_0_UBOOT_SIZE
+		hex "Boot Loader Sizes"
+		default 0x5FE
+
+	config RTX_PARTITION_0_DATA_OFFSET
+		hex "Data Offset"
+		default 0x600
+
+	config RTX_PARTITION_0_DATA_SIZE
+		hex "Data Size"
+		default 0x2
+
+	config RTX_PARTITION_0_RECOVERY_KERNEL_OFFSET
+		hex "Recovery Kernel Offset"
+		default 0x800
+
+	config RTX_PARTITION_0_RECOVERY_KERNEL_SIZE
+		hex "Recovery Kernel Size"
+		default 0x5400
+		
+	config RTX_PARTITION_0_RECOVERY_KERNEL_DTB_OFFSET
+		hex "Recovery Kernel DTB Offset"
+		default 0x5C00
+
+	config RTX_PARTITION_0_RECOVERY_KERNEL_DTB_SIZE
+		hex "Recovery Kernel DTB Size"
+		default 0x400
+
+	config RTX_PARTITION_0_UBOOT_ARGUMENT_OFFSET
+		hex "U-Boot Argument Offset"
+		default 0x6000
+
+	config RTX_PARTITION_0_UBOOT_ARGUMENT_SIZE
+		hex "U-Boot Argument Size"
+		default 0x400
+
+	config RTX_PARTITION_0_KERNEL_DTB_OFFSET
+		hex "Kernel DTB Offset"
+		default 0x6400
+
+	config RTX_PARTITION_0_KERNEL_DTB_SIZE
+		hex "Kernel DTB Size"
+		default 0x400
+
+	config RTX_PARTITION_0_KERNEL_OFFSET
+		hex "Kernel Offset"
+		default 0x6800
+
+	config RTX_PARTITION_0_KERNEL_SIZE
+		hex "Kernel Size"
+		default 0x5800
+
+	config RTX_PARTITION_0_RAM_DISK0_OFFSET
+		hex "Android Root Filesystem Offset"
+		default 0xC000
+		help
+			for android boot ram disk
+
+	config RTX_PARTITION_0_RAM_DISK0_SIZE
+		hex "Android Root Filesystem Size"
+		default 0x1000
+
+	config RTX_PARTITION_0_RAM_DISK1_OFFSET
+		hex "Android Recovery Root Filesystem Offset"
+		default 0xD000
+		help
+			for android recovery ram disk
+
+	config RTX_PARTITION_0_RAM_DISK1_SIZE
+		hex "Android Recovery Root Filesystem Size"
+		default 0x2000
+
+	config RTX_PARTITION_0_RAM_DISK2_OFFSET
+		hex "Mini. Root Filesystem Offset"
+		default 0xF000
+		help
+			for update ram disk
+
+	config RTX_PARTITION_0_RAM_DISK2_SIZE
+		hex "Mini. Root Filesystem Size"
+		default 0x5000
+
+	config RTX_PARTITION_0_LOGO_OFFSET
+		hex "Logo Image Offset"
+		default 0x1E000
+
+	config RTX_PARTITION_0_LOGO_SIZE
+		hex "Logo Image Size"
+		default 0x2000
+
+	config RTX_PARTITION_0_MAX_SIZE
+		hex "Max Size"
+		default 0x20000
+
+endmenu
+
+menu "Retronix Loader Memory Map"
+
+	config RTX_LOADADDR
+		hex "Loading Address for Kernel"
+		default 0x10800000
+
+	config RTX_LOADADDR_DTB
+		hex "Loading Address for Kernel DTB"
+		default 0x11C00000
+	
+	config RTX_LOADADDR_RD
+		hex "Loading Address for Ram Disk"
+		default 0x11D00000
+
+endmenu
+
+menu "Retronix Debug Port"
+	config RTX_DEBUG_UART_PORT
+		int "Debug Uart Port (0~4)"
+		default 0
+endmenu
+
+menu "U-Boot Environment"
+
+	menu "Android"
+		depends on RTX_ANDROID_SUPPORT
+		config ANDROID_RECOVERY_BOOTARGS
+			string 
+		config ANDROID_RECOVERY_BOOTCMD
+			string 
+	endmenu
+
+	menu "Display"
+		comment "Select output interface"
+		config RTX_BOOT_ARGS_VGA_EN
+			bool "Enable VGA argument"
+			default n
+
+		config RTX_BOOT_ARGS_HDMI_EN
+			bool "Enable HDMI argument"
+			default n	
+
+		config RTX_BOOT_ARGS_LVDS0_EN
+			bool "Enable LVDS0 argument"
+			default n	
+
+		config RTX_BOOT_ARGS_LVDS1_EN
+			bool "Enable LVDS1 argument"
+			default n
+		
+		comment "The output interface argument"
+		
+		config RTX_BOOT_ARGS_VGA
+			depends on RTX_BOOT_ARGS_VGA_EN
+			string "VGA argument"
+			default "1024x768@60,if=RGB24,bpp=32"
+
+		config RTX_BOOT_ARGS_HDMI
+			depends on RTX_BOOT_ARGS_HDMI_EN
+			string "HDMI argument"
+			default "1920x1080M@60,if=RGB24,bpp=32"
+
+		config RTX_BOOT_ARGS_LVDS0
+			depends on RTX_BOOT_ARGS_LVDS0_EN
+			string "LVDS0 argument"
+			default "1024x768@60,if=RGB24,bpp=32"
+
+		config RTX_BOOT_ARGS_LVDS1
+			depends on RTX_BOOT_ARGS_LVDS1_EN
+			string "LVDS1"
+			default "1024x768@60,if=RGB24,bpp=32"
+		
+		comment "Set Video argument"
+		
+		choice
+			prompt "Video 1 select"
+			default RTX_BOOT_ARGS_VIDEO1_SEL_NONE
+
+			config RTX_BOOT_ARGS_VIDEO1_SEL_NONE
+				bool "None"
+			
+			config RTX_BOOT_ARGS_VIDEO1_SEL_VGA
+				depends on RTX_BOOT_ARGS_VGA_EN
+				bool "VGA"
+
+			config RTX_BOOT_ARGS_VIDEO1_SEL_HDMI
+				depends on RTX_BOOT_ARGS_HDMI_EN
+				bool "HDMI"
+
+			config RTX_BOOT_ARGS_VIDEO1_SEL_LVDS0
+				depends on RTX_BOOT_ARGS_LVDS0_EN
+				bool "LVDS0"
+
+			config RTX_BOOT_ARGS_VIDEO1_SEL_LVDS1
+				depends on RTX_BOOT_ARGS_LVDS1_EN
+				bool "LVDS1"
+
+		endchoice
+		
+		config RTX_BOOT_ARGS_VIDEO1
+			int 
+			default 0 if RTX_BOOT_ARGS_VIDEO1_SEL_NONE
+			default 1 if RTX_BOOT_ARGS_VIDEO1_SEL_VGA
+			default 2 if RTX_BOOT_ARGS_VIDEO1_SEL_HDMI
+			default 3 if RTX_BOOT_ARGS_VIDEO1_SEL_LVDS0
+			default 4 if RTX_BOOT_ARGS_VIDEO1_SEL_LVDS1
+
+		choice
+			prompt "Video 2 select"
+			default RTX_BOOT_ARGS_VIDEO2_SEL_NONE
+
+			config RTX_BOOT_ARGS_VIDEO2_SEL_NONE
+				bool "None"
+			
+			config RTX_BOOT_ARGS_VIDEO2_SEL_VGA
+				depends on RTX_BOOT_ARGS_VGA_EN
+				bool "VGA"
+
+			config RTX_BOOT_ARGS_VIDEO2_SEL_HDMI
+				depends on RTX_BOOT_ARGS_HDMI_EN
+				bool "HDMI"
+
+			config RTX_BOOT_ARGS_VIDEO2_SEL_LVDS0
+				depends on RTX_BOOT_ARGS_LVDS0_EN
+				bool "LVDS0"
+
+			config RTX_BOOT_ARGS_VIDEO2_SEL_LVDS1
+				depends on RTX_BOOT_ARGS_LVDS1_EN
+				bool "LVDS1"
+
+		endchoice
+		
+		config RTX_BOOT_ARGS_VIDEO2
+			int 
+			default 0 if RTX_BOOT_ARGS_VIDEO2_SEL_NONE
+			default 1 if RTX_BOOT_ARGS_VIDEO2_SEL_VGA
+			default 2 if RTX_BOOT_ARGS_VIDEO2_SEL_HDMI
+			default 3 if RTX_BOOT_ARGS_VIDEO2_SEL_LVDS0
+			default 4 if RTX_BOOT_ARGS_VIDEO2_SEL_LVDS1
+
+		choice
+			prompt "Video 3 select"
+			default RTX_BOOT_ARGS_VIDEO3_SEL_NONE
+
+			config RTX_BOOT_ARGS_VIDEO3_SEL_NONE
+				bool "None"
+			
+			config RTX_BOOT_ARGS_VIDEO3_SEL_VGA
+				depends on RTX_BOOT_ARGS_VGA_EN
+				bool "VGA"
+
+			config RTX_BOOT_ARGS_VIDEO3_SEL_HDMI
+				depends on RTX_BOOT_ARGS_HDMI_EN
+				bool "HDMI"
+
+			config RTX_BOOT_ARGS_VIDEO3_SEL_LVDS0
+				depends on RTX_BOOT_ARGS_LVDS0_EN
+				bool "LVDS0"
+
+			config RTX_BOOT_ARGS_VIDEO3_SEL_LVDS1
+				depends on RTX_BOOT_ARGS_LVDS1_EN
+				bool "LVDS1"
+
+		endchoice
+		
+		config RTX_BOOT_ARGS_VIDEO3
+			int 
+			default 0 if RTX_BOOT_ARGS_VIDEO3_SEL_NONE
+			default 1 if RTX_BOOT_ARGS_VIDEO3_SEL_VGA
+			default 2 if RTX_BOOT_ARGS_VIDEO3_SEL_HDMI
+			default 3 if RTX_BOOT_ARGS_VIDEO3_SEL_LVDS0
+			default 4 if RTX_BOOT_ARGS_VIDEO3_SEL_LVDS1
+
+	endmenu
+
+	menu "Memory"
+		config RTX_BOOT_ARGS_VMALLOC
+			int "vmalloc size (?M)"
+			default 400
+
+		config RTX_BOOT_ARGS_GPU_MEM
+			int "GPU memory size (?M)"
+			default 175
+
+	endmenu
+	
+	menu "Ethernet MAC"
+		config RTX_BOOT_ARGS_DEFAULT_MAC01
+			string "Default MAC 1 Address"
+			default "1E:ED:19:27:1A:B3"
+
+		config RTX_BOOT_ARGS_DEFAULT_MAC02
+			string "Default MAC 2 Address"
+			default "1E:ED:19:27:1A:B4"
+	endmenu
+
+	menu "Storage"
+		config RTX_BOOT_ARGS_ROOTFS_MMC_NUM
+			int "Root file system emmc storage usdhc number"
+			default 0
+			help
+				0 : usdhc4
+				1 : usdhc3
+				2 : usdhc2
+				3 : usdhc1
+
+		config RTX_BOOT_ARGS_ROOTFS_PARTITION
+			int "Root file system partition number"
+			default 1
+
+	endmenu
+
+endmenu

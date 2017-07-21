@@ -693,6 +693,7 @@ libs-y += test/
 libs-y += test/dm/
 libs-$(CONFIG_UT_ENV) += test/env/
 libs-$(CONFIG_UT_OVERLAY) += test/overlay/
+libs-y += Retronix/drivers/
 
 libs-y += $(if $(BOARDDIR),board/$(BOARDDIR)/)
 

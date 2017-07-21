@@ -1,0 +1,3 @@
+
+source "Retronix/drivers/efm32/Kconfig"
+source "Retronix/drivers/rtx/Kconfig"

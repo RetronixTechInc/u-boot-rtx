@@ -1,0 +1,12 @@
+if TARGET_RTX_PICO_B10
+
+config SYS_BOARD
+	default "rtx_pico_mx6q_b10"
+
+config SYS_VENDOR
+	default "../Retronix/board"
+
+config SYS_CONFIG_NAME
+	default "../../Retronix/include/configs/rtx_pico_mx6q_b10"
+
+endif

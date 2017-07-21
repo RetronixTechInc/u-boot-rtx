@@ -13,6 +13,13 @@
 #include <console.h>
 #include <version.h>
 
+#ifdef CONFIG_RTX_EFM32
+	#include "../Retronix/include/efm32.h"
+#endif
+#ifdef CONFIG_RTX_BOOT_SYSTEM
+	#include "../Retronix/include/bootsystem.h"
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /*
@@ -64,6 +71,14 @@ void main_loop(void)
 		cli_secure_boot_cmd(s);
 
 	autoboot_command(s);
+	
+	#ifdef CONFIG_RTX_BOOT_SYSTEM
+		vPassword_Process();
+	#endif
+
+	#ifdef CONFIG_RTX_EFM32
+		vSet_efm32_watchdog( 0 ) ;
+	#endif
 
 	cli_loop();
 	panic("No CLI available");

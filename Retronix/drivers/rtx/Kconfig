@@ -1,0 +1,62 @@
+menu "Retronix Boot System"
+
+	config RTX_BOOT_SYSTEM
+		bool "Retronix Boot System"
+		default n
+
+	menu "Boot System Options"
+		config RTX_BOOT_SYSTEM_MAX_EXTSD
+			depends on RTX_BOOT_SYSTEM
+			int "Max. SD Card"
+			default 4
+
+		menu "Function Select"
+			depends on RTX_BOOT_SYSTEM
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_PASSWORD
+				bool "Password"
+				default n
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_CHANG_PW
+				bool "Change Password"
+				default n
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_CHG_STORAGE
+				bool "Auto change storage"
+				default n
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_MENU
+				bool "Boot menu"
+				default n
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_UD_EXTSD
+				bool "Update from SD Card"
+				default n
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_UD_USB
+				bool "Update from U-DIsk"
+				default n
+
+			config RTX_BOOT_SYSTEM_OPTIONS_FUNC_SCANFILE_SELF
+				bool "Check Magic code from boot storage"
+				default n
+
+		endmenu
+
+		menu "Extern Command"
+
+			config RTX_BOOT_CMD_RESET_ENV
+				bool "Reset U-Boot Environment"
+				default n
+
+			config RTX_BOOT_CMD_RESET_SETTING
+				bool "Reset Retronix data"
+				default n
+
+			config RTX_BOOT_SYSTEM_SHOW_SETTING_INFO
+				bool "Dump Retronix data"
+				default n
+		endmenu
+
+	endmenu
+endmenu

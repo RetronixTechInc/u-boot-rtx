@@ -1,0 +1,18 @@
+menu "Retronix Watchdog"
+	config RTX_EFM32
+		bool "Retronix EFM32 Watchdog"
+		default n
+
+		menu "Retronix Watchdog Options"
+			depends on RTX_EFM32
+
+			config RTX_EFM32_I2C_BUS
+				int "I2C Bus Number"
+				default 2
+
+			config RTX_EFM32_WATCHDOG_TIME
+				int "Watch dog default time"
+				default 120
+
+		endmenu
+endmenu

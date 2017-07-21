@@ -15,6 +15,10 @@
 #include <post.h>
 #include <u-boot/sha256.h>
 
+#ifdef CONFIG_RTX_BOOT_SYSTEM
+	#include "../Retronix/include/bootsystem.h"
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_DELAY_STOP_STR 32
@@ -212,43 +216,71 @@ static int __abortboot(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
-
+	#ifdef CONFIG_RTX_BOOT_SYSTEM
+		int savekey ;
+	#endif
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
 	printf("Hit any key to stop autoboot: %2d ", bootdelay);
 #endif
+	#ifdef CONFIG_RTX_BOOT_SYSTEM
+		while ((bootdelay > 0) && (!abort)) {
+			--bootdelay;
+			/* delay 1000 ms */
+			ts = get_timer(0);
+			do {
+				if (tstc()) {	/* we got a key press	*/
+					savekey = getc();
+					#ifdef CONFIG_MENUKEY
+						menukey = savekey ;
+					#endif
+					if ( iBootMenu_Select( savekey ) )
+					{
+						abort  = 1;	/* don't auto boot	*/
+						bootdelay = 0;	/* no more delay	*/
+						break ;
+					}
+				}
+				udelay(10000);
+			} while (!abort && get_timer(ts) < 1000);
 
-	/*
-	 * Check if key already pressed
-	 */
-	if (tstc()) {	/* we got a key press	*/
-		(void) getc();  /* consume input	*/
-		puts("\b\b\b 0");
-		abort = 1;	/* don't auto boot	*/
-	}
-
-	while ((bootdelay > 0) && (!abort)) {
-		--bootdelay;
-		/* delay 1000 ms */
-		ts = get_timer(0);
-		do {
+			printf("\b\b\b%2d ", bootdelay);
+		}
+	#else
+		/*
+		 * Check if key already pressed
+		 */
+		if (bootdelay >= 0) {
 			if (tstc()) {	/* we got a key press	*/
-				abort  = 1;	/* don't auto boot	*/
-				bootdelay = 0;	/* no more delay	*/
-# ifdef CONFIG_MENUKEY
-				menukey = getc();
-# else
 				(void) getc();  /* consume input	*/
-# endif
-				break;
+				puts("\b\b\b 0");
+				abort = 1;	/* don't auto boot	*/
 			}
-			udelay(10000);
-		} while (!abort && get_timer(ts) < 1000);
+		}
 
-		printf("\b\b\b%2d ", bootdelay);
-	}
+		while ((bootdelay > 0) && (!abort)) {
+			--bootdelay;
+			/* delay 1000 ms */
+			ts = get_timer(0);
+			do {
+				if (tstc()) {	/* we got a key press	*/
+					abort  = 1;	/* don't auto boot	*/
+					bootdelay = 0;	/* no more delay	*/
+					#ifdef CONFIG_MENUKEY
+						menukey = getc();
+					#else
+						(void) getc();  /* consume input	*/
+					#endif
+					break;
+				}
+				udelay(10000);
+			} while (!abort && get_timer(ts) < 1000);
 
+			printf("\b\b\b%2d ", bootdelay);
+		}
+	#endif
+	
 	putc('\n');
 
 	return abort;
@@ -347,7 +379,10 @@ void autoboot_command(const char *s)
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 #endif
-
+		#ifdef CONFIG_RTX_BOOT_SYSTEM
+			iBootUpdate_Check( ) ;
+		#endif
+		
 		run_command_list(s, -1, 0);
 
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
