@@ -89,7 +89,7 @@ case "${1}" in
 		sync
 		;;
 	"config")
-		make SRCARCH=../retronix ${U_BOOT_DEFAULT_CONFIG}
+		make SRCARCH=../Retronix ${U_BOOT_DEFAULT_CONFIG}
 		;;
 	"menuconfig")
 		make SRCARCH=../Retronix ${U_BOOT_DEFAULT_CONFIG}
