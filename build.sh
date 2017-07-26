@@ -9,9 +9,9 @@ export ARCH=arm
 # Cross compile tools path define 
 # default path is /opt/cross if not define CROSS_COMPILE_PATH
 # =====================================
-#CROSS_COMPILE_PATH=/home/artie/JOB-Area/Android
-#CROSS_COMPILE_PATH=/opt/freescale/usr/local
-#CROSS_COMPILE_PATH=/media/tom/ext2t/freescale/cross-compile
+[ -d /opt/freescale/usr/local ] && CROSS_COMPILE_PATH=/opt/freescale/usr/local
+[ -d /home/artie/JOB-Area/Android ] && CROSS_COMPILE_PATH=/home/artie/JOB-Area/Android
+[ -d /media/tom/ext2t/freescale/cross-compile ] && CROSS_COMPILE_PATH=/media/tom/ext2t/freescale/cross-compile
 if [ -z $CROSS_COMPILE_PATH ];then
 CROSS_COMPILE_PATH=/opt/cross
 fi

@@ -295,11 +295,6 @@ static iomux_v3_cfg_t const usb_otg_pads[] = {
 	MX6_PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
 };
 
-static iomux_v3_cfg_t const usb_hc1_pads[] = {
-	MX6_PAD_ENET_TXD1__GPIO1_IO29 | MUX_PAD_CTRL(NO_PAD_CTRL),
-};
-
-
 static void setup_iomux_gpio_init(void)
 {
 	// struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
@@ -764,8 +759,6 @@ static void setup_usb(void)
 	 */
 	imx_iomux_set_gpr_register(1, 13, 1, 0);
 
-	imx_iomux_v3_setup_multiple_pads(usb_hc1_pads,
-					 ARRAY_SIZE(usb_hc1_pads));
 }
 
 int board_ehci_hcd_init(int port)
