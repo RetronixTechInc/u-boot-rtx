@@ -610,7 +610,7 @@ config VIDEO
 	depends on !MACH_SUN8I_V3S
 	depends on !MACH_SUN9I
 	depends on !MACH_SUN50I
-	default y
+	default n
 	---help---
 	Say Y here to add support for using a cfb console on the HDMI, LCD
 	or VGA output found on most sunxi devices. See doc/README.video for

@@ -39,10 +39,12 @@ int power_init_board(void)
 		return ret;
 
 	/* Increase VGEN3 from 2.5 to 2.8V */
+	/*
 	pmic_reg_read(p, PFUZE100_VGEN3VOL, &reg);
 	reg &= ~LDO_VOL_MASK;
 	reg |= LDOB_2_80V;
 	pmic_reg_write(p, PFUZE100_VGEN3VOL, reg);
+	*/
 
 	/* Increase VGEN5 from 2.8 to 3V */
 	pmic_reg_read(p, PFUZE100_VGEN5VOL, &reg);

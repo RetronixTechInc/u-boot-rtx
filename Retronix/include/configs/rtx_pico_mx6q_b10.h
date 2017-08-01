@@ -119,20 +119,24 @@
 	#endif
 
 	/* Framebuffer */
-	#define CONFIG_VIDEO_IPUV3
-	#define CONFIG_VIDEO_BMP_RLE8
-	#define CONFIG_SPLASH_SCREEN
-	#define CONFIG_SPLASH_SCREEN_ALIGN
-	#define CONFIG_BMP_16BPP
-	#define CONFIG_VIDEO_LOGO
-	#define CONFIG_VIDEO_BMP_LOGO
-	#ifdef CONFIG_MX6DL
-		#define CONFIG_IPUV3_CLK 				198000000
-	#else
-		#define CONFIG_IPUV3_CLK 				264000000
+	#ifndef CONFIG_SPL_BUILD
+		#ifdef CONFIG_VIDEO
+			#define CONFIG_VIDEO_IPUV3
+			#define CONFIG_VIDEO_BMP_RLE8
+			#define CONFIG_SPLASH_SCREEN
+			#define CONFIG_SPLASH_SCREEN_ALIGN
+			#define CONFIG_BMP_16BPP
+			#define CONFIG_VIDEO_LOGO
+			#define CONFIG_VIDEO_BMP_LOGO
+			#ifdef CONFIG_MX6DL
+				#define CONFIG_IPUV3_CLK 				198000000
+			#else
+				#define CONFIG_IPUV3_CLK 				264000000
+			#endif
+			#define CONFIG_IMX_HDMI
+			#define CONFIG_IMX_VIDEO_SKIP
+		#endif
 	#endif
-	#define CONFIG_IMX_HDMI
-	#define CONFIG_IMX_VIDEO_SKIP
 
 	#ifndef CONFIG_SPL
 		#define CONFIG_USBD_HS

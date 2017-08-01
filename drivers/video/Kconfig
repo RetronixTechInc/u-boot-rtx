@@ -459,6 +459,7 @@ source "drivers/video/bridge/Kconfig"
 config VIDEO
 	bool "Enable legacy video support"
 	depends on !DM_VIDEO
+	default n
 	help
 	  Define this for video support, without using driver model. Some
 	  drivers use this because they are not yet converted to driver

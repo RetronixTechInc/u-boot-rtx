@@ -140,7 +140,7 @@
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootargs_base=setenv bootargs no_console_suspend\0" \
 		"bootargs_console=setenv bootargs ${bootargs} " ENV_COMMON_CONSOLE "\0" \
-		"bootargs_gen=setenv bootargs ${bootargs} init=/sbin/init ${mmcrootpath}\0" \
+		"bootargs_gen=setenv bootargs ${bootargs} init=/sbin/init " ENV_COMMON_ROOTFS "\0" \
 		"bootcmd=run bootcmd_gen\0" \
 		"bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb r_ramdisk; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0" \
 		"bootdelay=1\0" \
