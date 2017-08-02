@@ -32,15 +32,15 @@
 /* Micron MT41K256M16JT */
 struct mx6_ddr3_cfg rtx_ddr_chip_info = {
 	.mem_speed = 1600,
-	.density   = 4,
+	.density   = 8,
 	.width     = 16,
 	.banks     = 8,
 	.rowaddr   = 15,
 	.coladdr   = 10,
-	.pagesz    = 2,
+	.pagesz    = 1,
 	.trcd      = 1375,
-	.trcmin    = 4875,
-	.trasmin   = 3500,
+	.trcmin    = 5062,
+	.trasmin   = 3750,
 };
 
 struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {

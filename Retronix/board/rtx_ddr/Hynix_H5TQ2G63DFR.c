@@ -29,18 +29,18 @@
 #include <libfdt.h>
 
 
-/* Micron MT41K256M16JT */
+/* Hynix H5TQ4G63AFR */
 struct mx6_ddr3_cfg rtx_ddr_chip_info = {
-	.mem_speed = 1600,
-	.density   = 4,
+	.mem_speed = 1333,
+	.density   = 2,
 	.width     = 16,
 	.banks     = 8,
-	.rowaddr   = 15,
+	.rowaddr   = 14,
 	.coladdr   = 10,
 	.pagesz    = 2,
-	.trcd      = 1375,
-	.trcmin    = 4875,
-	.trasmin   = 3500,
+	.trcd      = 1350,
+	.trcmin    = 4950,
+	.trasmin   = 3600,
 };
 
 struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {

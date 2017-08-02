@@ -29,18 +29,18 @@
 #include <libfdt.h>
 
 
-/* Micron MT41K256M16JT */
-struct mx6_ddr3_cfg rtx_ddr_chip_info = {
-	.mem_speed = 1600,
+/* Micron MT42L256M32D2LG */
+struct mx6_lpddr2_cfg rtx_ddr_chip_info = {
+	.mem_speed = 800,
 	.density   = 4,
-	.width     = 16,
+	.width     = 32,
 	.banks     = 8,
-	.rowaddr   = 15,
+	.rowaddr   = 14,
 	.coladdr   = 10,
-	.pagesz    = 2,
-	.trcd      = 1375,
-	.trcmin    = 4875,
-	.trasmin   = 3500,
+	.trcd_lp   = 2000,
+	.trppb_lp  = 2000,
+	.trpab_lp  = 2250,
+	.trasmin   = 4200,
 };
 
 struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {
@@ -59,7 +59,7 @@ struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {
 	.bi_on = 1,				/* Bank interleaving enabled */
 	.sde_to_rst = 0x10,		/* 14 cycles, 200us (JEDEC default) */
 	.rst_to_cke = 0x23,		/* 33 cycles, 500us (JEDEC default) */
-	.ddr_type = DDR_TYPE_DDR3,
+	.ddr_type = DDR_TYPE_LPDDR2,
 };
 
 

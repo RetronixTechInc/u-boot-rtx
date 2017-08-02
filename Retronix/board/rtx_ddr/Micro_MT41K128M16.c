@@ -29,7 +29,7 @@
 #include <libfdt.h>
 
 
-/* MT41K128M16JT */
+/* Micron MT41K128M16JT */
 struct mx6_ddr3_cfg rtx_ddr_chip_info = {
 	.mem_speed = 1600,
 	.density   = 2,
