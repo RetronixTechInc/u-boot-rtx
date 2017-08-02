@@ -1,0 +1,10 @@
+menu "Memory DDR Chip Select"
+
+	config RTX_DDR_IS_MICRO_MT41K128M16
+		bool "MT41K128M16(Micro,etc)"
+	
+	config RTX_DDR_IS_MICRO_MT41K256M16
+		bool "MT41K256M16(Micro)"
+
+endmenu
+

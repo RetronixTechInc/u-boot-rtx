@@ -56,9 +56,15 @@ CONFIG_OF_LIBFDT=y
 #
 # Retronix
 #
-# CONFIG_TARGET_RTX_PICO_B10 is not set
-CONFIG_TARGET_RTX_PICO_B21=y
+CONFIG_TARGET_RTX_PICO_B10=y
+# CONFIG_TARGET_RTX_PICO_B21 is not set
 # CONFIG_RTX_ANDROID_SUPPORT is not set
+
+#
+# Memory DDR Chip Select
+#
+CONFIG_RTX_DDR_IS_MICRO_MT41K128M16=y
+# CONFIG_RTX_DDR_IS_MICRO_MT41K256M16 is not set
 
 #
 # Retronix Zero Partition Memory Map and Size

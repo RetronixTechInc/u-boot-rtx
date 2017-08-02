@@ -6,7 +6,16 @@ choice
 	optional
 
 config TARGET_RTX_Q7_B10
-	bool "Retronix Q7-B10"
+	bool "Retronix Q7 B10"
+	select BOARD_LATE_INIT
+	select MX6Q
+	select SUPPORT_SPL
+	select DM
+	select DM_THERMAL
+	select BOARD_EARLY_INIT_F
+
+config TARGET_RTX_A6PLUS_B10
+	bool "Retronix A6 Plus B10"
 	select BOARD_LATE_INIT
 	select MX6Q
 	select SUPPORT_SPL
@@ -15,7 +24,7 @@ config TARGET_RTX_Q7_B10
 	select BOARD_EARLY_INIT_F
 
 config TARGET_RTX_PICO_B10
-	bool "Retronix PICO-B10"
+	bool "Retronix PICO B10"
 	select BOARD_LATE_INIT
 	select MX6Q
 	select SUPPORT_SPL
@@ -24,7 +33,7 @@ config TARGET_RTX_PICO_B10
 	select BOARD_EARLY_INIT_F
 
 config TARGET_RTX_PICO_B21
-	bool "Retronix PICO-B21"
+	bool "Retronix PICO B21"
 	select BOARD_LATE_INIT
 	select MX6Q
 	select SUPPORT_SPL
@@ -39,8 +48,10 @@ config RTX_ANDROID_SUPPORT
 	default n
 
 source "Retronix/board/rtx_q7_mx6q_b10/Kconfig"
+source "Retronix/board/rtx_a6plus_mx6q_b10/Kconfig"
 source "Retronix/board/rtx_pico_mx6q_b10/Kconfig"
 source "Retronix/board/rtx_pico_mx6q_b21/Kconfig"
+source "Retronix/board/rtx_ddr/Kconfig"
 source "Retronix/board/rtx_common/Kconfig"
 source "Retronix/drivers/Kconfig"
 

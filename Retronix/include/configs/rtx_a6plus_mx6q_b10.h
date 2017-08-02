@@ -6,8 +6,8 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __RTX_Q7_MX6Q_B10_CONFIG_H
-	#define __RTX_Q7_MX6Q_B10_CONFIG_H
+#ifndef __RTX_A6PLUS_MX6Q_B10_CONFIG_H
+	#define __RTX_A6PLUS_MX6Q_B10_CONFIG_H
 
 	#ifdef CONFIG_SPL
 		#include "imx6_spl.h"

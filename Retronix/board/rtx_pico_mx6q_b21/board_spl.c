@@ -28,6 +28,9 @@
 #include <spl.h>
 #include <libfdt.h>
 
+extern struct mx6_ddr3_cfg rtx_ddr_chip_info ;
+extern struct mx6_ddr_sysinfo rtx_ddr_sysinfo ;
+
 #ifdef CONFIG_SPL_OS_BOOT
 	int spl_start_uboot(void)
 	{
@@ -151,20 +154,6 @@ const struct mx6_mmdc_calibration mx6dqp_mmcd_calib = {
 	.p1_mpwrdlctl    =  0x38283E34,
 };
 
-/* MT41K128M16JT-125 */
-static struct mx6_ddr3_cfg mem_ddr = {
-	.mem_speed = 1600,
-	.density   = 2,
-	.width     = 16,
-	.banks     = 8,
-	.rowaddr   = 14,
-	.coladdr   = 10,
-	.pagesz    = 2,
-	.trcd      = 1375,
-	.trcmin    = 4875,
-	.trasmin   = 3500,
-};
-
 static void ccgr_init(void)
 {
 	struct mxc_ccm_reg *ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
@@ -191,37 +180,18 @@ static void gpr_init(void)
 
 static void spl_dram_init(void)
 {
-	struct mx6_ddr_sysinfo sysinfo = {
-		/* width of data bus:0=16,1=32,2=64 */
-		.dsize = 2,
-		/* config for full 4GB range so that get_mem_size() works */
-		.cs_density = 32, 		/* 32Gb per CS */
-		/* single chip select */
-		.ncs = 1,
-		.cs1_mirror = 0,
-		.rtt_wr = 1, 			/*DDR3_RTT_60_OHM*/	/* RTT_Wr = RZQ/4 */
-		.rtt_nom = 1, 			/*DDR3_RTT_60_OHM*/	/* RTT_Nom = RZQ/4 */
-		.walat = 1,				/* Write additional latency */
-		.ralat = 5,				/* Read additional latency */
-		.mif3_mode = 3,			/* Command prediction working mode */
-		.bi_on = 1,				/* Bank interleaving enabled */
-		.sde_to_rst = 0x10,		/* 14 cycles, 200us (JEDEC default) */
-		.rst_to_cke = 0x23,		/* 33 cycles, 500us (JEDEC default) */
-		.ddr_type = DDR_TYPE_DDR3,
-	};
-
 	if (is_mx6dqp()) {
 		mx6dq_dram_iocfg(64, &mx6dqp_ddr_ioregs, &mx6_grp_ioregs);
-		mx6_dram_cfg(&sysinfo, &mx6dqp_mmcd_calib, &mem_ddr);
+		mx6_dram_cfg(&rtx_ddr_sysinfo, &mx6dqp_mmcd_calib, &rtx_ddr_chip_info);
 	} else {
 		mx6dq_dram_iocfg(64, &mx6_ddr_ioregs, &mx6_grp_ioregs);
-		mx6_dram_cfg(&sysinfo, &mx6_mmcd_calib, &mem_ddr);
+		mx6_dram_cfg(&rtx_ddr_sysinfo, &mx6_mmcd_calib, &rtx_ddr_chip_info);
 	}
-	
+
 	/* Perform DDR DRAM calibration */
 	udelay(100);
-	mmdc_do_write_level_calibration(&sysinfo);
-	mmdc_do_dqs_calibration(&sysinfo);
+	mmdc_do_write_level_calibration(&rtx_ddr_sysinfo);
+	mmdc_do_dqs_calibration(&rtx_ddr_sysinfo);
 
 }
 
