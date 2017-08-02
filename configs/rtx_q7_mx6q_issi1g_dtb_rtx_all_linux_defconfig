@@ -10,7 +10,7 @@ CONFIG_BOOTARGS_GEN="init=/sbin/init root=${mmcrootpath};if test -n ${mac1_val};
 CONFIG_MMCROOTPATH="/dev/mmcblk0p1 rootwait rw"
 CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off fbmem=28M"
 CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=ldb,1024x768@60,if=RGB24,bpp=32 video=mxcfb1:dev=ldb,1024x768@60,if=RGB24,bpp=32 video=mxcfb2:off fbmem=18M,18M"
-CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:dev=ldb,1024x768@60,if=RGB24,bpp=32 video=mxcfb2:dev=ldb,1024x768@60,if=RGB24,bpp=32 fbmem=28M,18M,18M"
+CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:dev=ldb,1024x768@60,if=RGB666,bpp=32 video=mxcfb2:dev=ldb,1024x768@60,if=RGB666,bpp=32 fbmem=28M,18M,18M"
 CONFIG_BOOTARGS_GUIMEM="gpumem=176M vmalloc=400M"
 CONFIG_GUIPORT="dual-hdmi"
 CONFIG_UBOOT_MMCNUM="2"
