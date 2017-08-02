@@ -136,7 +136,7 @@ static void setup_iomux_gpio_init(void)
 	gpio_direction_output(IMX_GPIO_NR(4, 10) , 0);		//AUD_AMP_STBY_B
 	// init gpio lcd
 	gpio_direction_output(IMX_GPIO_NR(1, 21) , 0);		//LVDS0_BLT_CTRL (pwm)
-	gpio_direction_output(IMX_GPIO_NR(1, 19) , 0);		//LVDS1_BLT_CTRL (pwm)
+	gpio_direction_output(IMX_GPIO_NR(1, 19) , 1);		//LVDS1_BLT_CTRL (X) //UHUB_PWR1 (V)
 	reg &= ~(IOMUXC_GPR2_LVDS_CH0_MODE_MASK | IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
 	writel(reg, &iomux->gpr[2]);
 	// init gpio usb
