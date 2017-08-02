@@ -58,7 +58,11 @@ int board_mmc_getcd(struct mmc *mmc)
 	switch (cfg->esdhc_base) 
 	{
 		case USDHC3_BASE_ADDR:
-			ret = !gpio_get_value(BOARD_PAD_SD3_CD);
+			#if defined(BOARD_PAD_SD3_CD)
+				ret = !gpio_get_value(BOARD_PAD_SD3_CD);
+			#else
+				ret = 1;
+			#endif
 			break;
 		case USDHC4_BASE_ADDR:
 			ret = 1; /* eMMC/uSDHC4 is always present */

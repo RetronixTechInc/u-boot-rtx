@@ -21,7 +21,11 @@
 
 int board_spi_cs_gpio(unsigned bus, unsigned cs)
 {
-	return (bus == 0 && cs == 0) ? (IMX_GPIO_NR(4, 9)) : -1;
+	#if defined(BOARD_PAD_SPI4_CS0)
+		return (bus == 0 && cs == 0) ? (BOARD_PAD_SPI4_CS0) : -1;
+	#else
+		return -1 ;
+	#endif
 }
 
 

@@ -58,11 +58,12 @@ int board_phy_config(struct phy_device *phydev)
 
 int board_eth_init(bd_t *bis)
 {
-	/* Reset AR8031 PHY */
-	gpio_direction_output(BOARD_PAD_RGMII_RESET , 0);
-	mdelay(10);
-	gpio_set_value(BOARD_PAD_RGMII_RESET, 1);
-	udelay(100);
+	#if defined(BOARD_PAD_RGMII_RESET)
+		gpio_direction_output(BOARD_PAD_RGMII_RESET , 0);
+		mdelay(10);
+		gpio_set_value(BOARD_PAD_RGMII_RESET, 1);
+		udelay(100);
+	#endif
 
 	return cpu_eth_init(bis);
 }

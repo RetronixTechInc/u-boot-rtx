@@ -22,16 +22,17 @@
 
 #include "board_iomux.h"
 
-struct fsl_esdhc_cfg usdhc_cfg[2] = {
+struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC4_BASE_ADDR},
 	{USDHC3_BASE_ADDR},
+	{USDHC2_BASE_ADDR},
 };
 
 int board_mmc_get_env_dev(int devno)
 {
 	int const iDevNoTable[] = {
 		/* 0 1 2 3 4 5 6 7*/
-		0 , 0 , 1 , 0 , 0 , 0 , 0 , 0
+		0 , 2 , 1 , 0 , 0 , 0 , 0 , 0
 	} ;
 	
 	debug("mmc num: %d\n",devno);
@@ -46,7 +47,7 @@ int board_mmc_get_env_dev(int devno)
 	}
 	
 	debug("trans mmc num: %d\n",iDevNoTable[devno]);
-
+	
 	return ( iDevNoTable[devno] ) ;
 }
 
@@ -57,11 +58,18 @@ int board_mmc_getcd(struct mmc *mmc)
 
 	switch (cfg->esdhc_base) 
 	{
+		case USDHC2_BASE_ADDR:
+			#if defined(BOARD_PAD_SD2_CD)
+				ret = !gpio_get_value(BOARD_PAD_SD2_CD);
+			#else
+				ret = 1 ;
+			#endif
+			break;
 		case USDHC3_BASE_ADDR:
 			#if defined(BOARD_PAD_SD3_CD)
-			ret = !gpio_get_value(BOARD_PAD_SD3_CD);
+				ret = !gpio_get_value(BOARD_PAD_SD3_CD);
 			#else
-			ret = 1;
+				ret = 1;
 			#endif
 			break;
 		case USDHC4_BASE_ADDR:
@@ -78,10 +86,12 @@ int board_mmc_init(bd_t *bis)
 		
 	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 	usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
+	usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 	gpio_direction_input(BOARD_PAD_SD3_CD);
 	
 	ret = fsl_esdhc_initialize(bis, &usdhc_cfg[0]) ;
 	ret|= fsl_esdhc_initialize(bis, &usdhc_cfg[1]) ;
+	ret|= fsl_esdhc_initialize(bis, &usdhc_cfg[2]) ;
 	
 	return ret;
 }
