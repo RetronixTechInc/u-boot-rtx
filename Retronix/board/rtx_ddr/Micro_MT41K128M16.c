@@ -45,7 +45,19 @@ struct mx6_ddr3_cfg rtx_ddr_chip_info = {
 
 struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {
 	/* width of data bus:0=16,1=32,2=64 */
+#if defined(CONFIG_RTX_DDR_DATA_WIDTH_16)
+	.dsize = 0,
+#else
+#if defined(CONFIG_RTX_DDR_DATA_WIDTH_32)
+	.dsize = 1,
+#else
+#if defined(CONFIG_RTX_DDR_DATA_WIDTH_64)
 	.dsize = 2,
+#else
+	.dsize = 2,
+#endif
+#endif
+#endif
 	/* config for full 4GB range so that get_mem_size() works */
 	.cs_density = 32, 		/* 32Gb per CS */
 	/* single chip select */

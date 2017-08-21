@@ -1,0 +1,12 @@
+if TARGET_RTX_VALOR_111
+
+config SYS_BOARD
+	default "rtx_valor_mx6dl_111"
+
+config SYS_VENDOR
+	default "../Retronix/board"
+
+config SYS_CONFIG_NAME
+	default "../../Retronix/include/configs/rtx_valor_mx6dl_111"
+
+endif

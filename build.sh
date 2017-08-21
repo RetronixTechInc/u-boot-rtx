@@ -23,7 +23,8 @@ fi
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.19-hf-64bits/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.23-hf-64bits/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-4.9.3-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf- 
-export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
+#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
+#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/arm-cortex_a9-linux-gnueabihf-linaro_4.9.2-2014.09/bin/arm-cortex_a9-linux-gnueabihf-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/android/arm-eabi-4.8/bin/arm-eabi-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/android/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
@@ -35,6 +36,7 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-l
 #U_BOOT_DEFAULT_CONFIG=rtx_pico_b21_imx6q_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_b10_imx6q_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_b10_imx6q_2g_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_valor_111_imx6dl_1g_defconfig
 
 # =====================================
 # Run

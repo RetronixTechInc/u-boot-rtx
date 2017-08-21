@@ -29,18 +29,18 @@
 #include <libfdt.h>
 
 
-/* Hynix H5TQ4G63AFR */
+/* Samsung K4B4G1646D-BYK0 */
 struct mx6_ddr3_cfg rtx_ddr_chip_info = {
-	.mem_speed = 1333,
-	.density   = 2,
+	.mem_speed = 1600,
+	.density   = 4,
 	.width     = 16,
 	.banks     = 8,
-	.rowaddr   = 14,
+	.rowaddr   = 15,
 	.coladdr   = 10,
 	.pagesz    = 2,
-	.trcd      = 1350,
-	.trcmin    = 4950,
-	.trasmin   = 3600,
+	.trcd      = 1375,
+	.trcmin    = 4875,
+	.trasmin   = 3500,
 };
 
 struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {
@@ -48,14 +48,15 @@ struct mx6_ddr_sysinfo rtx_ddr_sysinfo = {
 #if defined(CONFIG_RTX_DDR_DATA_WIDTH_16)
 	.dsize = 0,
 #else
-#if defined(CONFIG_RTX_DDR_DATA_WIDTH_32)
-	.dsize = 1,
-#else
-#if defined(CONFIG_RTX_DDR_DATA_WIDTH_64)
-	.dsize = 2,
-#else
-	.dsize = 2,
-#endif
+	#if defined(CONFIG_RTX_DDR_DATA_WIDTH_32)
+		.dsize = 1,
+	#else
+		#if defined(CONFIG_RTX_DDR_DATA_WIDTH_64)
+			.dsize = 2,
+		#else
+			.dsize = 2,
+		#endif
+	#endif
 #endif
 	/* config for full 4GB range so that get_mem_size() works */
 	.cs_density = 32, 		/* 32Gb per CS */

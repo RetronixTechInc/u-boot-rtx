@@ -41,6 +41,15 @@ config TARGET_RTX_PICO_B21
 	select DM_THERMAL
 	select BOARD_EARLY_INIT_F
 
+config TARGET_RTX_VALOR_111
+	bool "Retronix VALOR 111"
+	select BOARD_LATE_INIT
+	select MX6DL
+	select SUPPORT_SPL
+	select DM
+	select DM_THERMAL
+	select BOARD_EARLY_INIT_F
+
 endchoice
 
 config RTX_ANDROID_SUPPORT
@@ -51,6 +60,7 @@ source "Retronix/board/rtx_q7_mx6q_b10/Kconfig"
 source "Retronix/board/rtx_a6plus_mx6q_b10/Kconfig"
 source "Retronix/board/rtx_pico_mx6q_b10/Kconfig"
 source "Retronix/board/rtx_pico_mx6q_b21/Kconfig"
+source "Retronix/board/rtx_valor_mx6dl_111/Kconfig"
 source "Retronix/board/rtx_ddr/Kconfig"
 source "Retronix/board/rtx_common/Kconfig"
 source "Retronix/drivers/Kconfig"

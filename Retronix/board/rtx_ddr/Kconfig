@@ -1,10 +1,33 @@
-menu "Memory DDR Chip Select"
+menu "Memory Select"
 
+choice
+	prompt "DDR Data Bus Width"
+	default RTX_DDR_DATA_WIDTH_64
+	
+	config RTX_DDR_DATA_WIDTH_16
+		bool "16"
+
+	config RTX_DDR_DATA_WIDTH_32
+		bool "32"
+
+	config RTX_DDR_DATA_WIDTH_64
+		bool "64"
+
+endchoice
+
+choice
+	prompt "DDR Chip Select"
+	default RTX_DDR_IS_MICRO_MT41K128M16
+	
 	config RTX_DDR_IS_MICRO_MT41K128M16
 		bool "MT41K128M16(Micro,etc)"
 	
 	config RTX_DDR_IS_MICRO_MT41K256M16
 		bool "MT41K256M16(Micro)"
 
-endmenu
+	config RTX_DDR_IS_SAMSUNG_K4B4G1646DBYK0256M16
+		bool "K4B4G1646DBYK0(Samsung)"	
 
+endchoice
+
+endmenu
