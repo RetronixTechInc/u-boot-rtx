@@ -52,8 +52,10 @@
 #endif
 #endif /*CONFIG_FSL_FASTBOOT*/
 
-#include <rtx/efm32.h>
-#include <rtx/bootsel.h>
+#ifdef CONFIG_MCU_WDOG_BUS
+	#include <rtx/efm32.h>
+#endif
+	#include <rtx/bootsel.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -163,10 +165,14 @@ static iomux_v3_cfg_t const uart5_pads[] = {
 	MX6_PAD_CSI0_DAT15__UART5_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 	MX6_PAD_CSI0_DAT14__UART5_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 	/* mode 00 : loopback; 01 : RS232; mode 10 : RS485; 11 : RS422  */
-	MX6_PAD_NANDF_ALE__GPIO6_IO08 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_NANDF_CS1__GPIO6_IO14 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	MX6_PAD_NANDF_CLE__GPIO6_IO07 | MUX_PAD_CTRL(NO_PAD_CTRL),
 	/* enable  */
 	MX6_PAD_NANDF_CS3__GPIO6_IO16 | MUX_PAD_CTRL(NO_PAD_CTRL),
+};
+
+static iomux_v3_cfg_t const men_3v3_pads[] = {
+	MX6_PAD_EIM_D31__GPIO3_IO31	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 };
 
 static iomux_v3_cfg_t const enet_pads[] = {
@@ -192,7 +198,7 @@ static iomux_v3_cfg_t const enet_pads[] = {
 static void setup_iomux_enet(void)
 {
 	imx_iomux_v3_setup_multiple_pads(enet_pads, ARRAY_SIZE(enet_pads));
-
+	
 	/* Reset AR8031 PHY */
 	gpio_direction_output(IMX_GPIO_NR(1, 25) , 0);
 	udelay(500);
@@ -357,7 +363,7 @@ static void setup_iomux_uart(void)
 	imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
 	imx_iomux_v3_setup_multiple_pads(uart5_pads, ARRAY_SIZE(uart5_pads));
 	//uart5 ic mode
-	gpio_direction_output(IMX_GPIO_NR(6, 8) , 0);
+	gpio_direction_output(IMX_GPIO_NR(6, 14) , 0);
 	gpio_direction_output(IMX_GPIO_NR(6, 7) , 0);
 	gpio_direction_output(IMX_GPIO_NR(6, 16) , 0);
 }
@@ -756,8 +762,8 @@ int board_eth_init(bd_t *bis)
 #define UCTRL_PWR_POL		(1 << 9)
 
 static iomux_v3_cfg_t const usb_otg_pads[] = {
-	MX6_PAD_GPIO_19__GPIO4_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL),
-	MX6_PAD_ENET_RX_ER__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
+	MX6_PAD_KEY_ROW4__GPIO4_IO15 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_GPIO_1__USB_OTG_ID | MUX_PAD_CTRL(OTG_ID_PAD_CTRL),
 };
 
 static iomux_v3_cfg_t const usb_hc1_pads[] = {
@@ -773,10 +779,17 @@ static void setup_usb(void)
 	 * set daisy chain for otg_pin_id on 6q.
 	 * for 6dl, this bit is reserved
 	 */
-	imx_iomux_set_gpr_register(1, 13, 1, 0);
+	imx_iomux_set_gpr_register(1, 13, 1, 1);
 
 	imx_iomux_v3_setup_multiple_pads(usb_hc1_pads,
 					 ARRAY_SIZE(usb_hc1_pads));
+}
+
+static void setup_3v3(void)
+{
+	imx_iomux_v3_setup_multiple_pads(men_3v3_pads,
+					 ARRAY_SIZE(men_3v3_pads));
+	gpio_direction_output(IMX_GPIO_NR(3, 31) , 1);
 }
 
 int board_ehci_hcd_init(int port)
@@ -799,9 +812,9 @@ int board_ehci_power(int port, int on)
 	switch (port) {
 	case 0:
 		if (on){
-			gpio_direction_output(IMX_GPIO_NR(4, 5), 1);
+			gpio_direction_output(IMX_GPIO_NR(4, 15), 1);
 		}else{
-			gpio_direction_output(IMX_GPIO_NR(4, 5), 0);
+			gpio_direction_output(IMX_GPIO_NR(4, 15), 0);
 		}
 		break;
 	case 1:
@@ -846,6 +859,10 @@ int board_init(void)
 	setup_usb();
 #endif
 
+#ifdef CONFIG_POWER_3V3
+	setup_3v3();
+#endif
+
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
 	setup_epdc();
 #endif
@@ -874,11 +891,13 @@ int power_init_board(void)
 	if (ret < 0)
 		return ret;
 
+#if 0
 	/* Increase VGEN3 from 2.5 to 2.8V */
 	pmic_reg_read(pfuze, PFUZE100_VGEN3VOL, &reg);
 	reg &= ~LDO_VOL_MASK;
 	reg |= LDOB_2_80V;
 	pmic_reg_write(pfuze, PFUZE100_VGEN3VOL, reg);
+#endif
 
 	/* Increase VGEN5 from 2.8 to 3V */
 	pmic_reg_read(pfuze, PFUZE100_VGEN5VOL, &reg);
@@ -1063,7 +1082,9 @@ static const struct boot_mode board_boot_modes[] = {
 
 int board_late_init(void)
 {
+#if defined(CONFIG_MCU_WDOG_BUS)
 	vSet_efm32_watchdog( 0 ) ;
+#endif
 
 #ifdef CONFIG_BOOT_SYSTEM
 	bootsel_init() ;
@@ -1186,7 +1207,9 @@ void board_recovery_setup(void)
 		return;
 	}
 
-	vSet_efm32_watchdog( 0 ) ;
+	#ifdef CONFIG_MCU_WDOG_BUS
+		vSet_efm32_watchdog( 0 ) ;
+	#endif
 	printf("setup env for recovery..\n");
 	setenv("bootcmd", "run bootcmd_android_recovery");
 }

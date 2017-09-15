@@ -411,6 +411,7 @@
 	#define CONFIG_SYS_MMC_ENV_DEV						1	/* SDHC3 */
 	#define CONFIG_SYS_MMC_ENV_PART                		0       /* user partition */
 
+	#define CONFIG_POWER_3V3			/* Enable 3v3 */
 	/* PMIC */
 	#define CONFIG_POWER
 	#define CONFIG_POWER_I2C
