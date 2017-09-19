@@ -241,7 +241,7 @@
 		#else
 			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_android bootargs_gen ;run storage r_kernel r_ramdisk; bootm ${loadaddr} ${rd_loadaddr}\0"
 		#endif
-        #define CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "bootargs_android=setenv bootargs ${bootargs} androidboot.hardware=retronix androidboot.serialno=0123456789ABCDEF androidboot.console=" CONFIG_CONSOLE_ANDROID "\0"
+        #define CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "bootargs_android=setenv bootargs ${bootargs} androidboot.hardware=freescale androidboot.serialno=0123456789ABCDEF androidboot.console=" CONFIG_CONSOLE_ANDROID "\0"
 	#else
 		#ifdef CONFIG_EXTRA_ENV_USE_DTB
 			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"
