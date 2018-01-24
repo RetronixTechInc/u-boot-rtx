@@ -110,7 +110,8 @@ static iomux_v3_cfg_t const gpio_pads_init[] = {
 	MX6_PAD_EIM_D23__GPIO3_IO23 | MUX_PAD_CTRL(NO_PAD_CTRL), /* USB_HUB_RESET_B */
 
 	// GF08
-	MX6_PAD_SD3_DAT0__GPIO7_IO04 | MUX_PAD_CTRL(NO_PAD_CTRL),
+	MX6_PAD_SD3_DAT0__GPIO7_IO04 | MUX_PAD_CTRL(NO_PAD_CTRL), /* CAN2_TX (196) */
+	MX6_PAD_SD3_DAT1__GPIO7_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL), /* CAN2_RX (197) */
 };
 
 static iomux_v3_cfg_t const uart1_pads[] = {
@@ -345,6 +346,7 @@ void mx6_pwm_event(void)
 		gpio_set_value(IMX_GPIO_NR(7, 4), 1);
 		udelay(245);
     }
+	gpio_direction_output(IMX_GPIO_NR(7, 5) , 0);
 }
 
 void mx6_pwm_event_reset(void)
