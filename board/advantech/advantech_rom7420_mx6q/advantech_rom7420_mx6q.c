@@ -322,6 +322,7 @@ static void setup_iomux_gpio_init(void)
 
 	// GF08
 	gpio_direction_output(IMX_GPIO_NR(7, 4) , 0);
+	gpio_direction_output(IMX_GPIO_NR(7, 5) , 1);
 }
 
 static void setup_iomux_usb(void)
@@ -335,9 +336,9 @@ static void setup_iomux_usb(void)
 void mx6_pwm_event(void)
 {       
 	//2K PWM for 8051
-    int i = 0;
+	int i = 0;
 
-    printf("mx6_pwm_event======2k\n");
+	printf("mx6_pwm_event 2k - 10k\n");
 
 	for(i=0;i < 20; i++){
 		gpio_set_value(IMX_GPIO_NR(7, 4), 0);
@@ -345,8 +346,17 @@ void mx6_pwm_event(void)
 
 		gpio_set_value(IMX_GPIO_NR(7, 4), 1);
 		udelay(245);
-    }
+	}
+/*	
+	for(i=0;i < 50; i++){
+		gpio_set_value(IMX_GPIO_NR(7, 4), 0);
+		udelay(50);
+
+		gpio_set_value(IMX_GPIO_NR(7, 4), 1);
+		udelay(50);
+	}
 	gpio_direction_output(IMX_GPIO_NR(7, 5) , 0);
+*/	
 }
 
 void mx6_pwm_event_reset(void)
@@ -356,7 +366,7 @@ void mx6_pwm_event_reset(void)
      printf("mx6_pwm_event_reset======3k\n");
 
      for(i=0;i < 20; i++){
-         gpio_set_value(IMX_GPIO_NR(7, 4), 0);
+        	gpio_set_value(IMX_GPIO_NR(7, 4), 0);
 		udelay(160);
 
 		gpio_set_value(IMX_GPIO_NR(7, 4), 1);
