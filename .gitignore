@@ -31,7 +31,7 @@
 # Top-level generic files
 #
 /MLO*
-/SPL
+/SPL*
 /System.map
 /u-boot*
 /boards.cfg
@@ -43,6 +43,7 @@
 #
 !.gitignore
 !.mailmap
+!libfdt.i
 
 #
 # Generated files
