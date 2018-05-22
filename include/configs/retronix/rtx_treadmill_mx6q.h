@@ -47,7 +47,7 @@
 	 */
 	#define CONFIG_RTX_EFM32
 	#ifdef CONFIG_RTX_EFM32
-		#define CONFIG_MCU_WDOG_BUS	2
+		#define CONFIG_MCU_WDOG_BUS	1
 	#endif
 	
 	#define CONFIG_MACH_TYPE					3980
@@ -55,7 +55,7 @@
 	#define CONFIG_CONSOLE_DEV					"ttymxc0"
 	#define CONFIG_CONSOLE_PESUDO_DEV			"ttymxc1"
 
-	#define CONFIG_DEFAULT_FDT_FILE				"RTX-TreadMill-6DQ.dtb"
+	#define CONFIG_DEFAULT_FDT_FILE				"rtx-imx6q-treadmill.dtb"
 
 	#if defined(CONFIG_MX6_DDR_2G)
 		#define PHYS_SDRAM_SIZE				(2u * 1024 * 1024 * 1024)
