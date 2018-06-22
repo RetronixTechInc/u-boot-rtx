@@ -129,17 +129,17 @@ static iomux_v3_cfg_t const gpio_pads_init[] = {
 	MX6_PAD_DI0_PIN2__AUD6_TXD | MUX_PAD_CTRL(NO_PAD_CTRL),/* AUD6_TXD to SGTL5000*/
 	MX6_PAD_DI0_PIN3__AUD6_TXFS | MUX_PAD_CTRL(NO_PAD_CTRL),/* AUD6_TXFS to SGTL5000*/
 	MX6_PAD_DI0_PIN4__AUD6_RXD | MUX_PAD_CTRL(NO_PAD_CTRL),/* AUD6_RXD to SGTL5000*/
-	MX6_PAD_GPIO_19__GPIO4_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL),/* sys_mclk to SGTL5000*/
+	MX6_PAD_GPIO_19__CCM_CLKO1 | MUX_PAD_CTRL(NO_PAD_CTRL),/* sys_mclk to SGTL5000*/
 	
 	// HDMI IN TO MIPI
 	MX6_PAD_DISP0_DAT2__GPIO4_IO23 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_RESET_N STBY_B */
 	MX6_PAD_DISP0_DAT3__GPIO4_IO24 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_STBY_ */
 	MX6_PAD_DISP0_DAT4__GPIO4_IO25 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_INT */
+	MX6_PAD_GPIO_16__GPIO7_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_IR */
 	MX6_PAD_DISP0_DAT7__GPIO4_IO28 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_EN */
 	MX6_PAD_DISP0_DAT15__GPIO5_IO09 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_ENABLE */
 	MX6_PAD_DISP0_DAT16__GPIO5_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_T_SEL */
 	MX6_PAD_DISP0_DAT17__GPIO5_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_SEL */
-	MX6_PAD_GPIO_16__GPIO7_IO11 | MUX_PAD_CTRL(NO_PAD_CTRL),/* HDMI_IN_IR */
 	
 	//WLAN/BT
 	MX6_PAD_DISP0_DAT10__GPIO4_IO31 | MUX_PAD_CTRL(NO_PAD_CTRL),/* WB_PWR */
@@ -224,22 +224,21 @@ static void setup_iomux_gpio_init(void)
 	gpio_direction_output(IMX_GPIO_NR(4, 22) , 1);/* AUD_AMP_STBY_B */
 	gpio_direction_output(IMX_GPIO_NR(5, 5) , 0);/* AUD_SELECT */
 	gpio_direction_output(IMX_GPIO_NR(5, 12) , 0);/* LINE_IN_EN */
-	gpio_direction_output(IMX_GPIO_NR(4, 5) , 0);/* sys_mclk to SGTL5000 */
 	
 	// HDMI IN TO MIPI
 	gpio_direction_output(IMX_GPIO_NR(4, 23) , 0);/* HDMI_IN_RESET_N STBY_B */
 	gpio_direction_output(IMX_GPIO_NR(4, 24) , 0);/* HDMI_IN_STBY_ */
 	gpio_direction_input(IMX_GPIO_NR(4, 25));/* HDMI_IN_INT */
+	gpio_direction_input(IMX_GPIO_NR(7, 11));/* HDMI_IN_IR */
 	gpio_direction_output(IMX_GPIO_NR(4, 28) , 0);/* HDMI_IN_EN */
 	gpio_direction_output(IMX_GPIO_NR(5, 9) , 0);/* HDMI_IN_ENABLE */
 	gpio_direction_output(IMX_GPIO_NR(5, 10) , 0);/* HDMI_T_SEL */
 	gpio_direction_output(IMX_GPIO_NR(5, 11) , 0);/* HDMI_IN_SEL */
-	gpio_direction_input(IMX_GPIO_NR(7, 11));/* HDMI_IN_IR */
 	
 	//WLAN/BT
 	gpio_direction_output(IMX_GPIO_NR(4, 31) , 0);/* WB_PWR */
 	gpio_direction_output(IMX_GPIO_NR(7, 5) , 0);/* BT_EN_1V8 */
-	gpio_direction_output(IMX_GPIO_NR(7, 6) , 0);/* WLAN_IRQ_1V8 */
+	gpio_direction_input(IMX_GPIO_NR(7, 6));/* WLAN_IRQ_1V8 */
 	gpio_direction_output(IMX_GPIO_NR(7, 7) , 0);/* WL_EN_1V8 */
 	
 	//ETHERNET PWR
