@@ -804,6 +804,8 @@ int bootsel_checkstorage( void )
 	if(s && strncmp(s, "1", 1) == 0 )
 		gd->flags |= GD_FLG_SILENT;
 		
+	vSet_efm32_watchdog( bootselinfodata.ulMcuWatchDog ) ;	
+	
 	return ( ret ) ;
 }
 
