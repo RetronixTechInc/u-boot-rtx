@@ -442,7 +442,16 @@
 		#define CONFIG_USB_ETHER_ASIX
 		#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
 		#define CONFIG_MXC_USB_FLAGS		0
-		#define CONFIG_USB_MAX_CONTROLLER_COUNT	1 /* Enabled USB controller number */
+		#define CONFIG_USB_MAX_CONTROLLER_COUNT	2 /* Enabled USB controller number */
+		#define CONFIG_Enable_USB_KEYBOARD
+		#ifdef CONFIG_Enable_USB_KEYBOARD
+			#define CONFIG_USB_KEYBOARD
+			#define CONFIG_SYS_STDIO_DEREGISTER 
+			#define CONFIG_SYS_USB_EVENT_POLL_VIA_CONTROL_EP
+			#define CONFIG_CONSOLE_MUX
+			#define CONFIG_USE_PREBOOT
+			#define CONFIG_PREBOOT "usb start; setenv stdin serial,usbkbd;"
+		#endif
 	#endif
 
 	#define CONFIG_HW_OC

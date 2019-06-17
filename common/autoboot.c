@@ -181,6 +181,32 @@ static int abortboot_normal(int bootdelay)
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
+# ifdef CONFIG_Enable_USB_KEYBOARD
+		char presskey;
+			if (tstc()) {
+				presskey = getc();
+				if ( presskey == '\t') {	/* we got a key press	*/
+					abort  = 1;	/* don't auto boot	*/  
+					bootdelay = 0;	/* no more delay	*/
+	# ifdef CONFIG_MENUKEY
+					menukey = getc();
+	# else
+					(void) getc();  /* consume input	*/
+	# endif
+					break;
+				}else if ( presskey == '\b') {
+					bootdelay = 30;
+					printf("Backspace Key \n");
+					printf("Hit any key to stop autoboot: %2d ", bootdelay);
+					break;
+				}else if ( presskey == '\e') {
+					bootdelay = 0;
+					printf("Esc Key \n");
+					printf("Hit any key to stop autoboot: %2d ", bootdelay);
+					break;
+				}
+			}
+# else
 			if (tstc() && getc() == '\t') {	/* we got a key press	*/
 				abort  = 1;	/* don't auto boot	*/  
 				bootdelay = 0;	/* no more delay	*/
@@ -191,6 +217,7 @@ static int abortboot_normal(int bootdelay)
 # endif
 				break;
 			}
+# endif
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
 
@@ -258,9 +285,8 @@ const char *bootdelay_process(void)
 	if (is_boot_from_usb()) {
 		disconnect_from_pc();
 		printf("Boot from USB for mfgtools\n");
-		bootdelay = 0;
-		set_default_env("Use default environment for \
-				 mfgtools\n");
+		bootdelay = 3;
+		setenv("bootcmd_mfg", "run bootcmd_gen");
 	} else {
 		printf("Normal Boot\n");
 	}
