@@ -111,6 +111,7 @@ enum __BOOTSEL_FUNC__{
 	DEF_BOOTSEL_FUNC_MENU        = 0x00000010 ,
 	DEF_BOOTSEL_FUNC_CHG_STORAGE = 0x00000020 ,
 	DEF_BOOTSEL_FUNC_SCANFILE_SELF = 0x00000040 ,
+	DEF_BOOTSEL_FUNC_STARTUSB    = 0x00000080 ,
 } ;
 
 typedef struct __bootselfunc__ {
@@ -126,6 +127,7 @@ static BOOTSELFUNC const bootselfuncarray[] = {
 	{ (char *)"menu"     , DEF_BOOTSEL_FUNC_MENU        } ,
 	{ (char *)"storage"  , DEF_BOOTSEL_FUNC_CHG_STORAGE } ,
 	{ (char *)"selfmagic", DEF_BOOTSEL_FUNC_SCANFILE_SELF } ,
+	{ (char *)"usbstart" , DEF_BOOTSEL_FUNC_STARTUSB    } ,
 } ;
 
 int bootsel_func_password( void )
@@ -185,6 +187,15 @@ int bootsel_func_changestorage( void )
 int bootsel_func_scanmagiccode_self( void )
 {
 	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_SCANFILE_SELF )
+	{
+		return ( 1 ) ;
+	}
+	return ( 0 ) ;
+}
+
+int bootsel_func_usbstart( void )
+{
+	if ( bootselinfodata.ulFunction & DEF_BOOTSEL_FUNC_STARTUSB )
 	{
 		return ( 1 ) ;
 	}
@@ -357,7 +368,10 @@ static void vbootsel_def_func( void )
 	#ifdef CONFIG_BOOTSEL_FUNC_SCANFILE_SELF
 	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_SCANFILE_SELF ;
 	#endif
-    
+	#ifdef CONFIG_BOOTSEL_FUNC_STARTUSB
+	bootselinfodata.ulFunction |= DEF_BOOTSEL_FUNC_STARTUSB ;
+	#endif
+
     bootselinfodata.ulMcuWatchDog = ( unsigned long ) (CONFIG_MCU_WATCHDOG_TIME & 0xFFFF);
 
 }
@@ -1269,6 +1283,7 @@ U_BOOT_CMD(
 	"    function menu     <enable/disable>\n"
 	"    function storage  <enable/disable>\n"
 	"    function selfmagic  <enable/disable>\n"
+	"    function usbstart  <enable/disable>\n"
 	"** MAC class **\n"
 	"    mac 0 <000000000000>\n"
 	"    mac 1 <000000000000>\n"
