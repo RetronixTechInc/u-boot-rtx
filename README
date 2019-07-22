@@ -5,7 +5,7 @@ Download toolchain tool and extract to the fold.
 Define CROSS_COMPILE_PATH to extract fold at build.sh.
 
 Step 2:
-Choise the CROSS_COMPILE at build.sh
+Choice the CROSS_COMPILE at build.sh
 
 Step 3:
 Select Board configure file at build.sh
