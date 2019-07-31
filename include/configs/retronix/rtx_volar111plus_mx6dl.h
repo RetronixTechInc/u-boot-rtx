@@ -234,23 +234,9 @@
 			"bootm ${loadaddr} ${rd_loadaddr}"
 	#endif
 
-	#if defined(CONFIG_ANDROID_SUPPORT)
-		#ifdef CONFIG_EXTRA_ENV_USE_DTB
-			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb r_ramdisk; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
-		#else
-			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_ramdisk; bootm ${loadaddr} ${rd_loadaddr}\0"
-		#endif
-	#else
-		#ifdef CONFIG_EXTRA_ENV_USE_DTB
-			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel r_dtb; bootm ${loadaddr} - ${dtb_loadaddr}\0"
-		#else
-			#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ;run storage r_kernel; bootm\0"
-		#endif
-	#endif
-
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
-		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
+		"bootargs_base=setenv bootargs no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
 		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
@@ -265,7 +251,8 @@
 		"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE) "\0" \
 		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\
 		"r_ramdisk=mmc read ${rd_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE) "\0" \
-		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
+		"bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_android bootargs_gen;" CONFIG_EXTRA_ENV_BOOTCMD_GEN "\0"	\
+		"bootargs_android=setenv bootargs ${bootargs} " CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "\0" \
 		"splashpos=m,m\0"	  \
 		"def_video=" CONFIG_VGA_VIDEO "\0" \
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \

@@ -6,8 +6,8 @@ CONFIG_SYS_MALLOC_F_LEN=0x400
 CONFIG_DM=y
 CONFIG_DM_THERMAL=y
 CONFIG_EXTRA_ENV_USE_DTB=y
-CONFIG_BOOTARGS_GEN="init=/sbin/init root=${mmcrootpath};if test -n ${mac1_val};then setenv bootargs ${bootargs} fec_mac=${mac1_val};fi;"
-CONFIG_MMCROOTPATH="/dev/mmcblk0p1 rootwait rw"
+CONFIG_BOOTARGS_GEN="init=/sbin/init ${mmcrootpath};if test -n ${mac1_val};then setenv bootargs ${bootargs} fec_mac=${mac1_val};fi;"
+CONFIG_MMCROOTPATH="root=/dev/mmcblk0p1 rootwait rw"
 CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off fbmem=28M"
 CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off fbmem=18M"
 CONFIG_BOOTARGS_DUAL_HDMI="video=mxcfb0:dev=lcd,${def_video},if=RGB24,bpp=32 video=mxcfb1:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb2:off fbmem=28M,18M"

@@ -26,7 +26,7 @@ fi
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-linux-gnueabihf/bin/arm-rtx-linux-gnueabihf-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
 #export CROSS_COMPILE=${CROSS_COMPILE_PATH}/android/arm-eabi-4.8/bin/arm-eabi-
-#export CROSS_COMPILE=${CROSS_COMPILE_PATH}/android/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+export CROSS_COMPILE=${CROSS_COMPILE_PATH}/android/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
 
 
 # =====================================
@@ -53,7 +53,7 @@ fi
 #U_BOOT_DEFAULT_CONFIG=rtx_a6_mx6q_micro1g_null_rtx_all_mfg_defconfig
 
 #PITX Board
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_android_defconfig
+U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_linux_defconfig
