@@ -10,13 +10,14 @@
 #include <common.h>
 #include <dm.h>
 #include <dm-demo.h>
+#include <mapmem.h>
 #include <asm/io.h>
 
 static int simple_hello(struct udevice *dev, int ch)
 {
 	const struct dm_demo_pdata *pdata = dev_get_platdata(dev);
 
-	printf("Hello from %08x: %s %d\n", map_to_sysmem(dev), pdata->colour,
+	printf("Hello from %08x: %s %d\n", (uint)map_to_sysmem(dev), pdata->colour,
 	       pdata->sides);
 
 	return 0;

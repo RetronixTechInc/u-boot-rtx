@@ -46,9 +46,10 @@ static int device_chld_unbind(struct udevice *dev)
 /**
  * device_chld_remove() - Stop all device's children
  * @dev:	The device whose children are to be removed
+ * @pre_os_remove: Flag, if this functions is called in the pre-OS stage
  * @return 0 on success, -ve on error
  */
-static int device_chld_remove(struct udevice *dev)
+static int device_chld_remove(struct udevice *dev, uint flags)
 {
 	struct udevice *pos, *n;
 	int ret;
@@ -56,7 +57,7 @@ static int device_chld_remove(struct udevice *dev)
 	assert(dev);
 
 	list_for_each_entry_safe(pos, n, &dev->child_head, sibling_node) {
-		ret = device_remove(pos);
+		ret = device_remove(pos, flags);
 		if (ret)
 			return ret;
 	}
@@ -66,13 +67,16 @@ static int device_chld_remove(struct udevice *dev)
 
 int device_unbind(struct udevice *dev)
 {
-	struct driver *drv;
+	const struct driver *drv;
 	int ret;
 
 	if (!dev)
 		return -EINVAL;
 
 	if (dev->flags & DM_FLAG_ACTIVATED)
+		return -EINVAL;
+
+	if (!(dev->flags & DM_FLAG_BOUND))
 		return -EINVAL;
 
 	drv = dev->driver;
@@ -92,6 +96,10 @@ int device_unbind(struct udevice *dev)
 		free(dev->platdata);
 		dev->platdata = NULL;
 	}
+	if (dev->flags & DM_FLAG_ALLOC_UCLASS_PDATA) {
+		free(dev->uclass_platdata);
+		dev->uclass_platdata = NULL;
+	}
 	if (dev->flags & DM_FLAG_ALLOC_PARENT_PDATA) {
 		free(dev->parent_platdata);
 		dev->parent_platdata = NULL;
@@ -102,6 +110,11 @@ int device_unbind(struct udevice *dev)
 
 	if (dev->parent)
 		list_del(&dev->sibling_node);
+
+	devres_release_all(dev);
+
+	if (dev->flags & DM_FLAG_NAME_ALLOCED)
+		free((char *)dev->name);
 	free(dev);
 
 	return 0;
@@ -135,11 +148,22 @@ void device_free(struct udevice *dev)
 			dev->parent_priv = NULL;
 		}
 	}
+
+	devres_release_probe(dev);
 }
 
-int device_remove(struct udevice *dev)
+static bool flags_remove(uint flags, uint drv_flags)
 {
-	struct driver *drv;
+	if ((flags & DM_REMOVE_NORMAL) ||
+	    (flags & (drv_flags & (DM_FLAG_ACTIVE_DMA | DM_FLAG_OS_PREPARE))))
+		return true;
+
+	return false;
+}
+
+int device_remove(struct udevice *dev, uint flags)
+{
+	const struct driver *drv;
 	int ret;
 
 	if (!dev)
@@ -155,11 +179,15 @@ int device_remove(struct udevice *dev)
 	if (ret)
 		return ret;
 
-	ret = device_chld_remove(dev);
+	ret = device_chld_remove(dev, flags);
 	if (ret)
 		goto err;
 
-	if (drv->remove) {
+	/*
+	 * Remove the device if called with the "normal" remove flag set,
+	 * or if the remove flag matches any of the drivers remove flags
+	 */
+	if (drv->remove && flags_remove(flags, drv->flags)) {
 		ret = drv->remove(dev);
 		if (ret)
 			goto err_remove;
@@ -173,10 +201,12 @@ int device_remove(struct udevice *dev)
 		}
 	}
 
-	device_free(dev);
+	if (flags_remove(flags, drv->flags)) {
+		device_free(dev);
 
-	dev->seq = -1;
-	dev->flags &= ~DM_FLAG_ACTIVATED;
+		dev->seq = -1;
+		dev->flags &= ~DM_FLAG_ACTIVATED;
+	}
 
 	return ret;
 

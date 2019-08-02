@@ -13,11 +13,6 @@
 #define AT91SAM9G45_H
 
 /*
- * defines to be used in other places
- */
-#define CONFIG_AT91FAMILY	/* it's a member of AT91 */
-
-/*
  * Peripheral identifiers/interrupts.
  */
 #define ATMEL_ID_FIQ	0	/* Advanced Interrupt Controller (FIQ) */
@@ -109,6 +104,7 @@
 #define ATMEL_BASE_RTT		0xfffffd20
 #define ATMEL_BASE_PIT		0xfffffd30
 #define ATMEL_BASE_WDT		0xfffffd40
+#define ATMEL_BASE_SCKCR	0xfffffd50
 #define ATMEL_BASE_GPBR		0xfffffd60
 #define ATMEL_BASE_RTC		0xfffffdb0
 /* Reserved:	0xfffffdc0 - 0xffffffff */

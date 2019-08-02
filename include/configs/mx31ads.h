@@ -14,24 +14,7 @@
  /* High Level Configuration Options */
 #define CONFIG_MX31		1		/* This is a mx31 */
 
-#define CONFIG_SYS_GENERIC_BOARD
-
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
-
-#define CONFIG_SYS_TEXT_BASE		0xA0000000
-
 #define CONFIG_MACH_TYPE	MACH_TYPE_MX31ADS
-
-/*
- * Disabled for now due to build problems under Debian and a significant increase
- * in the final file size: 144260 vs. 109536 Bytes.
- */
-#if 0
-#define CONFIG_OF_LIBFDT		1
-#define CONFIG_FIT			1
-#define CONFIG_FIT_VERBOSE		1
-#endif
 
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
@@ -50,10 +33,8 @@
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 #define CONFIG_HARD_SPI		1
-#define CONFIG_MXC_SPI		1
 #define CONFIG_DEFAULT_SPI_BUS	1
 #define CONFIG_DEFAULT_SPI_MODE	(SPI_MODE_0 | SPI_CS_HIGH)
-#define CONFIG_MXC_GPIO
 
 /* PMIC Controller */
 #define CONFIG_POWER
@@ -69,20 +50,6 @@
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_BAUDRATE		115200
-
-/***********************************************************
- * Command definition
- ***********************************************************/
-
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_DATE
-
-#define CONFIG_BOOTDELAY	3
 
 #define CONFIG_LOADADDR		0x80800000	/* loadaddr env var */
 
@@ -123,19 +90,11 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_CBSIZE		256		/* Console I/O Buffer Size */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16		/* max number of command args */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE	/* Boot Argument Buffer Size */
 
 #define CONFIG_SYS_MEMTEST_START	0		/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x10000
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-#define CONFIG_CMDLINE_EDITING	1
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
@@ -143,7 +102,6 @@
 #define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM_1		CSD0_BASE
 #define PHYS_SDRAM_1_SIZE	(128 * 1024 * 1024)
-#define CONFIG_BOARD_EARLY_INIT_F
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
@@ -162,7 +120,6 @@
 #define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_FLASH_BASE	/* Monitor at beginning of flash */
 #define CONFIG_SYS_MONITOR_LEN		(256 * 1024)	/* Reserve 256KiB */
 
-#define	CONFIG_ENV_IS_IN_FLASH	1
 #define CONFIG_ENV_SECT_SIZE	(128 * 1024)
 #define CONFIG_ENV_SIZE		CONFIG_ENV_SECT_SIZE
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
@@ -170,7 +127,6 @@
 /* Address and size of Redundant Environment Sector	*/
 #define CONFIG_ENV_ADDR_REDUND	(CONFIG_ENV_ADDR + CONFIG_ENV_SIZE)
 #define CONFIG_ENV_SIZE_REDUND	CONFIG_ENV_SIZE
-
 
 /*-----------------------------------------------------------------------
  * CFI FLASH driver setup
@@ -184,7 +140,6 @@
 /*
  * JFFS2 partitions
  */
-#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV	"nor0"
 
 #endif /* __CONFIG_H */

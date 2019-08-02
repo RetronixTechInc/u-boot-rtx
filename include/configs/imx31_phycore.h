@@ -18,11 +18,6 @@
 #define CONFIG_MX31			/* This is a mx31 */
 #define CONFIG_MX31_CLK32	32000
 
-#define CONFIG_SYS_GENERIC_BOARD
-
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
-
 #define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
@@ -38,6 +33,9 @@
 
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_I2C_CLK_OFFSET	I2C2_CLK_OFFSET
 
 #define CONFIG_MXC_UART
@@ -46,22 +44,10 @@
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_BAUDRATE		115200
 
 /***********************************************************
  * Command definition
  ***********************************************************/
-
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_I2C
-
-#define CONFIG_BOOTDELAY	3
-
-#define MTDPARTS_DEFAULT	"mtdparts=physmap-flash.0:128k(uboot)ro," \
-					"1536k(kernel),-(root)"
 
 #define CONFIG_NETMASK		255.255.255.0
 #define CONFIG_IPADDR		192.168.23.168
@@ -80,7 +66,7 @@
 	"bootcmd_flash=run bootargs_base bootargs_mtd bootargs_flash;"	\
 		"bootm 0x80000000\0"					\
 	"unlock=yes\0"							\
-	"mtdparts=" MTDPARTS_DEFAULT "\0"				\
+	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"				\
 	"prg_uboot=tftpboot 0x80000000 $(uboot);"			\
 		"protect off 0xa0000000 +0x20000;"			\
 		"erase 0xa0000000 +0x20000;"				\
@@ -95,32 +81,14 @@
 		"pclk:185925,le:9,ri:17,up:7,lo:10,hs:1,vs:1,"		\
 		"sync:1241513985,vmode:0\0"
 
-
-#define CONFIG_SMC911X
-#define CONFIG_SMC911X_BASE	0xa8000000
-#define CONFIG_SMC911X_32_BIT
-
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_SYS_PROMPT		"uboot> "
-/* Console I/O Buffer Size */
-#define CONFIG_SYS_CBSIZE		256
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					 sizeof(CONFIG_SYS_PROMPT) + 16)
-/* max number of command args */
-#define CONFIG_SYS_MAXARGS		16
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
 #define CONFIG_SYS_MEMTEST_START	0  /* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x10000
 
 #define CONFIG_SYS_LOAD_ADDR		0 /* default load address */
-
-#define CONFIG_CMDLINE_EDITING
 
 /*
  * Physical Memory Map
@@ -128,8 +96,6 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM_1			0x80000000
 #define PHYS_SDRAM_1_SIZE		(128 * 1024 * 1024)
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_SYS_TEXT_BASE		0xA0000000
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
@@ -148,7 +114,6 @@
 /* Monitor at beginning of flash */
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
 
-#define CONFIG_ENV_IS_IN_EEPROM
 #define CONFIG_ENV_OFFSET			0x00	/* env. starts here */
 #define CONFIG_ENV_SIZE				4096
 #define CONFIG_SYS_I2C_EEPROM_ADDR		0x52
@@ -174,30 +139,17 @@
 /*
  * JFFS2 partitions
  */
-#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV	"nor0"
 
 /* EET platform additions */
-#ifdef CONFIG_IMX31_PHYCORE_EET
-#define CONFIG_BOARD_LATE_INIT
-
-#define CONFIG_MXC_GPIO
-
+#ifdef CONFIG_TARGET_IMX31_PHYCORE_EET
 #define CONFIG_HARD_SPI
-#define CONFIG_MXC_SPI
-#define CONFIG_CMD_SPI
 
 #define CONFIG_S6E63D6
 
-#define CONFIG_VIDEO
-#define CONFIG_CFB_CONSOLE
 #define CONFIG_VIDEO_MX3
 #define CONFIG_VIDEO_LOGO
-#define CONFIG_VIDEO_SW_CURSOR
-#define CONFIG_VGA_AS_SINGLE_DEVICE
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
 #define CONFIG_SPLASH_SCREEN
-#define CONFIG_CMD_BMP
 #define CONFIG_BMP_16BPP
 #endif
 

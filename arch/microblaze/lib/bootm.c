@@ -10,6 +10,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <fdt_support.h>
 #include <image.h>
 #include <u-boot/zlib.h>
 #include <asm/byteorder.h>
@@ -21,7 +22,7 @@ int do_bootm_linux(int flag, int argc, char * const argv[],
 {
 	/* First parameter is mapped to $r5 for kernel boot args */
 	void	(*thekernel) (char *, ulong, ulong);
-	char	*commandline = getenv("bootargs");
+	char	*commandline = env_get("bootargs");
 	ulong	rd_data_start, rd_data_end;
 
 	/*
@@ -56,11 +57,12 @@ int do_bootm_linux(int flag, int argc, char * const argv[],
 		of_flat_tree = (char *)simple_strtoul(argv[1], NULL, 16);
 
 	/* fixup the initrd now that we know where it should be */
-	if (images->rd_start && images->rd_end && of_flat_tree)
+	if (images->rd_start && images->rd_end && of_flat_tree) {
 		ret = fdt_initrd(of_flat_tree, images->rd_start,
 				 images->rd_end);
 		if (ret)
 			return 1;
+	}
 
 #ifdef DEBUG
 	printf("## Transferring control to Linux (at address 0x%08lx) ",

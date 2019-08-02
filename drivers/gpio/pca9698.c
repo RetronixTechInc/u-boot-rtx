@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2011
- * Dirk Eibach,  Guntermann & Drunck GmbH, eibach@gdsys.de
+ * Dirk Eibach,  Guntermann & Drunck GmbH, dirk.eibach@gdsys.cc
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -11,7 +11,7 @@
 
 #include <common.h>
 #include <i2c.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <pca9698.h>
 
 /*

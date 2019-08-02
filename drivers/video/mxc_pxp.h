@@ -7,7 +7,7 @@
 #ifndef MXC_PXP_H
 #define MXC_PXP_H
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/regs-common.h>
 
 struct mxs_pxp_regs{
 	mxs_reg_32(pxp_ctrl)           /* 0x00  */

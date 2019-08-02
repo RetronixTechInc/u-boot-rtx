@@ -16,6 +16,15 @@
 #define L2X0_STNDBY_MODE_EN			(1 << 0)
 #define L2X0_CTRL_EN				1
 
+#define L310_SHARED_ATT_OVERRIDE_ENABLE		(1 << 22)
+#define L310_AUX_CTRL_DATA_PREFETCH_MASK	(1 << 28)
+#define L310_AUX_CTRL_INST_PREFETCH_MASK	(1 << 29)
+
+#define L2X0_CACHE_ID_PART_MASK     (0xf << 6)
+#define L2X0_CACHE_ID_PART_L310     (3 << 6)
+#define L2X0_CACHE_ID_RTL_MASK          0x3f
+#define L2X0_CACHE_ID_RTL_R3P2          0x8
+
 struct pl310_regs {
 	u32 pl310_cache_id;
 	u32 pl310_cache_type;
@@ -74,10 +83,5 @@ void pl310_inval_all(void);
 void pl310_clean_inval_all(void);
 void pl310_inval_range(u32 start, u32 end);
 void pl310_clean_inval_range(u32 start, u32 end);
-
-#define L2X0_CACHE_ID_PART_MASK		(0xf << 6)
-#define L2X0_CACHE_ID_PART_L310		(3 << 6)
-#define L2X0_CACHE_ID_RTL_MASK          0x3f
-#define L2X0_CACHE_ID_RTL_R3P2          0x8
 
 #endif

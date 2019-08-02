@@ -6,6 +6,8 @@
  * (C) Copyright 2000-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
+ * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
@@ -13,7 +15,8 @@
 #include <fdt_support.h>
 #include <errno.h>
 #include <image.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
+#include <mapmem.h>
 #include <asm/io.h>
 
 #ifndef CONFIG_SYS_FDT_PAD
@@ -131,7 +134,7 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 	of_len = *of_size + CONFIG_SYS_FDT_PAD;
 
 	/* If fdt_high is set use it to select the relocation address */
-	fdt_high = getenv("fdt_high");
+	fdt_high = env_get("fdt_high");
 	if (fdt_high) {
 		void *desired_addr = (void *)simple_strtoul(fdt_high, NULL, 16);
 
@@ -155,12 +158,8 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 	} else {
 		of_start =
 		    (void *)(ulong) lmb_alloc_base(lmb, of_len, 0x1000,
-						   getenv_bootm_mapsize()
-	#if defined(CONFIG_MX6_DDR_2G)
-						   + getenv_bootm_low() - 384*1024*1024);
-	#else
-						   + getenv_bootm_low());
-	#endif
+						   env_get_bootm_mapsize()
+						   + env_get_bootm_low());
 	}
 
 	if (of_start == NULL) {
@@ -234,7 +233,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 	ulong		fdt_addr;
 	char		*fdt_blob = NULL;
 	void		*buf;
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 	const char	*fit_uname_config = images->fit_uname_cfg;
 	const char	*fit_uname_fdt = NULL;
 	ulong		default_addr;
@@ -249,7 +248,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 	if (argc > 2)
 		select = argv[2];
 	if (select || genimg_has_config(images)) {
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 		if (select) {
 			/*
 			 * If the FDT blob comes from the FIT image and the
@@ -279,7 +278,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 				debug("*  fdt: cmdline image address = 0x%08lx\n",
 				      fdt_addr);
 			}
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 		} else {
 			/* use FIT configuration provided in first bootm
 			 * command argument
@@ -288,7 +287,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			fdt_noffset = fit_get_node_from_config(images,
 							       FIT_FDT_PROP,
 							       fdt_addr);
-			if (fdt_noffset == -ENOLINK)
+			if (fdt_noffset == -ENOENT)
 				return 0;
 			else if (fdt_noffset < 0)
 				return 1;
@@ -296,9 +295,6 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 #endif
 		debug("## Checking for 'FDT'/'FDT Image' at %08lx\n",
 		      fdt_addr);
-
-		/* copy from dataflash if needed */
-		fdt_addr = genimg_get_image(fdt_addr);
 
 		/*
 		 * Check if there is an FDT image at the
@@ -329,7 +325,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 
 			if (load == image_start ||
 			    load == image_data) {
-				fdt_blob = (char *)image_data;
+				fdt_addr = load;
 				break;
 			}
 
@@ -354,22 +350,21 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 			 * (libfdt based) and raw FDT blob (also libfdt
 			 * based).
 			 */
-#if defined(CONFIG_FIT)
+#if CONFIG_IS_ENABLED(FIT)
 			/* check FDT blob vs FIT blob */
 			if (fit_check_format(buf)) {
 				ulong load, len;
 
-				fdt_noffset = fit_image_load(images,
+				fdt_noffset = boot_get_fdt_fit(images,
 					fdt_addr, &fit_uname_fdt,
 					&fit_uname_config,
-					arch, IH_TYPE_FLATDT,
-					BOOTSTAGE_ID_FIT_FDT_START,
-					FIT_LOAD_OPTIONAL, &load, &len);
+					arch, &load, &len);
 
 				images->fit_hdr_fdt = map_sysmem(fdt_addr, 0);
 				images->fit_uname_fdt = fit_uname_fdt;
 				images->fit_noffset_fdt = fdt_noffset;
 				fdt_addr = load;
+
 				break;
 			} else
 #endif
@@ -425,7 +420,7 @@ int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
 	else if (genimg_get_format((void *)images->os.start) ==
 		IMAGE_FORMAT_ANDROID) {
 		ulong fdt_data, fdt_len;
-		android_image_get_fdt((void *)images->os.start,
+		android_image_get_second((void *)images->os.start,
 		 &fdt_data, &fdt_len);
 
 		if (fdt_len) {
@@ -480,7 +475,7 @@ error:
  * addresses of some of the devices in the device tree are compared with the
  * actual addresses at which U-Boot has placed them.
  *
- * Returns 1 on success, 0 on failure.  If 0 is returned, U-boot will halt the
+ * Returns 1 on success, 0 on failure.  If 0 is returned, U-Boot will halt the
  * boot process.
  */
 __weak int ft_verify_fdt(void *fdt)
@@ -501,6 +496,10 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 	int ret = -EPERM;
 	int fdt_ret;
 
+	if (fdt_root(blob) < 0) {
+		printf("ERROR: root node setup failed\n");
+		goto err;
+	}
 	if (fdt_chosen(blob) < 0) {
 		printf("ERROR: /chosen node create failed\n");
 		goto err;
@@ -509,6 +508,8 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		printf("ERROR: arch-specific fdt fixup failed\n");
 		goto err;
 	}
+	/* Update ethernet nodes */
+	fdt_fixup_ethernet(blob);
 	if (IMAGE_OF_BOARD_SETUP) {
 		fdt_ret = ft_board_setup(blob, gd->bd);
 		if (fdt_ret) {
@@ -518,19 +519,20 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		}
 	}
 	if (IMAGE_OF_SYSTEM_SETUP) {
-		if (ft_system_setup(blob, gd->bd)) {
+		fdt_ret = ft_system_setup(blob, gd->bd);
+		if (fdt_ret) {
 			printf("ERROR: system-specific fdt fixup failed: %s\n",
 			       fdt_strerror(fdt_ret));
 			goto err;
 		}
 	}
-	fdt_fixup_ethernet(blob);
 
 	/* Delete the old LMB reservation */
-	lmb_free(lmb, (phys_addr_t)(u32)(uintptr_t)blob,
-		 (phys_size_t)fdt_totalsize(blob));
+	if (lmb)
+		lmb_free(lmb, (phys_addr_t)(u32)(uintptr_t)blob,
+			 (phys_size_t)fdt_totalsize(blob));
 
-	ret = fdt_shrink_to_minimum(blob);
+	ret = fdt_shrink_to_minimum(blob, 0);
 	if (ret < 0)
 		goto err;
 	of_size = ret;
@@ -540,7 +542,8 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		fdt_set_totalsize(blob, of_size);
 	}
 	/* Create a new LMB reservation */
-	lmb_reserve(lmb, (ulong)blob, of_size);
+	if (lmb)
+		lmb_reserve(lmb, (ulong)blob, of_size);
 
 	fdt_initrd(blob, *initrd_start, *initrd_end);
 	if (!ft_verify_fdt(blob))

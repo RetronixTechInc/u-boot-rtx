@@ -318,9 +318,9 @@ struct clk_root_map {
 };
 
 enum enet_freq {
-	ENET_25MHz,
-	ENET_50MHz,
-	ENET_125MHz,
+	ENET_25MHZ,
+	ENET_50MHZ,
+	ENET_125MHZ,
 };
 
 u32 get_root_clk(enum clk_root_index clock_id);
@@ -329,7 +329,7 @@ u32 imx_get_uartclk(void);
 u32 imx_get_fecclk(void);
 void clock_init(void);
 #ifdef CONFIG_SYS_I2C_MXC
-int enable_i2c_clk(bool enable, unsigned int i2c_num);
+int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
 #endif
 #ifdef CONFIG_FEC_MXC
 int set_clk_enet(enum enet_freq type);

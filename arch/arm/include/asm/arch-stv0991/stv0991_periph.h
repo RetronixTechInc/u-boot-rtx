@@ -1,6 +1,6 @@
 /*
- * (C) Copyright 2014
- * Vikas Manocha, ST Micoelectronics, vikas.manocha@st.com.
+ * Copyright (C) 2014, STMicroelectronics - All Rights Reserved
+ * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -18,6 +18,7 @@ enum periph_id {
 	UART_GPIOC_30_31 = 0,
 	UART_GPIOB_16_17,
 	ETH_GPIOB_10_31_C_0_4,
+	QSPI_CS_CLK_PAD,
 	PERIPH_ID_I2C0,
 	PERIPH_ID_I2C1,
 	PERIPH_ID_I2C2,
@@ -39,6 +40,7 @@ enum periph_id {
 enum periph_clock {
 	UART_CLOCK_CFG = 0,
 	ETH_CLOCK_CFG,
+	QSPI_CLOCK_CFG,
 };
 
 #endif /* __ASM_ARM_ARCH_PERIPH_H */

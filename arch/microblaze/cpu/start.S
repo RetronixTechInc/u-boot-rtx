@@ -25,13 +25,14 @@ _start:
 
 	addi	r8, r0, __end
 	mts	rslr, r8
+	/* TODO: Redo this code to call board_init_f_*() */
 #if defined(CONFIG_SPL_BUILD)
 	addi	r1, r0, CONFIG_SPL_STACK_ADDR
 	mts	rshr, r1
 	addi	r1, r1, -4	/* Decrement SP to top of memory */
 #else
-#if defined(CONFIG_SYS_MALLOC_F_LEN)
-	addi	r1, r0, CONFIG_SYS_INIT_SP_OFFSET - CONFIG_SYS_MALLOC_F_LEN
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+	addi	r1, r0, CONFIG_SYS_INIT_SP_OFFSET - CONFIG_VAL(SYS_MALLOC_F_LEN)
 #else
 	addi	r1, r0, CONFIG_SYS_INIT_SP_OFFSET
 #endif
@@ -128,7 +129,7 @@ _start:
 	sh	r7, r0, r8
 	rsubi	r8, r10, 0x26
 	sh	r6, r0, r8
-#endif /* BUILD_SPL */
+#endif /* CONFIG_SPL_BUILD */
 
 	/* Flush cache before enable cache */
 	addik	r5, r0, 0
@@ -141,6 +142,7 @@ _start:
 	ori	r12, r12, 0x1a0
 	mts	rmsr, r12
 
+	/* TODO: Redo this code to call board_init_f_*() */
 clear_bss:
 	/* clear BSS segments */
 	addi	r5, r0, __bss_start
@@ -153,17 +155,21 @@ clear_bss:
 	cmp     r6, r5, r4 /* check if we have reach the end */
 	bnei    r6, 2b
 3:	/* jumping to board_init */
+#ifdef CONFIG_DEBUG_UART
+	bralid	r15, debug_uart_init
+	nop
+#endif
 #ifndef CONFIG_SPL_BUILD
 	or	r5, r0, r0	/* flags - empty */
 	addi    r31, r0, _gd
-#if defined(CONFIG_SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	addi	r6, r0, CONFIG_SYS_INIT_SP_OFFSET
 	swi	r6, r31, GD_MALLOC_BASE
 #endif
 	brai	board_init_f
 #else
 	addi	r31, r0, _gd
-#if defined(CONFIG_SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	addi	r6, r0, CONFIG_SPL_STACK_ADDR
 	swi	r6, r31, GD_MALLOC_BASE
 #endif

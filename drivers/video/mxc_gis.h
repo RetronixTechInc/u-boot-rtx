@@ -7,7 +7,7 @@
 #ifndef MXC_GIS_H
 #define MXC_GIS_H
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/regs-common.h>
 
 struct mxs_gis_regs {
 	mxs_reg_32(hw_gis_ctrl)				/* 0x00 */

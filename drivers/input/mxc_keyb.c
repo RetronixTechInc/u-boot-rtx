@@ -22,9 +22,9 @@
 
 #include <asm/io.h>
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <linux/types.h>
-#include <asm/imx-common/mxc_key_defs.h>
+#include <asm/mach-imx/mxc_key_defs.h>
 #include <malloc.h>
 
 /*

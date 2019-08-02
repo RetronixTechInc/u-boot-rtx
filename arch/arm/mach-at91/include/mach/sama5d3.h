@@ -14,11 +14,6 @@
 #define SAMA5D3_H
 
 /*
- * defines to be used in other places
- */
-#define CONFIG_AT91FAMILY	/* it's a member of AT91 */
-
-/*
  * Peripheral identifiers/interrupts.
  */
 #define ATMEL_ID_FIQ	0	/* Advanced Interrupt Controller (FIQ) */
@@ -158,6 +153,9 @@
 #define ATMEL_BASE_RTC		0xfffffeb0
 /* Reserved:	0xfffffee0 - 0xffffffff */
 
+#define ATMEL_CHIPID_CIDR	0xffffee40
+#define ATMEL_CHIPID_EXID	0xffffee44
+
 /*
  * Internal Memory.
  */
@@ -185,8 +183,6 @@
  * Other misc defines
  */
 #define ATMEL_PIO_PORTS		5
-#define CPU_HAS_PIO3
-#define PIO_SCDR_DIV		0x3fff
 #define CPU_HAS_PCR
 
 /* Timer */

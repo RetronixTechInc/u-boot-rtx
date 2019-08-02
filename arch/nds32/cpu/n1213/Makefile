@@ -12,4 +12,4 @@
 extra-y	= start.o
 
 obj-$(if $(filter ag101,$(SOC)),y) += ag101/
-obj-$(if $(filter ag102,$(SOC)),y) += ag102/
+obj-$(if $(filter ae3xx,$(SOC)),y) += ae3xx/

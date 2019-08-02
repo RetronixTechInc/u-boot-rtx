@@ -6,7 +6,7 @@
  *
  * Linux IPU driver for MX51:
  *
- * (C) Copyright 2005-2014 Freescale Semiconductor, Inc.
+ * (C) Copyright 2005-2010 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -253,6 +253,7 @@ struct clk *clk_get_parent(struct clk *clk);
 
 void ipu_dump_registers(void);
 int ipu_probe(void);
+bool ipu_clk_enabled(void);
 
 void ipu_dmfc_init(int dmfc_type, int first);
 void ipu_init_dc_mappings(void);
@@ -265,5 +266,4 @@ int ipu_dp_init(ipu_channel_t channel, uint32_t in_pixel_fmt,
 void ipu_dp_uninit(ipu_channel_t channel);
 void ipu_dp_dc_disable(ipu_channel_t channel, unsigned char swap);
 ipu_color_space_t format_to_colorspace(uint32_t fmt);
-
 #endif

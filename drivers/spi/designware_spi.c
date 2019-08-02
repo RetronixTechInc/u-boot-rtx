@@ -11,6 +11,7 @@
  */
 
 #include <common.h>
+#include <clk.h>
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
@@ -18,7 +19,6 @@
 #include <fdtdec.h>
 #include <linux/compat.h>
 #include <asm/io.h>
-#include <asm/arch/clock_manager.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -74,14 +74,14 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SPI_CFS_OFFSET			12
 
 /* Bit fields in SR, 7 bits */
-#define SR_MASK				0x7f		/* cover 7 bits */
-#define SR_BUSY				(1 << 0)
-#define SR_TF_NOT_FULL			(1 << 1)
-#define SR_TF_EMPT			(1 << 2)
-#define SR_RF_NOT_EMPT			(1 << 3)
-#define SR_RF_FULL			(1 << 4)
-#define SR_TX_ERR			(1 << 5)
-#define SR_DCOL				(1 << 6)
+#define SR_MASK				GENMASK(6, 0)	/* cover 7 bits */
+#define SR_BUSY				BIT(0)
+#define SR_TF_NOT_FULL			BIT(1)
+#define SR_TF_EMPT			BIT(2)
+#define SR_RF_NOT_EMPT			BIT(3)
+#define SR_RF_FULL			BIT(4)
+#define SR_TX_ERR			BIT(5)
+#define SR_DCOL				BIT(6)
 
 #define RX_TIMEOUT			1000		/* timeout in ms */
 
@@ -94,6 +94,8 @@ struct dw_spi_priv {
 	void __iomem *regs;
 	unsigned int freq;		/* Default frequency */
 	unsigned int mode;
+	struct clk clk;
+	unsigned long bus_clk_rate;
 
 	int bits_per_word;
 	u8 cs;			/* chip select pin */
@@ -132,9 +134,9 @@ static int dw_spi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct dw_spi_platdata *plat = bus->platdata;
 	const void *blob = gd->fdt_blob;
-	int node = bus->of_offset;
+	int node = dev_of_offset(bus);
 
-	plat->regs = (struct dw_spi *)fdtdec_get_addr(blob, node, "reg");
+	plat->regs = (struct dw_spi *)devfdt_get_addr(bus);
 
 	/* Use 500KHz as a suitable default */
 	plat->frequency = fdtdec_get_int(blob, node, "spi-max-frequency",
@@ -176,13 +178,52 @@ static void spi_hw_init(struct dw_spi_priv *priv)
 	debug("%s: fifo_len=%d\n", __func__, priv->fifo_len);
 }
 
+/*
+ * We define dw_spi_get_clk function as 'weak' as some targets
+ * (like SOCFPGA_GEN5 and SOCFPGA_ARRIA10) don't use standard clock API
+ * and implement dw_spi_get_clk their own way in their clock manager.
+ */
+__weak int dw_spi_get_clk(struct udevice *bus, ulong *rate)
+{
+	struct dw_spi_priv *priv = dev_get_priv(bus);
+	int ret;
+
+	ret = clk_get_by_index(bus, 0, &priv->clk);
+	if (ret)
+		return ret;
+
+	ret = clk_enable(&priv->clk);
+	if (ret && ret != -ENOSYS && ret != -ENOTSUPP)
+		return ret;
+
+	*rate = clk_get_rate(&priv->clk);
+	if (!*rate)
+		goto err_rate;
+
+	debug("%s: get spi controller clk via device tree: %lu Hz\n",
+	      __func__, *rate);
+
+	return 0;
+
+err_rate:
+	clk_disable(&priv->clk);
+	clk_free(&priv->clk);
+
+	return -EINVAL;
+}
+
 static int dw_spi_probe(struct udevice *bus)
 {
 	struct dw_spi_platdata *plat = dev_get_platdata(bus);
 	struct dw_spi_priv *priv = dev_get_priv(bus);
+	int ret;
 
 	priv->regs = plat->regs;
 	priv->freq = plat->frequency;
+
+	ret = dw_spi_get_clk(bus, &priv->bus_clk_rate);
+	if (ret)
+		return ret;
 
 	/* Currently only bits_per_word == 8 supported */
 	priv->bits_per_word = 8;
@@ -369,7 +410,7 @@ static int dw_spi_set_speed(struct udevice *bus, uint speed)
 	spi_enable_chip(priv, 0);
 
 	/* clk_div doesn't support odd number */
-	clk_div = cm_get_spi_controller_clk_hz() / speed;
+	clk_div = priv->bus_clk_rate / speed;
 	clk_div = (clk_div + 1) & 0xfffe;
 	dw_writel(priv, DW_SPI_BAUDR, clk_div);
 

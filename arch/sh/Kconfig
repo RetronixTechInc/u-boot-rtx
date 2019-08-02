@@ -29,6 +29,7 @@ config SH_32BIT
 
 choice
 	prompt "Target select"
+	optional
 
 config TARGET_RSK7203
 	bool "RSK+ 7203"
@@ -124,8 +125,7 @@ config SYS_CPU
 	default "sh3" if CPU_SH3
 	default "sh4" if CPU_SH4
 
-config USE_PRIVATE_LIBGCC
-	default y
+source "arch/sh/lib/Kconfig"
 
 source "board/alphaproject/ap_sh4a_4a/Kconfig"
 source "board/espt/Kconfig"

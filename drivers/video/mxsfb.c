@@ -3,6 +3,9 @@
  *
  * Copyright (C) 2011-2013 Marek Vasut <marex@denx.de>
  *
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
@@ -12,10 +15,10 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 
-#include <asm/imx-common/dma.h>
+#include <asm/mach-imx/dma.h>
 
 #include "videomodes.h"
 #include <linux/string.h>
@@ -27,8 +30,11 @@
 #include <gis.h>
 #endif
 
+#ifdef CONFIG_IMX_MIPI_DSI_BRIDGE
+#include <imx_mipi_dsi_bridge.h>
+#endif
+
 #define	PS2KHZ(ps)	(1000000000UL / (ps))
-#define	WAIT_FOR_VSYNC_TIMEOUT	1000000
 
 static GraphicDevice panel;
 struct mxs_dma_desc desc;
@@ -70,7 +76,7 @@ void mxs_lcd_get_panel(struct display_panel *dispanel)
 }
 
 /*
- * DENX M28EVK:
+ * ARIES M28EVK:
  * setenv videomode
  * video=ctfb:x:800,y:480,depth:18,mode:0,pclk:30066,
  *       le:0,ri:256,up:0,lo:45,hs:1,vs:1,sync:100663296,vmode:0
@@ -84,7 +90,7 @@ void mxs_lcd_get_panel(struct display_panel *dispanel)
 static void mxs_lcd_init(GraphicDevice *panel,
 			struct ctfb_res_modes *mode, int bpp)
 {
-	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)(panel->isaBase);
+	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)(ulong)(panel->isaBase);
 	uint32_t word_len = 0, bus_width = 0;
 	uint8_t valid_data = 0;
 
@@ -92,7 +98,7 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	mxs_set_lcdclk(panel->isaBase, PS2KHZ(mode->pixclock));
 
 	/* Restart the LCDIF block */
-	mxs_reset_block((struct mxs_register_32 *)&regs->hw_lcdif_ctrl);
+	mxs_reset_block(&regs->hw_lcdif_ctrl_reg);
 
 	switch (bpp) {
 	case 24:
@@ -124,15 +130,26 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	writel(valid_data << LCDIF_CTRL1_BYTE_PACKING_FORMAT_OFFSET,
 		&regs->hw_lcdif_ctrl1);
 
+#ifdef CONFIG_IMX_MIPI_DSI_BRIDGE
+	writel(LCDIF_CTRL2_OUTSTANDING_REQS_REQ_16, &regs->hw_lcdif_ctrl2);
+#endif
+
 	mxsfb_system_setup();
 
 	writel((mode->yres << LCDIF_TRANSFER_COUNT_V_COUNT_OFFSET) | mode->xres,
 		&regs->hw_lcdif_transfer_count);
 
+#ifdef CONFIG_IMX_SEC_MIPI_DSI
+	writel(LCDIF_VDCTRL0_ENABLE_PRESENT |
+		LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
+		LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
+		mode->vsync_len, &regs->hw_lcdif_vdctrl0);
+#else
 	writel(LCDIF_VDCTRL0_ENABLE_PRESENT | LCDIF_VDCTRL0_ENABLE_POL |
 		LCDIF_VDCTRL0_VSYNC_PERIOD_UNIT |
 		LCDIF_VDCTRL0_VSYNC_PULSE_WIDTH_UNIT |
 		mode->vsync_len, &regs->hw_lcdif_vdctrl0);
+#endif
 	writel(mode->upper_margin + mode->lower_margin +
 		mode->vsync_len + mode->yres,
 		&regs->hw_lcdif_vdctrl1);
@@ -165,20 +182,32 @@ static void mxs_lcd_init(GraphicDevice *panel,
 	writel(LCDIF_CTRL_RUN, &regs->hw_lcdif_ctrl_set);
 }
 
-void lcdif_power_down()
+void lcdif_power_down(void)
 {
-	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)(panel.isaBase);
-	int timeout = WAIT_FOR_VSYNC_TIMEOUT;
+	struct mxs_lcdif_regs *regs = (struct mxs_lcdif_regs *)(ulong)(panel.isaBase);
+	int timeout = 1000000;
 
-	writel(panel.frameAdrs, &regs->hw_lcdif_cur_buf);
-	writel(panel.frameAdrs, &regs->hw_lcdif_next_buf);
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_LCDIF))
+		return;
+#endif
+	if (!panel.frameAdrs)
+		return;
+
+#ifdef CONFIG_IMX_MIPI_DSI_BRIDGE
+	imx_mipi_dsi_bridge_disable();
+#endif
+
+	writel(panel.frameAdrs, &regs->hw_lcdif_cur_buf_reg);
+	writel(panel.frameAdrs, &regs->hw_lcdif_next_buf_reg);
 	writel(LCDIF_CTRL1_VSYNC_EDGE_IRQ, &regs->hw_lcdif_ctrl1_clr);
 	while (--timeout) {
-		if (readl(&regs->hw_lcdif_ctrl1) & LCDIF_CTRL1_VSYNC_EDGE_IRQ)
+		if (readl(&regs->hw_lcdif_ctrl1_reg) &
+		    LCDIF_CTRL1_VSYNC_EDGE_IRQ)
 			break;
 		udelay(1);
 	}
-	mxs_reset_block((struct mxs_register_32 *)&regs->hw_lcdif_ctrl);
+	mxs_reset_block((struct mxs_register_32 *)&regs->hw_lcdif_ctrl_reg);
 }
 
 void *video_hw_init(void)
@@ -193,7 +222,7 @@ void *video_hw_init(void)
 	if (!setup) {
 
 		/* Suck display configuration from "videomode" variable */
-		penv = getenv("videomode");
+		penv = env_get("videomode");
 		if (!penv) {
 			printf("MXSFB: 'videomode' variable not set!\n");
 			return NULL;
@@ -216,6 +245,12 @@ void *video_hw_init(void)
 		bpp = depth;
 	}
 
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_LCDIF)) {
+		printf("LCDIF@0x%x is fused, disable it\n", MXS_LCDIF_BASE);
+		return NULL;
+	}
+#endif
 	/* fill in Graphic device struct */
 	sprintf(panel.modeIdent, "%dx%dx%d",
 			mode.xres, mode.yres, bpp);
@@ -259,9 +294,14 @@ void *video_hw_init(void)
 	/* Wipe framebuffer */
 	memset(fb, 0, panel.memSize);
 
-	panel.frameAdrs = (u32)fb;
+	panel.frameAdrs = (ulong)fb;
 
 	printf("%s\n", panel.modeIdent);
+
+#ifdef CONFIG_IMX_MIPI_DSI_BRIDGE
+	imx_mipi_dsi_bridge_mode_set(&fbmode);
+	imx_mipi_dsi_bridge_enable();
+#endif
 
 	/* Start framebuffer */
 	mxs_lcd_init(&panel, &mode, bpp);

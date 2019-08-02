@@ -11,7 +11,7 @@
 #include <pci.h>
 
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #endif
 
@@ -123,7 +123,7 @@ void mpc83xx_pci_init(int num_buses, struct pci_region **reg)
 	int i;
 
 	if (num_buses > MAX_BUSES) {
-		printf("%d PCI buses requsted, %d supported\n",
+		printf("%d PCI buses requested, %d supported\n",
 		       num_buses, MAX_BUSES);
 
 		num_buses = MAX_BUSES;

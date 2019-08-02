@@ -16,17 +16,9 @@
  /* High Level Configuration Options */
 #define CONFIG_MX35
 #define CONFIG_MX35_HCLK_FREQ	24000000
+#define CONFIG_SYS_FSL_CLK
 
 #define CONFIG_SYS_DCACHE_OFF
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_SYS_GENERIC_BOARD
-
-/* Only in case the value is not present in mach-types.h */
-#ifndef MACH_TYPE_FLEA3
-#define MACH_TYPE_FLEA3                3668
-#endif
 
 #define CONFIG_MACH_TYPE		MACH_TYPE_FLEA3
 
@@ -47,9 +39,10 @@
  */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 #define CONFIG_SYS_SPD_BUS_NUM		0
-#define CONFIG_MXC_SPI
-#define CONFIG_MXC_GPIO
 
 /* PMIC Controller */
 #define CONFIG_POWER
@@ -59,10 +52,7 @@
 #define CONFIG_SYS_FSL_PMIC_I2C_ADDR	0x8
 #define CONFIG_RTC_MC13XXX
 
-
 /* mmc driver */
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	1
@@ -76,52 +66,21 @@
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_BAUDRATE		115200
 
 /*
  * Command definition
  */
 
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DATE
-#define CONFIG_CMD_DHCP
-#define CONFIG_BOOTP_SUBNETMASK
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_DNS
-
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_CACHE
-
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
-
-#define CONFIG_CMD_MMC
-#define CONFIG_DOS_PARTITION
-#define CONFIG_EFI_PARTITION
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-
-#define CONFIG_CMD_GPIO
-#define CONFIG_MXC_GPIO
-
 #define CONFIG_NET_RETRY_COUNT	100
 
-#define CONFIG_BOOTDELAY	3
 
 #define CONFIG_LOADADDR		0x80800000	/* loadaddr env var */
-
 
 /*
  * Ethernet on SOC (FEC)
  */
 #define CONFIG_FEC_MXC
 #define IMX_FEC_BASE	FEC_BASE_ADDR
-#define CONFIG_PHYLIB
-#define CONFIG_PHY_MICREL
 #define CONFIG_FEC_MXC_PHYADDR	0x1
 
 #define CONFIG_MII
@@ -132,29 +91,11 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define CONFIG_SYS_PROMPT	"woodburn U-Boot > "
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_HUSH_PARSER	/* Use the HUSH parser */
-
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE /* Boot Argument Buffer Size */
 
 #define CONFIG_SYS_MEMTEST_START	0	/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x10000
 
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-/*
- * Stack sizes
- *
- * The stack sizes are set up in start.S using the settings below
- */
-#define CONFIG_STACKSIZE	(128 * 1024)	/* regular stack */
 
 /*
  * Physical Memory Map
@@ -174,18 +115,9 @@
 /*
  * MTD Command for mtdparts
  */
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE
 #define CONFIG_FLASH_CFI_MTD
 #define CONFIG_MTD_PARTITIONS
-#define MTDIDS_DEFAULT		"nand0=mxc_nand,nor0=physmap-flash.0"
-#define MTDPARTS_DEFAULT	"mtdparts=mxc_nand:50m(root1)," \
-				"32m(rootfb)," \
-				"64m(pcache)," \
-				"64m(app1)," \
-				"10m(app2),-(spool);" \
-				"physmap-flash.0:512k(u-boot),64k(env1)," \
-				"64k(env2),3776k(kernel1),3776k(kernel2)"
 
 /*
  * FLASH and environment organization
@@ -207,8 +139,6 @@
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + \
 				CONFIG_SYS_MONITOR_LEN)
 
-#define CONFIG_ENV_IS_IN_FLASH
-
 /*
  * CFI FLASH driver setup
  */
@@ -222,7 +152,6 @@
 /*
  * NAND FLASH driver setup
  */
-#define CONFIG_NAND_MXC
 #define CONFIG_NAND_MXC_V1_1
 #define CONFIG_MXC_NAND_REGS_BASE	(NFC_BASE_ADDR)
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
@@ -230,10 +159,6 @@
 #define CONFIG_MXC_NAND_HWECC
 #define CONFIG_SYS_NAND_LARGEPAGE
 
-#if 0
-#define CONFIG_MTD_DEBUG
-#define CONFIG_MTD_DEBUG_VERBOSE	7
-#endif
 #define CONFIG_SYS_NAND_ONFI_DETECTION
 
 /*

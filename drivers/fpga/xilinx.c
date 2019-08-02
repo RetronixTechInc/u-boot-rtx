@@ -24,12 +24,24 @@ static int xilinx_validate(xilinx_desc *desc, char *fn);
 
 /* ------------------------------------------------------------------------- */
 
+int fpga_is_partial_data(int devnum, size_t img_len)
+{
+	const fpga_desc * const desc = fpga_get_desc(devnum);
+	xilinx_desc *desc_xilinx = desc->devdesc;
+
+	/* Check datasize against FPGA size */
+	if (img_len >= desc_xilinx->size)
+		return 0;
+
+	/* datasize is smaller, must be partial data */
+	return 1;
+}
+
 int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 		       bitstream_type bstype)
 {
 	unsigned int length;
 	unsigned int swapsize;
-	char buffer[80];
 	unsigned char *dataptr;
 	unsigned int i;
 	const fpga_desc *desc;
@@ -57,10 +69,8 @@ int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 
 	length = (*dataptr << 8) + *(dataptr + 1);
 	dataptr += 2;
-	for (i = 0; i < length; i++)
-		buffer[i] = *dataptr++;
-
-	printf("  design filename = \"%s\"\n", buffer);
+	printf("  design filename = \"%s\"\n", dataptr);
+	dataptr += length;
 
 	/* get part number (identifier, length, string) */
 	if (*dataptr++ != 0x62) {
@@ -71,23 +81,22 @@ int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 
 	length = (*dataptr << 8) + *(dataptr + 1);
 	dataptr += 2;
-	for (i = 0; i < length; i++)
-		buffer[i] = *dataptr++;
 
 	if (xdesc->name) {
-		i = strncmp(buffer, xdesc->name, strlen(xdesc->name));
-		if (i) {
+		i = (ulong)strstr((char *)dataptr, xdesc->name);
+		if (!i) {
 			printf("%s: Wrong bitstream ID for this device\n",
 			       __func__);
 			printf("%s: Bitstream ID %s, current device ID %d/%s\n",
-			       __func__, buffer, devnum, xdesc->name);
+			       __func__, dataptr, devnum, xdesc->name);
 			return FPGA_FAIL;
 		}
 	} else {
 		printf("%s: Please fill correct device ID to xilinx_desc\n",
 		       __func__);
 	}
-	printf("  part number = \"%s\"\n", buffer);
+	printf("  part number = \"%s\"\n", dataptr);
+	dataptr += length;
 
 	/* get date (identifier, length, string) */
 	if (*dataptr++ != 0x63) {
@@ -98,9 +107,8 @@ int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 
 	length = (*dataptr << 8) + *(dataptr+1);
 	dataptr += 2;
-	for (i = 0; i < length; i++)
-		buffer[i] = *dataptr++;
-	printf("  date = \"%s\"\n", buffer);
+	printf("  date = \"%s\"\n", dataptr);
+	dataptr += length;
 
 	/* get time (identifier, length, string) */
 	if (*dataptr++ != 0x64) {
@@ -111,9 +119,8 @@ int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 
 	length = (*dataptr << 8) + *(dataptr+1);
 	dataptr += 2;
-	for (i = 0; i < length; i++)
-		buffer[i] = *dataptr++;
-	printf("  time = \"%s\"\n", buffer);
+	printf("  time = \"%s\"\n", dataptr);
+	dataptr += length;
 
 	/* get fpga data length (identifier, length) */
 	if (*dataptr++ != 0x65) {
@@ -199,6 +206,9 @@ int xilinx_info(xilinx_desc *desc)
 		case xilinx_zynq:
 			printf("Zynq PL\n");
 			break;
+		case xilinx_zynqmp:
+			printf("ZynqMP PL\n");
+			break;
 			/* Add new family types here */
 		default:
 			printf ("Unknown family type, %d\n", desc->family);
@@ -226,6 +236,9 @@ int xilinx_info(xilinx_desc *desc)
 			break;
 		case devcfg:
 			printf("Device configuration interface (Zynq)\n");
+			break;
+		case csu_dma:
+			printf("csu_dma configuration interface (ZynqMP)\n");
 			break;
 			/* Add new interface types here */
 		default:

@@ -7,6 +7,7 @@
 #include <common.h>
 #include <asm/fsp/fsp_support.h>
 #include <asm/e820.h>
+#include <asm/mrccache.h>
 #include <asm/post.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -32,13 +33,20 @@ int dram_init(void)
 	gd->ram_size = ram_size;
 	post_code(POST_DRAM);
 
+#ifdef CONFIG_ENABLE_MRC_CACHE
+	gd->arch.mrc_output = fsp_get_nvs_data(gd->arch.hob_list,
+					       &gd->arch.mrc_output_len);
+#endif
+
 	return 0;
 }
 
-void dram_init_banksize(void)
+int dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = 0;
 	gd->bd->bi_dram[0].size = gd->ram_size;
+
+	return 0;
 }
 
 /*
@@ -72,10 +80,29 @@ unsigned install_e820_map(unsigned max_entries, struct e820entry *entries)
 				entries[num_entries].type = E820_RAM;
 			else if (res_desc->type == RES_MEM_RESERVED)
 				entries[num_entries].type = E820_RESERVED;
+
+			num_entries++;
 		}
 		hdr = get_next_hob(hdr);
-		num_entries++;
 	}
+
+	/* Mark PCIe ECAM address range as reserved */
+	entries[num_entries].addr = CONFIG_PCIE_ECAM_BASE;
+	entries[num_entries].size = CONFIG_PCIE_ECAM_SIZE;
+	entries[num_entries].type = E820_RESERVED;
+	num_entries++;
+
+#ifdef CONFIG_HAVE_ACPI_RESUME
+	/*
+	 * Everything between U-Boot's stack and ram top needs to be
+	 * reserved in order for ACPI S3 resume to work.
+	 */
+	entries[num_entries].addr = gd->start_addr_sp - CONFIG_STACK_SIZE;
+	entries[num_entries].size = gd->ram_top - gd->start_addr_sp + \
+		CONFIG_STACK_SIZE;
+	entries[num_entries].type = E820_RESERVED;
+	num_entries++;
+#endif
 
 	return num_entries;
 }

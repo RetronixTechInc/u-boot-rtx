@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2016 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * Peng Fan <Peng.Fan@freescale.com>
  *
@@ -29,7 +29,7 @@ int board_setup_waveform_file(ulong waveform_buf)
 	ulong file_len, mmc_dev;
 
 	if (!check_mmc_autodetect())
-		mmc_dev = getenv_ulong("mmcdev", 10, 0);
+		mmc_dev = env_get_ulong("mmcdev", 10, 0);
 	else
 		mmc_dev = mmc_get_env_devno();
 
@@ -39,7 +39,7 @@ int board_setup_waveform_file(ulong waveform_buf)
 	fs_argv[1] = "mmc";
 	fs_argv[2] = simple_itoa(mmc_dev);
 	fs_argv[3] = addr;
-	fs_argv[4] = getenv("epdc_waveform");
+	fs_argv[4] = env_get("epdc_waveform");
 
 	if (!fs_argv[4])
 		fs_argv[4] = "epdc_splash.bin";
@@ -49,11 +49,11 @@ int board_setup_waveform_file(ulong waveform_buf)
 		return -1;
 	}
 
-	file_len = getenv_hex("filesize", 0);
+	file_len = env_get_hex("filesize", 0);
 	if (!file_len)
 		return -1;
 
-	flush_cache(waveform_buf, file_len);
+	flush_cache(waveform_buf, roundup(file_len, ARCH_DMA_MINALIGN));
 
 	return 0;
 }
@@ -77,7 +77,7 @@ int board_setup_logo_file(void *display_buf)
 	max_check_length = 128;
 
 	if (!check_mmc_autodetect())
-		mmc_dev = getenv_ulong("mmcdev", 10, 0);
+		mmc_dev = env_get_ulong("mmcdev", 10, 0);
 	else
 		mmc_dev = mmc_get_env_devno();
 
@@ -86,26 +86,26 @@ int board_setup_logo_file(void *display_buf)
 	fs_argv[0] = "fatsize";
 	fs_argv[1] = "mmc";
 	fs_argv[2] = simple_itoa(mmc_dev);
-	fs_argv[3] = getenv("epdc_logo");
+	fs_argv[3] = env_get("epdc_logo");
 	if (!fs_argv[3])
 		fs_argv[3] = "epdc_logo.pgm";
 	if (do_fat_size(NULL, 0, 4, fs_argv)) {
 		debug("File %s not found on MMC Device %lu, use black border\n", fs_argv[3], mmc_dev);
 		/* Draw black border around framebuffer*/
-		memset(lcd_base, 0x0, 24 * panel_info.vl_col);
+		memset(display_buf, 0x0, 24 * panel_info.vl_col);
 		for (i = 24; i < (panel_info.vl_row - 24); i++) {
-			memset((u8 *)lcd_base + i * panel_info.vl_col,
+			memset((u8 *)display_buf + i * panel_info.vl_col,
 			       0x00, 24);
-			memset((u8 *)lcd_base + i * panel_info.vl_col
+			memset((u8 *)display_buf + i * panel_info.vl_col
 				+ panel_info.vl_col - 24, 0x00, 24);
 		}
-		memset((u8 *)lcd_base +
+		memset((u8 *)display_buf +
 		       panel_info.vl_col * (panel_info.vl_row - 24),
 		       0x00, 24 * panel_info.vl_col);
 		return 0;
 	}
 
-	file_len = getenv_hex("filesize", 0);
+	file_len = env_get_hex("filesize", 0);
 	if (!file_len)
 		return -EINVAL;
 
@@ -119,7 +119,7 @@ int board_setup_logo_file(void *display_buf)
 	fs_argv[1] = "mmc";
 	fs_argv[2] = simple_itoa(mmc_dev);
 	fs_argv[3] = addr;
-	fs_argv[4] = getenv("epdc_logo");
+	fs_argv[4] = env_get("epdc_logo");
 
 	if (!fs_argv[4])
 		fs_argv[4] = "epdc_logo.pgm";
@@ -180,7 +180,7 @@ int board_setup_logo_file(void *display_buf)
 	/* m,m means center of screen */
 	row = 0;
 	col = 0;
-	s = getenv("splashpos");
+	s = env_get("splashpos");
 	if (s) {
 		if (s[0] == 'm')
 			col = (panel_info.vl_col  - logo_width) >> 1;

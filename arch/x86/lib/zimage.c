@@ -14,6 +14,7 @@
  */
 
 #include <common.h>
+#include <asm/acpi_table.h>
 #include <asm/io.h>
 #include <asm/ptrace.h>
 #include <asm/zimage.h>
@@ -24,6 +25,8 @@
 #include <asm/arch/timestamp.h>
 #endif
 #include <linux/compiler.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /*
  * Memory lay-out:
@@ -40,31 +43,21 @@
 
 #define COMMAND_LINE_SIZE	2048
 
-unsigned generic_install_e820_map(unsigned max_entries,
-				  struct e820entry *entries)
-{
-	return 0;
-}
-
-unsigned install_e820_map(unsigned max_entries,
-			  struct e820entry *entries)
-	__attribute__((weak, alias("generic_install_e820_map")));
-
 static void build_command_line(char *command_line, int auto_boot)
 {
 	char *env_command_line;
 
 	command_line[0] = '\0';
 
-	env_command_line =  getenv("bootargs");
+	env_command_line =  env_get("bootargs");
 
 	/* set console= argument if we use a serial console */
 	if (!strstr(env_command_line, "console=")) {
-		if (!strcmp(getenv("stdout"), "serial")) {
+		if (!strcmp(env_get("stdout"), "serial")) {
 
 			/* We seem to use serial console */
 			sprintf(command_line, "console=ttyS0,%s ",
-				getenv("baudrate"));
+				env_get("baudrate"));
 		}
 	}
 
@@ -173,7 +166,7 @@ struct boot_params *load_zimage(char *image, unsigned long kernel_size,
 		 * A very old kernel MUST have its real-mode code
 		 * loaded at 0x90000
 		 */
-		if ((u32)setup_base != 0x90000) {
+		if ((ulong)setup_base != 0x90000) {
 			/* Copy the real-mode kernel */
 			memmove((void *)0x90000, setup_base, setup_size);
 
@@ -258,6 +251,18 @@ int setup_zimage(struct boot_params *setup_base, char *cmd_line, int auto_boot,
 		build_command_line(cmd_line, auto_boot);
 	}
 
+#ifdef CONFIG_INTEL_MID
+	if (bootproto >= 0x0207)
+		hdr->hardware_subarch = X86_SUBARCH_INTEL_MID;
+#endif
+
+#ifdef CONFIG_GENERATE_ACPI_TABLE
+	if (bootproto >= 0x020e)
+		hdr->acpi_rsdp_addr = acpi_get_rsdp_addr();
+#endif
+
+	setup_video(&setup_base->screen_info);
+
 	return 0;
 }
 
@@ -287,7 +292,7 @@ int do_zboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		/* argv[1] holds the address of the bzImage */
 		s = argv[1];
 	} else {
-		s = getenv("fileaddr");
+		s = env_get("fileaddr");
 	}
 
 	if (s)

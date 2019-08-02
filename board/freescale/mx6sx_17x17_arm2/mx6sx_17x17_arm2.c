@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -10,8 +10,8 @@
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/boot_mode.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/boot_mode.h>
 #include <asm/io.h>
 #include <linux/sizes.h>
 #include <common.h>
@@ -21,14 +21,15 @@
 #include <netdev.h>
 #ifdef CONFIG_SYS_I2C_MXC
 #include <i2c.h>
-#include <asm/imx-common/mxc_i2c.h>
+#include <asm/mach-imx/mxc_i2c.h>
 #endif
 #include <asm/arch/crm_regs.h>
 #include <power/pmic.h>
 #include <power/pfuze100_pmic.h>
 #include "../common/pfuze.h"
 #include <usb.h>
-#include <usb/ehci-fsl.h>
+#include <usb/ehci-ci.h>
+#include <dm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -76,9 +77,7 @@ DECLARE_GLOBAL_DATA_PTR;
 	PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |		\
 	PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
-#define I2C_PMIC 0
-
-#ifdef CONFIG_SYS_I2C_MXC
+#ifdef CONFIG_SYS_I2C
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
 /* I2C1 for PMIC */
 struct i2c_pads_info i2c_pad_info1 = {
@@ -107,11 +106,16 @@ struct i2c_pads_info i2c_pad_info2 = {
 		.gp = IMX_GPIO_NR(1, 3),
 	},
 };
+#endif
 
-static struct pmic *pfuze;
+#ifdef CONFIG_POWER
+#define I2C_PMIC 0
 int power_init_board(void)
 {
-	unsigned int reg, ret;
+	struct pmic *pfuze;
+	unsigned int reg;
+	int ret;
+
 	pfuze = pfuze_common_init(I2C_PMIC);
 	if (!pfuze)
 		return -ENODEV;
@@ -153,7 +157,7 @@ void ldo_mode_set(int ldo_bypass)
 	unsigned int value;
 	int is_400M;
 	u32 vddarm;
-	struct pmic *p = pfuze;
+	struct pmic *p = pmic_get("PFUZE100");
 
 	if (!p) {
 		printf("No PMIC found!\n");
@@ -197,6 +201,64 @@ void ldo_mode_set(int ldo_bypass)
 
 }
 #endif
+
+#elif defined(CONFIG_DM_PMIC_PFUZE100)
+int power_init_board(void)
+{
+	struct udevice *dev;
+	int ret;
+
+	dev = pfuze_common_init();
+	if (!dev)
+		return -ENODEV;
+
+	ret = pfuze_mode_init(dev, APS_PFM);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+#ifdef CONFIG_LDO_BYPASS_CHECK
+void ldo_mode_set(int ldo_bypass)
+{
+	struct udevice *dev;
+	int ret;
+	int is_400M;
+	u32 vddarm;
+
+	ret = pmic_get("pfuze100", &dev);
+	if (ret == -ENODEV) {
+		printf("No PMIC found!\n");
+		return;
+	}
+
+	/* switch to ldo_bypass mode , boot on 800Mhz */
+	if (ldo_bypass) {
+		prep_anatop_bypass();
+
+		/* decrease VDDARM for 400Mhz DQ:1.1V, DL:1.275V */
+		pmic_clrsetbits(dev, PFUZE100_SW1ABVOL, 0x3f, PFUZE100_SW1ABC_SETP(12750));
+
+		/* increase VDDSOC to 1.3V */
+		pmic_clrsetbits(dev, PFUZE100_SW1CVOL, 0x3f, PFUZE100_SW1ABC_SETP(13000));
+
+		is_400M = set_anatop_bypass(1);
+		if (is_400M)
+			vddarm = PFUZE100_SW1ABC_SETP(10750);
+		else
+			vddarm = PFUZE100_SW1ABC_SETP(11750);
+
+		pmic_clrsetbits(dev, PFUZE100_SW1ABVOL, 0x3f, vddarm);
+
+		/* decrease VDDSOC to 1.175V */
+		pmic_clrsetbits(dev, PFUZE100_SW1CVOL, 0x3f, PFUZE100_SW1ABC_SETP(11750));
+
+		finish_anatop_bypass();
+		printf("switch to ldo_bypass mode!\n");
+	}
+}
+#endif
 #endif
 
 int dram_init(void)
@@ -211,6 +273,7 @@ static iomux_v3_cfg_t const uart1_pads[] = {
 	MX6_PAD_GPIO1_IO05__UART1_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#ifndef CONFIG_MXC_SPI
 static iomux_v3_cfg_t const usdhc2_pads[] = {
 	MX6_PAD_SD2_CLK__USDHC2_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD2_CMD__USDHC2_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -219,6 +282,7 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	MX6_PAD_SD2_DATA2__USDHC2_DATA2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD2_DATA3__USDHC2_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 };
+#endif
 
 static iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_CLK__USDHC3_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -272,22 +336,17 @@ static iomux_v3_cfg_t const fec1_pads[] = {
 
 static void setup_iomux_fec1(void)
 {
-	imx_iomux_v3_setup_multiple_pads(fec1_pads, ARRAY_SIZE(fec1_pads));
-
-	/* Reset AR8031 PHY */
-	gpio_direction_output(IMX_GPIO_NR(4, 22) , 0);
-	udelay(500);
-	gpio_set_value(IMX_GPIO_NR(4, 22), 1);
+	SETUP_IOMUX_PADS(fec1_pads);
 }
 #endif
 
 static void setup_iomux_uart(void)
 {
-	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
+	SETUP_IOMUX_PADS(uart1_pads);
 }
 
 #ifdef CONFIG_FSL_QSPI
-
+#ifndef CONFIG_DM_SPI
 #define QSPI_PAD_CTRL1  \
 		(PAD_CTL_SRE_FAST | PAD_CTL_SPEED_MED | \
 		PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_PUS_47K_UP | PAD_CTL_DSE_60ohm)
@@ -309,11 +368,14 @@ static iomux_v3_cfg_t const quadspi_pads[] = {
 	MX6_PAD_NAND_DATA02__QSPI2_B_SCLK		| MUX_PAD_CTRL(QSPI_PAD_CTRL1),
 
 };
+#endif
 
 int board_qspi_init(void)
 {
+#ifndef CONFIG_DM_SPI
 	/* Set the iomux */
-	imx_iomux_v3_setup_multiple_pads(quadspi_pads, ARRAY_SIZE(quadspi_pads));
+	SETUP_IOMUX_PADS(quadspi_pads);
+#endif
 
 	/* Set the clock */
 	enable_qspi_clk(1);
@@ -331,26 +393,9 @@ static struct fsl_esdhc_cfg usdhc_cfg[3] = {
 
 #define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 10)
 
-int mmc_get_env_devno(void)
+int board_mmc_get_env_dev(int dev_no)
 {
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	/* need ubstract 2 to map to the mmc device id
-	 * see the comments in board_mmc_init function
-	 */
-
-#ifdef CONFIG_SYS_USE_SPINOR
+#ifdef CONFIG_MXC_SPI
 	dev_no -= 2;
 #else
 	dev_no--;
@@ -361,7 +406,7 @@ int mmc_get_env_devno(void)
 
 int mmc_map_to_kernel_blk(int dev_no)
 {
-#ifdef CONFIG_SYS_USE_SPINOR
+#ifdef CONFIG_MXC_SPI
 	return dev_no + 2;
 #else
 	return dev_no + 1;
@@ -388,7 +433,7 @@ int board_mmc_getcd(struct mmc *mmc)
 	return ret;
 }
 
-#ifdef CONFIG_SYS_USE_SPINOR
+#ifdef CONFIG_MXC_SPI
 int board_mmc_init(bd_t *bis)
 {
 	int i;
@@ -402,14 +447,13 @@ int board_mmc_init(bd_t *bis)
 	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
 		switch (i) {
 		case 0:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+			SETUP_IOMUX_PADS(usdhc3_pads);
+			gpio_request(USDHC3_CD_GPIO, "usdhc3 cd");
 			gpio_direction_input(USDHC3_CD_GPIO);
 			usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 			break;
 		case 1:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
+			SETUP_IOMUX_PADS(usdhc4_pads);
 			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 			break;
 		default:
@@ -440,19 +484,17 @@ int board_mmc_init(bd_t *bis)
 	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
 		switch (i) {
 		case 0:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
+			SETUP_IOMUX_PADS(usdhc2_pads);
 			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 			break;
 		case 1:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+			SETUP_IOMUX_PADS(usdhc3_pads);
+			gpio_request(USDHC3_CD_GPIO, "usdhc3 cd");
 			gpio_direction_input(USDHC3_CD_GPIO);
 			usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 			break;
 		case 2:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
+			SETUP_IOMUX_PADS(usdhc4_pads);
 			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 			break;
 		default:
@@ -468,42 +510,9 @@ int board_mmc_init(bd_t *bis)
 	return 0;
 }
 #endif
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
-
 #endif
 
-#ifdef CONFIG_SYS_USE_SPINOR
+#ifdef CONFIG_MXC_SPI
 iomux_v3_cfg_t const ecspi4_pads[] = {
 	MX6_PAD_SD2_CLK__ECSPI4_SCLK | MUX_PAD_CTRL(SPI_PAD_CTRL),
 	MX6_PAD_SD2_DATA3__ECSPI4_MISO | MUX_PAD_CTRL(SPI_PAD_CTRL),
@@ -513,8 +522,8 @@ iomux_v3_cfg_t const ecspi4_pads[] = {
 
 void setup_spinor(void)
 {
-	imx_iomux_v3_setup_multiple_pads(ecspi4_pads,
-					 ARRAY_SIZE(ecspi4_pads));
+	SETUP_IOMUX_PADS(ecspi4_pads);
+	gpio_request(IMX_GPIO_NR(6, 10), "ecspi cs");
 	gpio_direction_output(IMX_GPIO_NR(6, 10), 0);
 }
 
@@ -524,7 +533,7 @@ int board_spi_cs_gpio(unsigned bus, unsigned cs)
 }
 #endif
 
-#ifdef CONFIG_SYS_USE_EIMNOR
+#ifdef CONFIG_MTD_NOR_FLASH
 iomux_v3_cfg_t eimnor_pads[] = {
 	MX6_PAD_NAND_DATA00__WEIM_AD_0     | MUX_PAD_CTRL(WEIM_NOR_PAD_CTRL),
 	MX6_PAD_NAND_DATA01__WEIM_AD_1     | MUX_PAD_CTRL(WEIM_NOR_PAD_CTRL),
@@ -572,14 +581,13 @@ static void eimnor_cs_setup(void)
 
 static void setup_eimnor(void)
 {
-	imx_iomux_v3_setup_multiple_pads(eimnor_pads,
-			ARRAY_SIZE(eimnor_pads));
+	SETUP_IOMUX_PADS(eimnor_pads);
 
 	eimnor_cs_setup();
 }
 #endif
 
-#ifdef CONFIG_SYS_USE_NAND
+#ifdef CONFIG_NAND_MXS
 iomux_v3_cfg_t gpmi_pads[] = {
 	MX6_PAD_NAND_CLE__RAWNAND_CLE		| MUX_PAD_CTRL(GPMI_PAD_CTRL2),
 	MX6_PAD_NAND_ALE__RAWNAND_ALE		| MUX_PAD_CTRL(GPMI_PAD_CTRL2),
@@ -603,29 +611,11 @@ static void setup_gpmi_nand(void)
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
 
 	/* config gpmi nand iomux */
-	imx_iomux_v3_setup_multiple_pads(gpmi_pads, ARRAY_SIZE(gpmi_pads));
+	SETUP_IOMUX_PADS(gpmi_pads);
 
-	/* Disable the QSPI2 root clock */
-	clrbits_le32(&mxc_ccm->CCGR4, MXC_CCM_CCGR4_QSPI2_ENFC_MASK
-				| MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_GPMI_IO_MASK);
-
-	/* config gpmi and bch clock to 100 MHz */
-	clrsetbits_le32(&mxc_ccm->cs2cdr,
-			MXC_CCM_CS2CDR_QSPI2_CLK_PODF_MASK |
-			MXC_CCM_CS2CDR_QSPI2_CLK_PRED_MASK |
-			MXC_CCM_CS2CDR_QSPI2_CLK_SEL_MASK,
-			MXC_CCM_CS2CDR_QSPI2_CLK_PODF(0) |
+	setup_gpmi_io_clk((MXC_CCM_CS2CDR_QSPI2_CLK_PODF(0) |
 			MXC_CCM_CS2CDR_QSPI2_CLK_PRED(3) |
-			MXC_CCM_CS2CDR_QSPI2_CLK_SEL(3));
-
-	/* enable gpmi and bch clock gating */
-	setbits_le32(&mxc_ccm->CCGR4,
-		     MXC_CCM_CCGR4_RAWNAND_U_BCH_INPUT_APB_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_BCH_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_BCH_INPUT_GPMI_IO_MASK |
-		     MXC_CCM_CCGR4_RAWNAND_U_GPMI_INPUT_APB_MASK |
-		     MXC_CCM_CCGR4_PL301_MX6QPER1_BCH_MASK |
-		     MXC_CCM_CCGR4_QSPI2_ENFC_MASK);
+			MXC_CCM_CS2CDR_QSPI2_CLK_SEL(3)));
 
 	/* enable apbh clock gating */
 	setbits_le32(&mxc_ccm->CCGR0, MXC_CCM_CCGR0_APBHDMA_MASK);
@@ -647,6 +637,9 @@ int board_eth_init(bd_t *bis)
 	return 0;
 }
 
+#define MAX7322_I2C_ADDR		0x68
+#define MAX7322_I2C_BUS		1
+
 static int setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *const iomuxc_gpr_regs
@@ -661,18 +654,43 @@ static int setup_fec(void)
 	if (ret)
 		return ret;
 
-#ifdef CONFIG_FEC_ENABLE_MAX7322
-	/* release max7322 from reset */
-	gpio_direction_output(IMX_GPIO_NR(4, 22) , 1);
+/* Reset AR8031 PHY */
+	gpio_request(IMX_GPIO_NR(4, 22), "ar8031 reset");
+	gpio_direction_output(IMX_GPIO_NR(4, 22) , 0);
+	udelay(500);
+	gpio_set_value(IMX_GPIO_NR(4, 22), 1);
 
+#ifdef CONFIG_DM_I2C
+	struct udevice *bus, *dev;
+	ret = uclass_get_device_by_seq(UCLASS_I2C, MAX7322_I2C_BUS - 1, &bus);
+	if (ret) {
+		printf("Get i2c bus %u failed, ret = %d\n", MAX7322_I2C_BUS - 1, ret);
+		return ret;
+	}
+
+	ret = dm_i2c_probe(bus, MAX7322_I2C_ADDR, 0, &dev);
+	if (ret) {
+		printf("MAX7322 Not found, ret = %d\n", ret);
+		return ret;
+	}
+
+	/* Write 0x1 to enable O0 output, this device has no addr */
+	/* hence addr length is 0 */
+	value = 0x1;
+	ret = dm_i2c_write(dev, 0, &value, 1);
+	if (ret) {
+		printf("MAX7322 write failed, ret = %d\n", ret);
+		return ret;
+	}
+#else
 	/* This is needed to drive the pads to 1.8V instead of 1.5V */
-	i2c_set_bus_num(CONFIG_MAX7322_I2C_BUS);
+	i2c_set_bus_num(MAX7322_I2C_BUS);
 
-	if (!i2c_probe(CONFIG_MAX7322_I2C_ADDR)) {
+	if (!i2c_probe(MAX7322_I2C_ADDR)) {
 		/* Write 0x1 to enable O0 output, this device has no addr */
 		/* hence addr length is 0 */
 		value = 0x1;
-		if (i2c_write(CONFIG_MAX7322_I2C_ADDR, 0, 0, &value, 1))
+		if (i2c_write(MAX7322_I2C_ADDR, 0, 0, &value, 1))
 			printf("MAX7322 write failed\n");
 	} else {
 		printf("MAX7322 Not found\n");
@@ -709,6 +727,8 @@ int board_early_init_f(void)
 }
 
 #ifdef CONFIG_USB_EHCI_MX6
+#ifndef CONFIG_DM_USB
+
 #define USB_OTHERREGS_OFFSET	0x800
 #define UCTRL_PWR_POL		(1 << 9)
 
@@ -720,8 +740,7 @@ iomux_v3_cfg_t const usb_otg_pads[] = {
 
 static void setup_usb(void)
 {
-	imx_iomux_v3_setup_multiple_pads(usb_otg_pads,
-					 ARRAY_SIZE(usb_otg_pads));
+	SETUP_IOMUX_PADS(usb_otg_pads);
 }
 
 int board_usb_phy_mode(int port)
@@ -745,13 +764,14 @@ int board_ehci_hcd_init(int port)
 	return 0;
 }
 #endif
+#endif
 
 int board_init(void)
 {
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-#ifdef CONFIG_SYS_I2C_MXC
+#ifdef CONFIG_SYS_I2C
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
 	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
 #endif
@@ -760,15 +780,15 @@ int board_init(void)
 	setup_fec();
 #endif
 
-#ifdef CONFIG_SYS_USE_SPINOR
+#ifdef CONFIG_MXC_SPI
 	setup_spinor();
 #endif
 
-#ifdef CONFIG_SYS_USE_EIMNOR
+#ifdef CONFIG_MTD_NOR_FLASH
 	setup_eimnor();
 #endif
 
-#ifdef CONFIG_SYS_USE_NAND
+#ifdef CONFIG_NAND_MXS
 	setup_gpmi_nand();
 #endif
 
@@ -777,7 +797,9 @@ int board_init(void)
 #endif
 
 #ifdef CONFIG_USB_EHCI_MX6
+#ifndef CONFIG_DM_USB
 	setup_usb();
+#endif
 #endif
 	return 0;
 }
@@ -802,7 +824,7 @@ int board_late_init(void)
 #endif
 
 #ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_init();
+	board_late_mmc_env_init();
 #endif
 
 	return 0;
@@ -815,7 +837,7 @@ u32 get_board_rev(void)
 
 int checkboard(void)
 {
-#ifdef CONFIG_MX6SX_14x14
+#ifdef CONFIG_TARGET_MX6SX_14X14_ARM2
 	puts("Board: MX6SX 14x14 ARM2\n");
 #else
 	puts("Board: MX6SX 17x17 ARM2\n");

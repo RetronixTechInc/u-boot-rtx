@@ -213,7 +213,7 @@ static struct cpsw_platform_data cpsw_data = {
 #endif /* #if (defined(CONFIG_DRIVER_TI_CPSW) && !defined(CONFIG_SPL_BUILD)) */
 
 #if defined(CONFIG_DRIVER_TI_CPSW) || \
-	(defined(CONFIG_USB_ETHER) && defined(CONFIG_MUSB_GADGET))
+	(defined(CONFIG_USB_ETHER) && defined(CONFIG_USB_MUSB_GADGET))
 int board_eth_init(bd_t *bis)
 {
 	int n = 0;
@@ -222,10 +222,10 @@ int board_eth_init(bd_t *bis)
 	struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 #ifdef CONFIG_FACTORYSET
 	int rv;
-	if (!is_valid_ether_addr(factory_dat.mac))
+	if (!is_valid_ethaddr(factory_dat.mac))
 		printf("Error: no valid mac address\n");
 	else
-		eth_setenv_enetaddr("ethaddr", factory_dat.mac);
+		eth_env_set_enetaddr("ethaddr", factory_dat.mac);
 #endif /* #ifdef CONFIG_FACTORYSET */
 
 	/* Set rgmii mode and enable rmii clock to be sourced from chip */
@@ -446,12 +446,12 @@ int board_late_init(void)
 			factory_dat.pxm50 = 0;
 		sprintf(tmp, "%s_%s", factory_dat.asn,
 			factory_dat.comp_version);
-		ret = setenv("boardid", tmp);
+		ret = env_set("boardid", tmp);
 		if (ret)
 			printf("error setting board id\n");
 	} else {
 		factory_dat.pxm50 = 1;
-		ret = setenv("boardid", "PXM50_1.0");
+		ret = env_set("boardid", "PXM50_1.0");
 		if (ret)
 			printf("error setting board id\n");
 	}

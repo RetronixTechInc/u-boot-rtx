@@ -1,6 +1,6 @@
 /*
- * (C) Copyright 2014
- * Vikas Manocha, ST Micoelectronics, vikas.manocha@st.com
+ * Copyright (C) 2014, STMicroelectronics - All Rights Reserved
+ * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -48,6 +48,15 @@ struct stv0991_creg {
 	u32 reserved_4[0x3e];	/* offset 0x308-0x3FC */
 	u32 vdd_comp1;		/* offset 0x400 */
 };
+
+/* CREG MUX 13 register */
+#define FLASH_CS_NC_SHIFT	4
+#define FLASH_CS_NC_MASK	~(7 << FLASH_CS_NC_SHIFT)
+#define CFG_FLASH_CS_NC		(0 << FLASH_CS_NC_SHIFT)
+
+#define FLASH_CLK_SHIFT		0
+#define FLASH_CLK_MASK		~(7 << FLASH_CLK_SHIFT)
+#define CFG_FLASH_CLK		(0 << FLASH_CLK_SHIFT)
 
 /* CREG MUX 12 register */
 #define GPIOC_30_MUX_SHIFT	24

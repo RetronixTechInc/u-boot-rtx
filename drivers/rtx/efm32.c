@@ -12,6 +12,7 @@
 void vSet_efm32_watchdog( unsigned long sec )
 {
 #ifdef CONFIG_MCU_WDOG_BUS
+#if 0
 	unsigned char ubSentBuf[8] = { 0 } ;
 	unsigned char ubRecvBuf[8] = { 0 } ;
 	unsigned int iBus = i2c_get_bus_num() ;
@@ -63,6 +64,7 @@ void vSet_efm32_watchdog( unsigned long sec )
 	
 	/* reset the i2c bus */
 	i2c_set_bus_num( iBus ) ;
+#endif
 #endif
 }
 

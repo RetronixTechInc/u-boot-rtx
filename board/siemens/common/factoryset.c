@@ -144,9 +144,9 @@ int factoryset_read_eeprom(int i2c_addr)
 	unsigned char eeprom_buf[0x3c00], hdr[4], buf[MAX_STRING_LENGTH];
 	unsigned char *cp, *cp1;
 
-#if defined(CONFIG_DFU_FUNCTION)
-	factory_dat.usb_vendor_id = CONFIG_G_DNL_VENDOR_NUM;
-	factory_dat.usb_product_id = CONFIG_G_DNL_PRODUCT_NUM;
+#if defined(CONFIG_DFU_OVER_USB)
+	factory_dat.usb_vendor_id = CONFIG_USB_GADGET_VENDOR_NUM;
+	factory_dat.usb_product_id = CONFIG_USB_GADGET_PRODUCT_NUM;
 #endif
 	if (i2c_probe(i2c_addr))
 		goto err;
@@ -202,7 +202,7 @@ int factoryset_read_eeprom(int i2c_addr)
 		cp1 += 3;
 	}
 
-#if defined(CONFIG_DFU_FUNCTION)
+#if defined(CONFIG_DFU_OVER_USB)
 	/* read vid and pid for dfu mode */
 	if (0 <= get_factory_record_val(cp, size, (uchar *)"USBD1",
 					(uchar *)"vid", buf,
@@ -266,12 +266,12 @@ err:
 
 static struct ctrl_dev *cdev = (struct ctrl_dev *)CTRL_DEVICE_BASE;
 
-static int factoryset_mac_setenv(void)
+static int factoryset_mac_env_set(void)
 {
 	uint8_t mac_addr[6];
 
 	debug("FactorySet: Set mac address\n");
-	if (is_valid_ether_addr(factory_dat.mac)) {
+	if (is_valid_ethaddr(factory_dat.mac)) {
 		memcpy(mac_addr, factory_dat.mac, 6);
 	} else {
 		uint32_t mac_hi, mac_lo;
@@ -286,21 +286,21 @@ static int factoryset_mac_setenv(void)
 		mac_addr[3] = (mac_hi & 0xFF000000) >> 24;
 		mac_addr[4] = mac_lo & 0xFF;
 		mac_addr[5] = (mac_lo & 0xFF00) >> 8;
-		if (!is_valid_ether_addr(mac_addr)) {
+		if (!is_valid_ethaddr(mac_addr)) {
 			printf("Warning: ethaddr not set by FactorySet or E-fuse. Set <ethaddr> variable to overcome this.\n");
 			return -1;
 		}
 	}
 
-	eth_setenv_enetaddr("ethaddr", mac_addr);
+	eth_env_set_enetaddr("ethaddr", mac_addr);
 	return 0;
 }
 
-int factoryset_setenv(void)
+int factoryset_env_set(void)
 {
 	int ret = 0;
 
-	if (factoryset_mac_setenv() < 0)
+	if (factoryset_mac_env_set() < 0)
 		ret = -1;
 
 	return ret;

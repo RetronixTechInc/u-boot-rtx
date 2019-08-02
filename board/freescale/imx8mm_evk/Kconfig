@@ -1,0 +1,101 @@
+if TARGET_IMX8MM_EVK || TARGET_IMX8MM_DDR4_EVK
+
+config SYS_BOARD
+	default "imx8mm_evk"
+
+config SYS_VENDOR
+	default "freescale"
+
+config SYS_CONFIG_NAME
+	default "imx8mm_evk"
+
+config EXTRA_ENV_USE_DTB
+	bool "kernel is dtb type."
+	default y
+	help
+	  Kernel has DTB.
+
+config DEF_LOADADDR
+	hex "loadaddr"
+	default "0x40480000"
+	help
+	  loadaddr.
+
+config DTB_LOADADDR
+	hex "dtb_loadaddr"
+	default "0x43000000"
+	help
+	  dtb_loadaddr.
+
+config RD_LOADADDR
+	hex "rd_loadaddr"
+	default "0x43800000"
+	help
+	  rd_loadaddr.
+
+config SYS_TEXT_BASE
+	hex "system text loadaddr address"
+	default "0x27800000"
+	help
+	  SYS_TEXT_BASE.
+
+
+config BOOTSEL_FUNC_PASSWORD
+	bool "Bootsel password function."
+	default n
+	help
+	  Uboot passwork funciton.
+
+config BOOTSEL_FUNC_CHANG_PW
+	bool "Bootsel change password function."
+	default n
+	help
+	  Uboot change passwork funciton.
+
+config BOOTSEL_FUNC_UD_EXTSD
+	bool "Bootsel scan extsd function."
+	default n
+	help
+	  Uboot scan external sd card magic code funciton.
+
+config BOOTSEL_FUNC_UD_USB
+	bool "Bootsel scan usb function."
+	default n
+	help
+	  Uboot scan usb storage magic code funciton.
+
+config BOOTSEL_FUNC_MENU
+	bool "Bootsel menu function."
+	default n
+	help
+	  Uboot munu funciton.It is u/U, r/R, a/A and p/P mode.
+	  u/U mode : roption is update.
+	  r/R mode : roption is recovery.
+	  a/A mode : this is android recovery mode.
+	  p/P mode : this is change password mode.
+
+config BOOTSEL_FUNC_CHG_STORAGE
+	bool "Bootsel autodetect storage function."
+	default n
+	help
+	  Uboot autodetect upstart device number funciton.
+	  usdhc1 is unknow.
+	  usdhc2 is mmcblk2
+	  usdhc3 is mmcblk1
+	  usdhc4 is mmcblk0
+
+config BOOTSEL_FUNC_SCANFILE_SELF
+	bool "Bootsel scan self function."
+	default n
+	help
+	  Uboot scan self magic code funciton.
+
+config MCU_WATCHDOG_TIME
+	hex "uboot to os start-up time."
+	default "0"
+	help
+	  uboot to os start-up time.disable if set is 0.
+
+source "board/freescale/common/Kconfig"
+
+endif

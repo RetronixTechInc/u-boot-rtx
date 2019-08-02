@@ -2,6 +2,7 @@
  * caam descriptor construction helper functions
  *
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
+ * Copyright 2018 NXP
  *
  * SPDX-License-Identifier:	GPL-2.0+
  *
@@ -13,7 +14,7 @@
 
 #define IMMEDIATE (1 << 23)
 #define CAAM_CMD_SZ sizeof(u32)
-#define CAAM_PTR_SZ sizeof(dma_addr_t)
+#define CAAM_PTR_SZ sizeof(u32)
 #define CAAM_DESC_BYTES_MAX (CAAM_CMD_SZ * MAX_CAAM_DESCSIZE)
 #define DESC_JOB_IO_LEN (CAAM_CMD_SZ * 5 + CAAM_PTR_SZ * 3)
 
@@ -36,6 +37,36 @@
 			       LDST_SRCDST_WORD_DECOCTRL | \
 			       (LDOFF_ENABLE_AUTO_NFIFO << LDST_OFFSET_SHIFT))
 
+#if defined(CONFIG_PHYS_64BIT) && !defined(CONFIG_IMX8M)
+union ptr_addr_t {
+	u64 m_whole;
+	struct {
+#ifdef CONFIG_SYS_FSL_SEC_LE
+		u32 low;
+		u32 high;
+#elif defined(CONFIG_SYS_FSL_SEC_BE)
+		u32 high;
+		u32 low;
+#else
+#error Neither CONFIG_SYS_FSL_SEC_LE nor CONFIG_SYS_FSL_SEC_BE is defined
+#endif
+	} m_halfs;
+};
+#endif
+
+static inline void pdb_add_ptr(u32 *offset, u32 ptr)
+{
+#if defined(CONFIG_PHYS_64BIT) && !defined(CONFIG_IMX8M)
+	/* The Position of low and high part of 64 bit address
+	 * will depend on the endianness of CAAM Block */
+	union ptr_addr_t *ptr_addr = (union ptr_addr_t *)offset;
+	ptr_addr->m_halfs.high = (u32)(ptr >> 32);
+	ptr_addr->m_halfs.low = (u32)ptr;
+#else
+	*offset = ptr;
+#endif
+}
+
 static inline int desc_len(u32 *desc)
 {
 	return *desc & HDR_DESCLEN_MASK;
@@ -51,6 +82,11 @@ static inline u32 *desc_end(u32 *desc)
 	return desc + desc_len(desc);
 }
 
+static inline void *desc_pdb(u32 *desc)
+{
+	return desc + 1;
+}
+
 static inline void init_desc(u32 *desc, u32 options)
 {
 	*desc = (options | HDR_ONE) + 1;
@@ -61,11 +97,28 @@ static inline void init_job_desc(u32 *desc, u32 options)
 	init_desc(desc, CMD_DESC_HDR | options);
 }
 
-static inline void append_ptr(u32 *desc, dma_addr_t ptr)
+static inline void init_job_desc_pdb(u32 *desc, u32 options, size_t pdb_bytes)
 {
-	dma_addr_t *offset = (dma_addr_t *)desc_end(desc);
+	u32 pdb_len = (pdb_bytes + CAAM_CMD_SZ - 1) / CAAM_CMD_SZ;
 
+	init_job_desc(desc,
+		      (((pdb_len + 1) << HDR_START_IDX_SHIFT) + pdb_len) |
+		       options);
+}
+
+static inline void append_ptr(u32 *desc, uint32_t ptr)
+{
+	u32 *offset = (u32 *)desc_end(desc);
+
+#if defined(CONFIG_PHYS_64BIT) && !defined(CONFIG_IMX8M)
+	/* The Position of low and high part of 64 bit address
+	 * will depend on the endianness of CAAM Block */
+	union ptr_addr_t *ptr_addr = (union ptr_addr_t *)offset;
+	ptr_addr->m_halfs.high = (u32)(ptr >> 32);
+	ptr_addr->m_halfs.low = (u32)ptr;
+#else
 	*offset = ptr;
+#endif
 
 	(*desc) += CAAM_PTR_SZ / CAAM_CMD_SZ;
 }
@@ -109,7 +162,7 @@ static inline u32 *write_cmd(u32 *desc, u32 command)
 	return desc + 1;
 }
 
-static inline void append_cmd_ptr(u32 *desc, dma_addr_t ptr, int len,
+static inline void append_cmd_ptr(u32 *desc, uint32_t ptr, int len,
 				  u32 command)
 {
 	append_cmd(desc, command | len);
@@ -117,7 +170,7 @@ static inline void append_cmd_ptr(u32 *desc, dma_addr_t ptr, int len,
 }
 
 /* Write length after pointer, rather than inside command */
-static inline void append_cmd_ptr_extlen(u32 *desc, dma_addr_t ptr,
+static inline void append_cmd_ptr_extlen(u32 *desc, uint32_t ptr,
 					 unsigned int len, u32 command)
 {
 	append_cmd(desc, command);
@@ -175,7 +228,7 @@ APPEND_CMD_LEN(seq_fifo_load, SEQ_FIFO_LOAD)
 APPEND_CMD_LEN(seq_fifo_store, SEQ_FIFO_STORE)
 
 #define APPEND_CMD_PTR(cmd, op) \
-static inline void append_##cmd(u32 *desc, dma_addr_t ptr, unsigned int len, \
+static inline void append_##cmd(u32 *desc, uint32_t ptr, unsigned int len, \
 				u32 options) \
 { \
 	PRINT_POS; \
@@ -186,7 +239,7 @@ APPEND_CMD_PTR(load, LOAD)
 APPEND_CMD_PTR(fifo_load, FIFO_LOAD)
 APPEND_CMD_PTR(fifo_store, FIFO_STORE)
 
-static inline void append_store(u32 *desc, dma_addr_t ptr, unsigned int len,
+static inline void append_store(u32 *desc, uint32_t ptr, unsigned int len,
 				u32 options)
 {
 	u32 cmd_src;
@@ -204,7 +257,7 @@ static inline void append_store(u32 *desc, dma_addr_t ptr, unsigned int len,
 }
 
 #define APPEND_SEQ_PTR_INTLEN(cmd, op) \
-static inline void append_seq_##cmd##_ptr_intlen(u32 *desc, dma_addr_t ptr, \
+static inline void append_seq_##cmd##_ptr_intlen(u32 *desc, uint32_t ptr, \
 						 unsigned int len, \
 						 u32 options) \
 { \
@@ -228,7 +281,7 @@ APPEND_CMD_PTR_TO_IMM(load, LOAD);
 APPEND_CMD_PTR_TO_IMM(fifo_load, FIFO_LOAD);
 
 #define APPEND_CMD_PTR_EXTLEN(cmd, op) \
-static inline void append_##cmd##_extlen(u32 *desc, dma_addr_t ptr, \
+static inline void append_##cmd##_extlen(u32 *desc, uint32_t ptr, \
 					 unsigned int len, u32 options) \
 { \
 	PRINT_POS; \
@@ -242,7 +295,7 @@ APPEND_CMD_PTR_EXTLEN(seq_out_ptr, SEQ_OUT_PTR)
  * the size of its type
  */
 #define APPEND_CMD_PTR_LEN(cmd, op, type) \
-static inline void append_##cmd(u32 *desc, dma_addr_t ptr, \
+static inline void append_##cmd(u32 *desc, uint32_t ptr, \
 				type len, u32 options) \
 { \
 	PRINT_POS; \
