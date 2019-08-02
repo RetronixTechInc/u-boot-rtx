@@ -212,6 +212,7 @@
 	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
 	"mmcautodetect=yes\0" \
 	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 " \
+	"ramargs=setenv bootargs ${jh_clk} console=${console} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0 " \
 	"loadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
 	"bootscript=echo Running bootscript from mmc ...; " \
 		"source\0" \
@@ -253,17 +254,27 @@
 	"retry_count=1\0" \
 	"r_dtb=mmc read ${fdt_addr} 0x2800 0x600\0" \
 	"r_kernel=mmc read ${loadaddr} 0x3800 0x10000\0" \
+	"r_ramdisk=mmc read ${initrd_addr} 0x13000 0x6500\0" \
 	"mmcboot2=echo Booting from recovery ...; " \
 		"mmc dev ${mmcdev}; " \
 		"run mmcargs; " \
 		"run r_kernel r_dtb; " \
-		"booti ${loadaddr} - ${fdt_addr};\0"
+		"booti ${loadaddr} - ${fdt_addr};\0" \
+	"ramboot=echo Booting to ramdisk ...; " \
+		"mmc dev ${mmcdev}; " \
+		"run ramargs; " \
+		"run r_kernel r_dtb r_ramdisk; " \
+		"booti ${loadaddr} ${initrd_addr} ${fdt_addr};\0"
+
 
 #define CONFIG_BOOTCOMMAND \
 	   "mmc dev ${mmcdev}; if mmc rescan; then " \
 		   "if run loadbootscript; then " \
 			   "run bootscript; " \
 		   "else " \
+			   "if test ${retry_count} > 5; then " \
+			   	   "run ramboot; " \
+			   "fi; " \
 			   "if test ${retry_count} > 3; then " \
 			   	   "run mmcboot2; " \
 			   "fi; " \
