@@ -21,6 +21,8 @@
 *.patch
 *.cfgtmp
 
+SPL.log
+
 # host programs on Cygwin
 *.exe
 
@@ -37,7 +39,10 @@
 /boards.cfg
 /out
 /RTX/tools/out
-
+/imx-mkimage/mkimage_imx8
+/imx-mkimage/iMX8M/u-boot*
+/imx-mkimage/iMX8M/mkimage_uboot
+/firmware_imx8/imx-atf
 #
 # git files that we don't want to ignore even it they are dot-files
 #

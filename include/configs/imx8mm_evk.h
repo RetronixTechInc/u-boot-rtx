@@ -221,7 +221,8 @@
 		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
 			"if run loadfdt; then " \
-				"setexpr retry_count ${retry_count} + 1" \
+				"setexpr retry_count ${retry_count} + 1; " \
+				"saveenv; " \
 				"booti ${loadaddr} - ${fdt_addr}; " \
 			"else " \
 				"echo WARN: Cannot load the DT; " \
@@ -249,17 +250,21 @@
 		"else " \
 			"booti; " \
 		"fi;\0" \
-	"retry_count=0;" \
-	"r_dtb=mmc read ${fdt_addr} 0x2800 0x600;" \
-	"r_kernel=mmc read ${loadaddr} 0x3800 0x10000;" \
-	"mmcboot2=mmc dev ${mmcdev}; run r_kernel r_dtb; booti ${loadaddr} - ${fdt_addr};\0"
+	"retry_count=1\0" \
+	"r_dtb=mmc read ${fdt_addr} 0x2800 0x600\0" \
+	"r_kernel=mmc read ${loadaddr} 0x3800 0x10000\0" \
+	"mmcboot2=echo Booting from recovery ...; " \
+		"mmc dev ${mmcdev}; " \
+		"run mmcargs; " \
+		"run r_kernel r_dtb; " \
+		"booti ${loadaddr} - ${fdt_addr};\0"
 
 #define CONFIG_BOOTCOMMAND \
 	   "mmc dev ${mmcdev}; if mmc rescan; then " \
 		   "if run loadbootscript; then " \
 			   "run bootscript; " \
 		   "else " \
-			   "if run retry_count; then " \
+			   "if test ${retry_count} > 3; then " \
 			   	   "run mmcboot2; " \
 			   "fi; " \
 			   "if run loadimage; then " \
