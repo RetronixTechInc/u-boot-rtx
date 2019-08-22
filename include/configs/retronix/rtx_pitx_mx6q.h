@@ -39,7 +39,7 @@
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         	0xD000
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           	0x2000
 		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET         	0xF000
-		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0x5000
+		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0xA000
 		#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1E000
 		#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  	0x1000
 	
@@ -212,7 +212,7 @@
 	 */
 	/* usb or sd card */
 	#define CONFIG_ENG_BOOTARGS \
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_UPDATEROOT
+		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} pcba_version=${version} mmcroot=" CONFIG_UPDATEROOT
 	#define CONFIG_ENG_BOOTCMD  \
 		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR)
 	#define CONFIG_ENG_DTB_BOOTCMD  \

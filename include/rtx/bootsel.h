@@ -37,4 +37,6 @@ int bootsel_checkstorage( void ) ;
 void bootsel_password( void ) ;
 void bootsel_menu( int sel ) ;
 
+int bootsel_load_backupsystem( void ) ;
+
 #endif	/* _BOOTSEL_H_ */

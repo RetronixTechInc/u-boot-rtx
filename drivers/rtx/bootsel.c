@@ -452,7 +452,7 @@ static int bootsel_load( int fstype , const char *ifname , const char *dev_part_
 	return (int)( actread ) ;
 }
 
-static int bootsel_load_backupsystem( void )
+int bootsel_load_backupsystem( void )
 {
 	int sdid = 0 ;
 	struct mmc *extsd_dev = NULL ;
