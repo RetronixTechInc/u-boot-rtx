@@ -185,6 +185,50 @@ static int abortboot_normal(int bootdelay)
 		char presskey;
 			if (tstc()) {
 				presskey = getc();
+				if ( (presskey == 0x04) ) {
+					bootdelay = 1;
+					printf("^D Key\n");
+					printf("Disable function usbstart \n");
+
+					run_command("bootsel_set function usbstart disable", 0);
+
+				}else if ( (presskey == 0x0E) ) {
+//					if ( bootdelay > 3 )
+					{
+						bootdelay = 1;
+						printf("^N Key\n");
+						printf("run NET update mode\n");
+
+						setenv( "roption" , "netupdate" ) ;
+						setenv( "rstorage" , "mmc" ) ;
+						setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
+						bootsel_load_backupsystem( ) ;
+					}
+				}else if ( (presskey == 0x12) ) {
+//					if ( bootdelay > 3 )
+					{
+						bootdelay = 1;
+						printf("^R Key\n");
+						printf("run update mode\n");
+
+						setenv( "roption" , "recovery" ) ;
+						setenv( "rstorage" , "mmc" ) ;
+						setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
+						bootsel_load_backupsystem( ) ;
+					}
+				}else if ( (presskey == 0x15) ) {
+//					if ( bootdelay > 3 )
+					{
+						bootdelay = 1;
+						printf("^U Key \n");
+						printf("run recovery mode\n");
+
+						setenv( "roption" , "update" ) ;
+						setenv( "rstorage" , "mmc" ) ;
+						setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
+						bootsel_load_backupsystem( ) ;
+					}
+				}else
 				if ( presskey == '\t') {	/* we got a key press	*/
 					abort  = 1;	/* don't auto boot	*/  
 					bootdelay = 0;	/* no more delay	*/
