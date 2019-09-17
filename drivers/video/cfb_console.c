@@ -1850,6 +1850,23 @@ static int do_clrlogo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return cmd_usage(cmdtp);
 
 	logo_black();
+
+	if (cfb_do_flush_cache)
+		flush_cache(VIDEO_FB_ADRS, VIDEO_SIZE);
+
+	return 0;
+}
+
+static int do_displaylogo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	if (argc != 1)
+		return cmd_usage(cmdtp);
+
+	logo_plot(video_fb_address, VIDEO_COLS,video_logo_xpos, video_logo_ypos);
+
+	if (cfb_do_flush_cache)
+		flush_cache(VIDEO_FB_ADRS, VIDEO_SIZE);
+
 	return 0;
 }
 
@@ -1859,12 +1876,19 @@ U_BOOT_CMD(
 	   " "
 	   );
 
+U_BOOT_CMD(
+	   displaylogo, 1, 0, do_displaylogo,
+	   "fill the boot logo area with logo",
+	   " "
+	   );
+
+
 static void plot_logo_or_black(void *screen, int width, int x, int y, int black)
 {
 
 	int xcount, i;
 	int skip = (width - VIDEO_LOGO_WIDTH) * VIDEO_PIXEL_SIZE;
-	int ycount = video_logo_height;
+	int ycount = VIDEO_LOGO_HEIGHT;//video_logo_height;
 	unsigned char r, g, b, *logo_red, *logo_blue, *logo_green;
 	unsigned char *source;
 	unsigned char *dest;
@@ -2005,6 +2029,7 @@ static void *video_logo(void)
 					video_logo_xpos,
 					video_logo_ypos) == 0) {
 			video_logo_height = 0;
+
 			return ((void *) (video_fb_address));
 		}
 	}
@@ -2025,8 +2050,11 @@ static void *video_logo(void)
 		 * we need to adjust the logo height
 		 */
 		if (video_logo_ypos == BMP_ALIGN_CENTER)
-			video_logo_height += max(0, (int)(VIDEO_VISIBLE_ROWS -
-						     VIDEO_LOGO_HEIGHT) / 2);
+		{
+//			video_logo_height += max(0, (int)(VIDEO_VISIBLE_ROWS -
+//						     VIDEO_LOGO_HEIGHT) / 2);
+			video_logo_height = 0 ;
+		}
 		else if (video_logo_ypos > 0)
 			video_logo_height += video_logo_ypos;
 
@@ -2247,6 +2275,9 @@ static int video_init(void)
 	/* Initialize the console */
 	console_col = 0;
 	console_row = 0;
+
+	/* Set default disable logo */
+	logo_black();
 
 	if (cfb_do_flush_cache)
 		flush_cache(VIDEO_FB_ADRS, VIDEO_SIZE);
