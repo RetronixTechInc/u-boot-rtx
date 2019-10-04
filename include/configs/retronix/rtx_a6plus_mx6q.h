@@ -39,7 +39,7 @@
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         	0xD000
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           	0x2000
 		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET         	0xF000
-		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0x5000
+		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0xA000
 		#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1E000
 		#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  	0x1000
 	
@@ -164,13 +164,14 @@
 	/* Command definition */
 	#include <config_cmd_default.h>
 
+    #define CONFIG_MXC_SPI
+    #define CONFIG_CMD_SPI
 	#define CONFIG_CMD_BMODE
 	#define CONFIG_CMD_BOOTZ
 	#define CONFIG_CMD_SETEXPR
 	#undef CONFIG_CMD_IMLS
 
 	#define CONFIG_BOOTDELAY               		1
-
 
 	#define CONFIG_LOADADDR   CONFIG_DEF_LOADADDR
 	/* define by configs/vendor_***_defconfig.h
@@ -210,13 +211,13 @@
 	 */
 	/* usb or sd card */
 	#define CONFIG_ENG_BOOTARGS \
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_UPDATEROOT
+		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} pcba_version=${version} mmcroot=" CONFIG_UPDATEROOT
 	#define CONFIG_ENG_BOOTCMD  \
 		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR)
 	#define CONFIG_ENG_DTB_BOOTCMD  \
 		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR) " "  __stringify(CONFIG_DTB_LOADADDR)
 
-	/* recovery mode parameter 'r' or 'R' key*/
+	/* android recovery mode parameter */
 	#define CONFIG_ANDROID_RECOVERY_BOOTARGS \
 		"setenv bootargs ${bootargs} init=/init"
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
@@ -233,7 +234,7 @@
 			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
 			"bootm ${loadaddr} ${rd_loadaddr}"
 	#endif
-
+		
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
 		"bootargs_base=setenv bootargs no_console_suspend\0" \
@@ -265,7 +266,6 @@
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
         "fdt_high=0xffffffff\0" \
         "initrd_high=0xffffffff\0" \
-		"silent=1\0" \
 		"version=" CONFIG_VERSION_STRING "\0"
 
 	#define CONFIG_ARP_TIMEOUT     					200UL
@@ -407,6 +407,7 @@
 	#define CONFIG_SYS_MMC_ENV_DEV						1	/* SDHC3 */
 	#define CONFIG_SYS_MMC_ENV_PART                		0       /* user partition */
 
+	#define CONFIG_POWER_3V3			/* Enable 3v3 */
 	/* PMIC */
 	#define CONFIG_POWER
 	#define CONFIG_POWER_I2C
@@ -424,7 +425,16 @@
 		#define CONFIG_USB_ETHER_ASIX
 		#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
 		#define CONFIG_MXC_USB_FLAGS		0
-		#define CONFIG_USB_MAX_CONTROLLER_COUNT	1 /* Enabled USB controller number */
+		#define CONFIG_USB_MAX_CONTROLLER_COUNT	2 /* Enabled USB controller number */
+		#define CONFIG_Enable_USB_KEYBOARD
+		#ifdef CONFIG_Enable_USB_KEYBOARD
+			#define CONFIG_USB_KEYBOARD
+			#define CONFIG_SYS_STDIO_DEREGISTER 
+			#define CONFIG_SYS_USB_EVENT_POLL_VIA_CONTROL_EP
+			#define CONFIG_CONSOLE_MUX
+			#define CONFIG_USE_PREBOOT
+			#define CONFIG_PREBOOT "usb start; setenv stdin serial,usbkbd;"
+		#endif
 	#endif
 
 	#define CONFIG_HW_OC
