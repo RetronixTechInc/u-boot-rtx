@@ -674,7 +674,7 @@ void board_late_mmc_env_init(void)
 	setenv_ulong("mmc_num", dev_no);
 
 	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp1 rootwait rw",
+	sprintf(mmcblk, "root=/dev/mmcblk%dp1 rootwait rw",
 		mmc_map_to_kernel_blk(dev_no));
 	setenv("mmcrootpath", mmcblk);
 

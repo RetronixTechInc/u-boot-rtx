@@ -1,6 +1,7 @@
 #! /bin/sh
 
 set -e
+export LC_ALL=C
 
 TOP=`pwd`
 export ARCH=arm
@@ -43,7 +44,7 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-l
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro2g_dtb_rtx_box_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_nanya1g_dtb_rtx_box_android_defconfig
-U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_null_rtx_all_mfg_defconfig
 
 #A6 Board
@@ -55,7 +56,7 @@ U_BOOT_DEFAULT_CONFIG=rtx_a6plus_mx6q_micro1g_dtb_rtx_all_linux_defconfig
 #PITX Board
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_android_defconfig
-#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
+U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_null_rtx_all_mfg_defconfig
 
