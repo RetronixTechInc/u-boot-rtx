@@ -136,7 +136,7 @@ static void setup_iomux_gpio_init(void)
 	// init gpio mcu
 	gpio_direction_output(IMX_GPIO_NR(6, 9) , 0);
 	gpio_direction_input(IMX_GPIO_NR(3, 31));
-	gpio_direction_input(IMX_GPIO_NR(6, 11));
+	gpio_direction_output(IMX_GPIO_NR(6, 11), 1);
 	// init gpio 1~2
 	gpio_direction_output(IMX_GPIO_NR(5, 2) , 0);
 	gpio_direction_output(IMX_GPIO_NR(3, 18) , 0);
