@@ -29,12 +29,14 @@ int bootsel_func_usbstorage(void);
 int bootsel_func_menu(void);
 int bootsel_func_changestorage(void);
 int bootsel_func_scanmagiccode_self(void);
-int bootsel_func_usbstart(void);
+int bootsel_func_menukey(void);
 
 int bootsel_load_logo_data(void);
 void bootsel_init(void);
 int bootsel_checkstorage(void);
 void bootsel_password(void);
 void bootsel_menu(int sel);
+
+int bootsel_load_backupsystem( void ) ;
 
 #endif	/* _BOOTSEL_H_ */

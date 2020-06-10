@@ -18,8 +18,7 @@ export CROSS_COMPILE=/opt/cross/gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gn
 PLATFORM="imx8mm"
 SOC_TARGET="iMX8MM"
 SOC_DIR="iMX8M"
-BOARD="fsl-imx8mm-evk"
-#BOARD="pico-imx8m"
+BOARD=$1
 
 BRANCH_VER="imx_4.14.98_2.0.0_ga"
 DDR_FW_VER="8.0"
@@ -124,8 +123,13 @@ install_uboot_dtb()
 
 	#Copy device tree file
 	cd ${TWD}
+	if [ -f ${TWD}/${MKIMAGE_DIR}/${SOC_DIR}/*.dtb ] ; then
+		rm -rf ${TWD}/${MKIMAGE_DIR}/${SOC_DIR}/*.dtb
+		sync
+	fi
 	if [ -f arch/arm/dts/${BOARD}.dtb ] ; then
 		cp arch/arm/dts/${BOARD}.dtb ${TWD}/${MKIMAGE_DIR}/${SOC_DIR}
+		sync
 	else
 		printf "Cannot find arch/arm/dts/${BOARD}.dtb. Please build u-boot first! \n"
 	fi

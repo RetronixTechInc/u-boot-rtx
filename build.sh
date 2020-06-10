@@ -21,8 +21,10 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/gcc-linaro-7.4.1-2019.02-x86_64_aarch
 # =====================================
 # Configue file select
 # =====================================
-U_BOOT_DEFAULT_CONFIG=imx8mm_evk_defconfig
-
+U_BOOT_DEFAULT_CONFIG=imx8mm_cse_defconfig
+DEVICE_TREE=rtx-imx8mm-cse
+#U_BOOT_DEFAULT_CONFIG=imx8mm_evk_defconfig
+#DEVICE_TREE=fsl-imx8mm-evk
 # =====================================
 # Run
 # =====================================
@@ -37,10 +39,13 @@ case "${1}" in
 		rm -rf out/*; sync
 
 		if [ ! -f .config ] ; then
+			echo " make ${U_BOOT_DEFAULT_CONFIG} "
 			make ${U_BOOT_DEFAULT_CONFIG}
+		else
+			echo " make .config "
 		fi
 		make -j${CPUS}
-		./install_uboot_imx8.sh
+		./install_uboot_imx8.sh ${DEVICE_TREE}
 		if [ -f imx-mkimage/iMX8M/flash.bin ] ; then
 			cp imx-mkimage/iMX8M/flash.bin out/.
 			sync
@@ -69,7 +74,7 @@ case "${1}" in
 		;;
 
 	*) 
-		echo "${0} [all/config/menuconfig/clean/disclean/tools]"
+		echo "${0} [all/config/menuconfig/clean/distclean/tools]"
 		#exit 1
 		;;
 esac

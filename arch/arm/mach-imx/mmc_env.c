@@ -27,4 +27,26 @@ int mmc_get_env_dev(void)
 		return env_get_ulong("mmcdev", 10, CONFIG_SYS_MMC_ENV_DEV);
 
 	return board_mmc_get_env_dev(devno);
+#if 0
+	u32 soc_sbmr1 = readl(SRC_BASE_ADDR + 0x58);
+	u32 dev_no;
+	u32 bootsel;
+
+	bootsel = (soc_sbmr1 & 0x00007000) >> 12 ;
+
+	/* If not boot from sd/mmc, use default value */
+	if ((bootsel != 1) && (bootsel != 2))
+		return CONFIG_SYS_MMC_ENV_DEV;
+
+	/* BOOT_CFG[11] and BOOT_CFG[10] */
+	dev_no = (soc_sbmr1 & 0x00000C00) >> 10;
+
+	/* need ubstract 1 to map to the mmc device id
+	 * see the comments in board_mmc_init function
+	 */
+
+	dev_no--;
+
+	return dev_no;
+#endif
 }

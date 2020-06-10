@@ -38,7 +38,10 @@ static void run_preboot_environment_command(void)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif
 
-		run_command_list(p, -1, 0);
+		if (bootsel_func_menukey()){
+			printf("preboot : enable usb start!\n");
+			run_command_list(p, -1, 0);
+		}
 
 # ifdef CONFIG_AUTOBOOT_KEYED
 		disable_ctrlc(prev);	/* restore Control C checking */

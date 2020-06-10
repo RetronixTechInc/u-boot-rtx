@@ -4,8 +4,8 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __IMX8MM_EVK_H
-#define __IMX8MM_EVK_H
+#ifndef __RTX_CSE_H
+#define __RTX_CSE_H
 
 #include <linux/sizes.h>
 #include <asm/arch/imx-regs.h>
@@ -46,9 +46,9 @@
 /*-----------------------------------------------------------------------
  * MCU watch dog
  */
-
+#define CONFIG_RTX_EFM32
 #ifdef CONFIG_RTX_EFM32
-	#define CONFIG_MCU_WDOG_BUS	2
+	#define CONFIG_MCU_WDOG_BUS	0
 #endif
 
 #define CONFIG_SPL_MAX_SIZE		(148 * 1024)
@@ -196,7 +196,7 @@
 	"image=Image\0" \
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"boot_fdt=try\0" \
-	"version=fsl-imx8mm-evk\0" \
+	"version=rtx-imx8mm-cse\0" \
 	"count=0\0" \
 	"count1=2\0" \
 	"count2=5\0" \
@@ -206,6 +206,8 @@
 	"fdt_high=0xffffffffffffffff\0"		\
 	"initrd_addr=0x43800000\0"		\
 	"initrd_high=0xffffffffffffffff\0" \
+	"emmc_dev=1\0"\
+	"sd_dev=0\0"\
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
 	"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
@@ -260,6 +262,7 @@
 		"else " \
 			"booti; " \
 		"fi;\0"
+
 #define CONFIG_BOOTCOMMAND \
 	"mmc dev ${mmcdev}; " \
 	"if mmc rescan; then " \
@@ -295,7 +298,7 @@
 #define CONFIG_ENV_OFFSET       (30 << 20)
 #endif
 #define CONFIG_ENV_SIZE			0x2000
-#define CONFIG_SYS_MMC_ENV_DEV		0   /* USDHC2 */
+#define CONFIG_SYS_MMC_ENV_DEV		1   /* USDHC2(SD) = 0, USDHC3(MMC) = 1 */
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (12*1024) + (16*1024)) * 1024)
