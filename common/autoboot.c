@@ -154,7 +154,6 @@ static int abortboot_normal(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
-	int iDisplayFlag = 0;
 
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
@@ -176,125 +175,12 @@ static int abortboot_normal(int bootdelay)
 		}
 	}
 #endif
+
 	while ((bootdelay > 0) && (!abort)) {
 		--bootdelay;
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
-# ifdef CONFIG_Enable_USB_KEYBOARD
-		char presskey;
-			if (tstc()) {
-				presskey = getc();
-				if ( (presskey == 0x02) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^B Key\n");
-						printf("run update mode /data mount on /dev/sda1\n");
-
-						setenv( "roption" , "update" ) ;
-						setenv( "rstorage" , "usb" ) ;
-						setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-						bootsel_load_backupsystem( ) ;
-					}
-				}else if ( (presskey == 0x04) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^D Key\n");
-						printf("Disable function usbstart \n");
-
-						run_command("bootsel_set function usbstart disable", 0);
-					}
-
-				}else if ( (presskey == 0x05) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^E Key\n");
-						printf("Enable function usbstart \n");
-
-						run_command("bootsel_set function usbstart enable", 0);
-					}
-				}else if ( (presskey == 0x13) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						printf("^S Key\n");
-						printf("Disable HDMI output \n");
-
-						run_command("setenv stdout serial", 0);
-					}
-				}else if ( (presskey == 0x0E) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^N Key\n");
-						printf("run NET update mode\n");
-
-						setenv( "roption" , "netupdate" ) ;
-						setenv( "rstorage" , "mmc" ) ;
-						setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-						bootsel_load_backupsystem( ) ;
-					}
-				}else if ( (presskey == 0x12) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^R Key\n");
-						printf("run update mode\n");
-
-						setenv( "roption" , "recovery" ) ;
-						setenv( "rstorage" , "mmc" ) ;
-						setenv( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-						bootsel_load_backupsystem( ) ;
-					}
-				}else if ( (presskey == 0x15) ) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^U Key \n");
-						printf("filesystem mount on /dev/sda1\n");
-
-						setenv( "mmcrootpath" , "root=/dev/sda1 rootwait rw" ) ;
-						run_command( "run bootcmd" , 0 ) ;
-					}
-				}else
-				if ( presskey == '\t') {	/* we got a key press	*/
-					abort  = 1;	/* don't auto boot	*/  
-					bootdelay = 0;	/* no more delay	*/
-	# ifdef CONFIG_MENUKEY
-					menukey = getc();
-	# else
-					(void) getc();  /* consume input	*/
-	# endif
-					break;
-				}else if ( presskey == '\b') {
-					bootdelay = 30;
-					if( iDisplayFlag == 0 )
-					{
-						iDisplayFlag = 1 ;
-						run_command("displaylogo", 0);
-						run_command("setenv stdout serial,vga", 0);
-						printf("\n");
-						printf("\"Ctrl + N\" : Netupdate mode.\n");
-						printf("\"Ctrl + R\" : Recovery mode.\n");
-						printf("\"Ctrl + B\" : Update mode /data mount on /dev/sda1.\n");
-						printf("\"Ctrl + U\" : Filesystem mount on /dev/sda1.\n");
-						printf("\"Ctrl + D\" : Disable function usbstart.\n");
-						printf("\"ESC\" : Boot system.\n");
-						printf("\n");
-					}
-//					printf("Backspace Key \n");
-					printf("Hit any key to stop autoboot: %2d ", bootdelay);
-					break;
-				}else if ( presskey == '\e') {
-					bootdelay = 0;
-					printf("Esc Key \n");
-					printf("Hit any key to stop autoboot: %2d ", bootdelay);
-					break;
-				}
-			}
-# else
 			if (tstc() && getc() == '\t') {	/* we got a key press	*/
 				abort  = 1;	/* don't auto boot	*/  
 				bootdelay = 0;	/* no more delay	*/
@@ -305,7 +191,6 @@ static int abortboot_normal(int bootdelay)
 # endif
 				break;
 			}
-# endif
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
 
@@ -373,8 +258,9 @@ const char *bootdelay_process(void)
 	if (is_boot_from_usb()) {
 		disconnect_from_pc();
 		printf("Boot from USB for mfgtools\n");
-		bootdelay = 3;
-		setenv("bootcmd_mfg", "run bootcmd_gen");
+		bootdelay = 0;
+		set_default_env("Use default environment for \
+				 mfgtools\n");
 	} else {
 		printf("Normal Boot\n");
 	}

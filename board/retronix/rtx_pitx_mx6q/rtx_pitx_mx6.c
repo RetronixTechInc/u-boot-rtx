@@ -136,7 +136,7 @@ static void setup_iomux_gpio_init(void)
 	// init gpio mcu
 	gpio_direction_output(IMX_GPIO_NR(6, 9) , 0);
 	gpio_direction_input(IMX_GPIO_NR(3, 31));
-	gpio_direction_output(IMX_GPIO_NR(6, 11), 1);
+	gpio_direction_input(IMX_GPIO_NR(6, 11));
 	// init gpio 1~2
 	gpio_direction_output(IMX_GPIO_NR(5, 2) , 0);
 	gpio_direction_output(IMX_GPIO_NR(3, 18) , 0);
@@ -556,7 +556,7 @@ void board_late_mmc_env_init(void)
 	setenv_ulong("mmc_num", dev_no);
 
 	/* Set mmcblk env */
-	sprintf(mmcblk, "root=/dev/mmcblk%dp1 rootwait rw",
+	sprintf(mmcblk, "/dev/mmcblk%dp1 rootwait rw",
 		mmc_map_to_kernel_blk(dev_no));
 	setenv("mmcrootpath", mmcblk);
 
@@ -629,26 +629,6 @@ static void enable_lvds(struct display_info_t const *dev)
 struct display_info_t const displays[] = {{
 	.bus	= -1,
 	.addr	= 0,
-	.pixfmt	= IPU_PIX_FMT_RGB24,
-	.detect	= NULL,
-	.enable	= do_enable_hdmi,
-	.mode	= {
-		.name           = "HDMI",
-		.refresh        = 60,
-		.xres           = 1024,//640,
-		.yres           = 768,//480,
-		.pixclock       = 14385,//39721,
-		.left_margin    = 220,//48,
-		.right_margin   = 40,//16,
-		.upper_margin   = 21,//33,
-		.lower_margin   = 7,//10,
-		.hsync_len      = 60,//96,
-		.vsync_len      = 10,//2,
-		.sync           = FB_SYNC_EXT,//0,
-		.vmode          = FB_VMODE_NONINTERLACED
-} }, {
-	.bus	= -1,
-	.addr	= 0,
 	.pixfmt	= IPU_PIX_FMT_RGB666,
 	.detect	= NULL,
 	.enable	= enable_lvds,
@@ -665,6 +645,26 @@ struct display_info_t const displays[] = {{
 		.hsync_len      = 60,
 		.vsync_len      = 10,
 		.sync           = FB_SYNC_EXT,
+		.vmode          = FB_VMODE_NONINTERLACED
+} }, {
+	.bus	= -1,
+	.addr	= 0,
+	.pixfmt	= IPU_PIX_FMT_RGB24,
+	.detect	= NULL,
+	.enable	= do_enable_hdmi,
+	.mode	= {
+		.name           = "HDMI",
+		.refresh        = 60,
+		.xres           = 640,
+		.yres           = 480,
+		.pixclock       = 39721,
+		.left_margin    = 48,
+		.right_margin   = 16,
+		.upper_margin   = 33,
+		.lower_margin   = 10,
+		.hsync_len      = 96,
+		.vsync_len      = 2,
+		.sync           = 0,
 		.vmode          = FB_VMODE_NONINTERLACED
 } }, {
 	.bus	= 0,

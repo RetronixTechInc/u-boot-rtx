@@ -29,7 +29,6 @@ static void show_usage(){
 	printf("        -write function menu <enable/disable> \n");
 	printf("        -write function storage <enable/disable> \n");
 	printf("        -write function selfmagic <enable/disable> \n");
-	printf("        -write function usbstart <enable/disable> \n");
 	printf("        -write watchdog time 0(max 65535 seconds.) \n");
 }
 
@@ -85,7 +84,6 @@ enum __BOOTSEL_FUNC__{
 	DEF_BOOTSEL_FUNC_MENU        = 0x00000010 ,
 	DEF_BOOTSEL_FUNC_CHG_STORAGE = 0x00000020 ,
 	DEF_BOOTSEL_FUNC_SCANFILE_SELF = 0x00000040 ,
-	DEF_BOOTSEL_FUNC_USBSTART    = 0x00000080 ,
 } ;
 
 typedef struct __bootselfunc__ {
@@ -101,7 +99,6 @@ static BOOTSELFUNC const bootselfuncarray[] = {
 	{ (char *)"menu"     , DEF_BOOTSEL_FUNC_MENU        } ,
 	{ (char *)"storage"  , DEF_BOOTSEL_FUNC_CHG_STORAGE } ,
 	{ (char *)"selfmagic", DEF_BOOTSEL_FUNC_SCANFILE_SELF } ,
-	{ (char *)"usbstart" , DEF_BOOTSEL_FUNC_USBSTART    } ,
 } ;
 
 

@@ -22,7 +22,4 @@ CONFIG_BOOTSEL_FUNC_UD_EXTSD=y
 CONFIG_BOOTSEL_FUNC_MENU=y
 CONFIG_BOOTSEL_FUNC_CHG_STORAGE=y
 #CONFIG_BOOTSEL_FUNC_SCANFILE_SELF=y
-CONFIG_EXTRA_ENV_BOOTCMD_GEN="run storage r_kernel r_dtb r_ramdisk; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
-CONFIG_EXTRA_ENV_BOOTARGS_ANDROID="androidboot.hardware=freescale"
-
 

@@ -207,19 +207,4 @@ config MCU_WATCHDOG_TIME
 	help
 	  uboot to os start-up time.disable if set is 0.
 
-config EXTRA_ENV_BOOTARGS_ANDROID
-	string "bootargs for android"
-	default "androidboot.hardware=retronix"
-	help
-	  Android hardware file search name.
-      
-config EXTRA_ENV_BOOTCMD_GEN
-	string "bootargs for android"
-	default "run storage r_kernel r_dtb ; bootm ${loadaddr} - ${dtb_loadaddr}"  if EXTRA_ENV_USE_DTB
-	default "run storage r_kernel ; bootm"  if !EXTRA_ENV_USE_DTB
-
-	help
-	  Switch usdhc, read images and start run.
-
-
 endif
