@@ -12,6 +12,7 @@ export ARCH=arm
 CROSS_COMPILE_PATH=/media/tom/ext2t/freescale/cross-compile/arm-linux-androideabi-4.9/bin
 if [ ! -d $CROSS_COMPILE_PATH ];then
 echo "The CROSS_COMPILE_PATH is not exist!!!"
+exit 1
 fi
 
 # =====================================
