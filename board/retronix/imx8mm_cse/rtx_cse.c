@@ -557,6 +557,12 @@ static void led_init(void)
 		pca6416_reg_write(main_dev, 0x07, 0xff, 0x00);
 		/* Set Port0 P6/P4/P2/P0 the output are high */
 		pca6416_reg_write(main_dev, 0x02, 0xff, 0x55);
+		mdelay(300);
+		pca6416_reg_write(main_dev, 0x02, 0xff, 0xAA);
+		mdelay(300);
+		pca6416_reg_write(main_dev, 0x02, 0xff, 0x00);
+		mdelay(300);
+		pca6416_reg_write(main_dev, 0x02, 0xff, 0x01);
 
 		printf("pca6416 init\n");
 		/* If Port is input status,read Port value */

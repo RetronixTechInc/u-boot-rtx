@@ -49,10 +49,10 @@ void vSet_efm32_watchdog( unsigned long sec )
 			{
 				printf("%s:i2c_read:error\n", __func__);
 			}
-			else
-			{
-				printf("[%02X][%02X][%02X]\n",ubRecvBuf[0],ubRecvBuf[1],ubRecvBuf[2]);
-			}
+//			else
+//			{
+//				printf("[%02X][%02X][%02X]\n",ubRecvBuf[0],ubRecvBuf[1],ubRecvBuf[2]);
+//			}
 		}
 		
 	}
