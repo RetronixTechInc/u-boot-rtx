@@ -199,13 +199,45 @@ static int read_cpu_temperature(struct udevice *dev)
 }
 #endif
 
+#define OCOTP_MEM0_TEMP_SHIFT	6
+
+#define TEMP_COMMERCIAL		0
+#define TEMP_EXTCOMMERCIAL	1
+#define TEMP_INDUSTRIAL		2
+#define TEMP_AUTOMOTIVE		3
+
 int imx_thermal_get_temp(struct udevice *dev, int *temp)
 {
 	int cpu_tmp = 0;
 
+	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
+	struct fuse_bank *bank = &ocotp->bank[1];
+	struct fuse_bank1_regs *fuse_bank1 = (struct fuse_bank1_regs *)bank->fuse_regs;
+	uint32_t val;
+
+	val = readl(&fuse_bank1->mem);
+	val >>= OCOTP_MEM0_TEMP_SHIFT;
+	val &= 0x3;
+
+	int iTemperatureHot;
+
+	if (val == TEMP_AUTOMOTIVE) {
+		iTemperatureHot = 115;
+	} else if (val == TEMP_INDUSTRIAL) {
+		iTemperatureHot = 95;
+	} else if (val == TEMP_EXTCOMMERCIAL) {
+		iTemperatureHot = 95;
+	} else {
+		iTemperatureHot = 85;
+	}
+
 	cpu_tmp = read_cpu_temperature(dev);
+	printf("CPU:   Temperature %d C , Temperature HOT %d C , level %d\n", cpu_tmp, iTemperatureHot, val);
 	while (cpu_tmp > TEMPERATURE_MIN) {
-		if (cpu_tmp >= TEMPERATURE_HOT) {
+//		if (cpu_tmp >= TEMPERATURE_HOT) {
+		if (cpu_tmp >= iTemperatureHot) {
+			printf("CPU Temperature Hot Targe is %d C\n",
+			       iTemperatureHot);
 			printf("CPU Temperature is %d C, too hot to boot, waiting...\n",
 			       cpu_tmp);
 			udelay(5000000);
