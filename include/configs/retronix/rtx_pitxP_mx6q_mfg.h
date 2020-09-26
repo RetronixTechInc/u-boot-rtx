@@ -1,6 +1,6 @@
 
-#ifndef __RTX_PITX_MX6Q_CONFIG_H
-	#define __RTX_PITX_MX6Q_CONFIG_H
+#ifndef __RTX_PITXP_MX6Q_CONFIG_H
+	#define __RTXP_PITX_MX6Q_CONFIG_H
 
 	#include <asm/arch/imx-regs.h>
 	#include <asm/imx-common/gpio.h>
@@ -130,7 +130,7 @@
 	#define CONFIG_SYS_FSL_ESDHC_ADDR      		0
 
 	#define CONFIG_MMC
-	#ifndef CONFIG_TARGET_RTX_PITX_MX6Q_MFG
+	#ifndef CONFIG_TARGET_RTX_PITXP_MX6Q_MFG
         #define CONFIG_CMD_MMC
 	#endif
 	#define CONFIG_GENERIC_MMC
@@ -203,7 +203,7 @@
 		#define EMMC_ENV ""
 	#endif
 
-	#define CONFIG_VERSION_STRING "rtx-pitx-mx6q"
+	#define CONFIG_VERSION_STRING "rtx-pitxP-mx6q"
 
 	/*-----------------------------------------------------------------------
 	 * update and recovery parameter
@@ -275,11 +275,11 @@
 	#define CONFIG_SYS_HUSH_PARSER
 	#define CONFIG_SYS_PROMPT_HUSH_PS2     			"> "
 	#define CONFIG_AUTO_COMPLETE
-	#define CONFIG_SYS_CBSIZE              			1024
+	#define CONFIG_SYS_CBSIZE              			2048
 
 	/* Print Buffer Size */
 	#define CONFIG_SYS_PBSIZE 						(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-	#define CONFIG_SYS_MAXARGS             			256
+	#define CONFIG_SYS_MAXARGS             			1024
 	#define CONFIG_SYS_BARGSIZE 					CONFIG_SYS_CBSIZE
 
 	#define CONFIG_CMD_MEMTEST

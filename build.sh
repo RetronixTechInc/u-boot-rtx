@@ -56,9 +56,12 @@ export CROSS_COMPILE=${CROSS_COMPILE_PATH}/rtx-gcc-5.3.0-glibc-2.23-hf/arm-rtx-l
 #PITX Board
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_android_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_android_defconfig
-U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
+#U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya2g_dtb_rtx_all_linux_defconfig
 #U_BOOT_DEFAULT_CONFIG=rtx_pitx_mx6q_nanya1g_null_rtx_all_mfg_defconfig
+
+#PITX+ Board
+U_BOOT_DEFAULT_CONFIG=rtx_pitxP_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
 
 #Q7 Board
 #U_BOOT_DEFAULT_CONFIG=rtx_q7_mx6q_issi1g_dtb_rtx_all_android_defconfig

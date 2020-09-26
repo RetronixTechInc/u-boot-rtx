@@ -1,6 +1,6 @@
 
-#ifndef __RTX_PITX_MX6Q_CONFIG_H
-	#define __RTX_PITX_MX6Q_CONFIG_H
+#ifndef __RTX_PITXP_MX6Q_CONFIG_H
+	#define __RTXP_PITX_MX6Q_CONFIG_H
 
 	#include <asm/arch/imx-regs.h>
 	#include <asm/imx-common/gpio.h>
@@ -19,6 +19,7 @@
 	#ifdef CONFIG_BOOT_SYSTEM
 		#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
 		#define CONFIG_BOOT_CMD_RESET_ENV
+		#define CONFIG_BOOT_CMD_RESET_SETTING
 
 		#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0x600
 		#define CONFIG_BOOT_SYSTEM_SETTING_SIZE               0x2
@@ -26,20 +27,20 @@
 	#endif
 
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET     	0x800
-		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       	0x5000
+		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       	0x5400
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 	0x5C00
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   	0x400
-		#define CONFIG_BOOT_SYSTEM_KERNEL_OFFSET     			0x6800
-		#define CONFIG_BOOT_SYSTEM_KERNEL_SIZE       			0x5000
 		#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET 			0x6400
 		#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE   			0x400
+		#define CONFIG_BOOT_SYSTEM_KERNEL_OFFSET     			0x6800
+		#define CONFIG_BOOT_SYSTEM_KERNEL_SIZE       			0x5800
 		#define CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET         	0xC000
 		#define CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE           	0x1000
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         	0xD000
 		#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           	0x2000
 		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET         	0xF000
-		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0x5000
-		#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1E000
+		#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0x10000
+		#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1F000
 		#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  	0x1000
 	
 	/*-----------------------------------------------------------------------
@@ -53,8 +54,9 @@
 	#define CONFIG_MACH_TYPE					3980
 	#define CONFIG_MXC_UART_BASE				UART2_BASE
 	#define CONFIG_CONSOLE_DEV					"ttymxc1"
+	#define CONFIG_CONSOLE_ANDROID			    "ttymxc1"
 
-	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-sabresd.dtb"
+	#define CONFIG_DEFAULT_FDT_FILE				"imx6q-pitxP.dtb"
 
 	#if defined(CONFIG_MX6_DDR_2G)
 		#define PHYS_SDRAM_SIZE				(2u * 1024 * 1024 * 1024)
@@ -111,7 +113,7 @@
 	#define CONFIG_SYS_GENERIC_BOARD
 
 	/* Size of malloc() pool */
-	#define CONFIG_SYS_MALLOC_LEN				(16 * SZ_1M)
+	#define CONFIG_SYS_MALLOC_LEN				(32 * SZ_1M)
 
 	#define CONFIG_BOARD_EARLY_INIT_F
 	#define CONFIG_BOARD_LATE_INIT
@@ -130,9 +132,7 @@
 	#define CONFIG_SYS_FSL_ESDHC_ADDR      		0
 
 	#define CONFIG_MMC
-	#ifndef CONFIG_TARGET_RTX_PITX_MX6Q_MFG
-        #define CONFIG_CMD_MMC
-	#endif
+	#define CONFIG_CMD_MMC
 	#define CONFIG_GENERIC_MMC
 	#define CONFIG_BOUNCE_BUFFER
 	#define CONFIG_CMD_EXT2
@@ -165,6 +165,8 @@
 	/* Command definition */
 	#include <config_cmd_default.h>
 
+    #define CONFIG_MXC_SPI
+    #define CONFIG_CMD_SPI
 	#define CONFIG_CMD_BMODE
 	#define CONFIG_CMD_BOOTZ
 	#define CONFIG_CMD_SETEXPR
@@ -182,41 +184,50 @@
 	#define CONFIG_SYS_MMC_IMG_LOAD_PART		1
 
 	#define CONFIG_MFG_NAND_PARTITION ""
-
+	
 	#ifdef CONFIG_SUPPORT_EMMC_BOOT
 		#define EMMC_ENV \
-			"emmcdev=2\0" \
-			"update_emmc_firmware=" \
-			"if test ${ip_dyn} = yes; then " \
-				"setenv get_cmd dhcp; " \
+			"updtb-check=test -n ${update-dtb} && ext4load mmc ${mmc_num}:${bootimage_num} ${dtb_loadaddr} /${update-dtb}\0" \
+			"upkernel-check=test -n ${update-kernel} && ext4load mmc ${mmc_num}:${bootimage_num} ${loadaddr} /${update-kernel}\0"	\
+			"update-check=run upkernel-check && run updtb-check\0"	\
+			"nrdtb-check=test -n ${normal-dtb} && ext4load mmc ${mmc_num}:${bootimage_num} ${dtb_loadaddr} /${normal-dtb}\0"	\
+			"nrkernel-check=test -n ${normal-kernel} && ext4load mmc ${mmc_num}:${bootimage_num} ${loadaddr} /${normal-kernel}\0"	\
+			"normal-check=run nrkernel-check && run nrdtb-check\0"	\
+			"loadimage=" \
+			"if run update-check; then " \
+				"echo start update image; " \
+				"setenv update-kernel; " \
+				"setenv update-dtb; " \
+				"saveenv; " \
+				"setenv bootargs ${bootargs} startmode=update; " \
 			"else " \
-				"setenv get_cmd tftp; " \
-			"fi; " \
-			"if ${get_cmd} ${update_sd_firmware_filename}; then " \
-				"if mmc dev ${emmcdev} 1; then "	\
-					"setexpr fw_sz ${filesize} / 0x200; " \
-					"setexpr fw_sz ${fw_sz} + 1; "	\
-					"mmc write ${loadaddr} 0x2 ${fw_sz}; " \
-				"fi; "	\
-			"fi\0"
+				"if run normal-check; then " \
+					"echo start normal image; " \
+					"setenv bootargs ${bootargs} startmode=normal; " \
+				"else " \
+					"run storage r_kernel r_dtb; " \
+					"echo start backup image; " \
+					"setenv bootargs ${bootargs} startmode=backup; " \
+				"fi; " \
+			"fi;\0"
 	#else
 		#define EMMC_ENV ""
 	#endif
 
-	#define CONFIG_VERSION_STRING "rtx-pitx-mx6q"
+	#define CONFIG_VERSION_STRING "rtx-pitxP-mx6q"
 
 	/*-----------------------------------------------------------------------
 	 * update and recovery parameter
 	 */
 	/* usb or sd card */
 	#define CONFIG_ENG_BOOTARGS \
-		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_UPDATEROOT
+		"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} pcba_version=${version} mmcroot=" CONFIG_UPDATEROOT
 	#define CONFIG_ENG_BOOTCMD  \
-		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr}"
+		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR)
 	#define CONFIG_ENG_DTB_BOOTCMD  \
-		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}"
+		"run bootargs_base set_display set_mem bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR) " "  __stringify(CONFIG_DTB_LOADADDR)
 
-	/* recovery mode parameter 'r' or 'R' key*/
+	/* android recovery mode parameter */
 	#define CONFIG_ANDROID_RECOVERY_BOOTARGS \
 		"setenv bootargs ${bootargs} init=/init"
 	#ifdef CONFIG_EXTRA_ENV_USE_DTB
@@ -233,18 +244,10 @@
 			"mmc read ${rd_loadaddr}  "__stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE) ";" \
 			"bootm ${loadaddr} ${rd_loadaddr}"
 	#endif
-
-	#ifdef CONFIG_EXTRA_ENV_USE_DTB
-		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
-		#define CONFIG_EXTRA_ENV_BOOTCMD_MFG "bootcmd_mfg=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr} ${dtb_loadaddr}\0"
-	#else
-		#define CONFIG_EXTRA_ENV_BOOTCMD_GEN "bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr}\0"
-		#define CONFIG_EXTRA_ENV_BOOTCMD_MFG "bootcmd_mfg=run bootargs_base set_display set_mem bootargs_console bootargs_gen ; bootm ${loadaddr} ${rd_loadaddr}\0"
-	#endif
-
+		
 	#define	CONFIG_EXTRA_ENV_SETTINGS \
 		"bootcmd=run bootcmd_gen\0"	\
-		"bootargs_base=setenv bootargs androidboot.hardware=freescale no_console_suspend\0" \
+		"bootargs_base=setenv bootargs no_console_suspend\0" \
 		"set_display=run " CONFIG_GUIPORT "\0" \
 		"set_mem=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GUIMEM "\0" \
 		"bootargs_console=setenv bootargs ${bootargs} console=" CONFIG_CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONFIG_CONSOLE_DEV "\0"	\
@@ -252,6 +255,11 @@
 		"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 		"vga=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_VGA "\0" \
 		"dual-hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_DUAL_HDMI "\0" \
+		CONFIG_BOOTARGS_UI_VAR01 "\0" \
+		CONFIG_BOOTARGS_UI_VAR02 "\0" \
+		CONFIG_BOOTARGS_UI_VAR03 "\0" \
+		CONFIG_BOOTARGS_UI_VAR04 "\0" \
+		CONFIG_BOOTARGS_UI_VAR05 "\0" \
 		"mmc_num=" CONFIG_UBOOT_MMCNUM "\0"	  \
 		"storage=mmc dev ${mmc_num}\0" \
 		"mac1_val=" CONFIG_DEFAULT_MAC01 "\0" \
@@ -259,14 +267,18 @@
 		"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE) "\0" \
 		"r_dtb=mmc read ${dtb_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE) "\0"\
 		"r_ramdisk=mmc read ${rd_loadaddr} " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET) " " __stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE) "\0" \
-		CONFIG_EXTRA_ENV_BOOTCMD_MFG	\
-		CONFIG_EXTRA_ENV_BOOTCMD_GEN	\
+		"bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_android bootargs_gen;" CONFIG_EXTRA_ENV_BOOTCMD_GEN "\0"	\
+		"bootargs_android=setenv bootargs ${bootargs} " CONFIG_EXTRA_ENV_BOOTARGS_ANDROID "\0" \
 		"splashpos=m,m\0"	  \
 		"def_video=" CONFIG_VGA_VIDEO "\0" \
 		"loadaddr=" __stringify(CONFIG_LOADADDR) "\0" \
 		"dtb_loadaddr=" __stringify(CONFIG_DTB_LOADADDR) "\0" \
 		"rd_loadaddr=" __stringify(CONFIG_RD_LOADADDR) "\0" \
-		"version=" CONFIG_VERSION_STRING "\0"
+        "fdt_high=0xffffffff\0" \
+        "initrd_high=0xffffffff\0" \
+        "startinit=init=/sbin/init\0" \
+		"version=" CONFIG_VERSION_STRING "\0" \
+		EMMC_ENV \
 
 	#define CONFIG_ARP_TIMEOUT     					200UL
 
@@ -407,6 +419,7 @@
 	#define CONFIG_SYS_MMC_ENV_DEV						1	/* SDHC3 */
 	#define CONFIG_SYS_MMC_ENV_PART                		0       /* user partition */
 
+	#define CONFIG_POWER_3V3			/* Enable 3v3 */
 	/* PMIC */
 	#define CONFIG_POWER
 	#define CONFIG_POWER_I2C
@@ -424,8 +437,19 @@
 		#define CONFIG_USB_ETHER_ASIX
 		#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
 		#define CONFIG_MXC_USB_FLAGS		0
-		#define CONFIG_USB_MAX_CONTROLLER_COUNT	1 /* Enabled USB controller number */
+		#define CONFIG_USB_MAX_CONTROLLER_COUNT	2 /* Enabled USB controller number */
+		#define CONFIG_Enable_USB_KEYBOARD
+		#ifdef CONFIG_Enable_USB_KEYBOARD
+			#define CONFIG_USB_KEYBOARD
+			#define CONFIG_SYS_STDIO_DEREGISTER 
+			#define CONFIG_SYS_USB_EVENT_POLL_VIA_CONTROL_EP
+			#define CONFIG_CONSOLE_MUX
+			#define CONFIG_USE_PREBOOT
+			#define CONFIG_PREBOOT "usb start; setenv stdin serial,usbkbd;"
+		#endif
 	#endif
+
+	#define CONFIG_HW_OC
 
 	/*#define CONFIG_SPLASH_SCREEN*/
 	/*#define CONFIG_MXC_EPDC*/

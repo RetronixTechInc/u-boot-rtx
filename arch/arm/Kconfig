@@ -77,6 +77,10 @@ config TARGET_RTX_PITX_MX6Q
 	bool "Support Retronix PITX Board (imx6q SOC)"
 	select CPU_V7
 
+config TARGET_RTX_PITXP_MX6Q
+	bool "Support Retronix PITXP Board (imx6q SOC)"
+	select CPU_V7
+
 config TARGET_RTX_Q7_MX6Q
 	bool "Support Retronix Q7 Board (imx6q SOC)"
 	select CPU_V7
@@ -943,6 +947,7 @@ source "board/retronix/rtx_adlink_mx6dl/Kconfig"
 source "board/retronix/rtx_a6plus_mx6q/Kconfig"
 source "board/retronix/rtx_a6_mx6q/Kconfig"
 source "board/retronix/rtx_pitx_mx6q/Kconfig"
+source "board/retronix/rtx_pitxP_mx6q/Kconfig"
 source "board/retronix/rtx_q7_mx6q/Kconfig"
 source "board/retronix/rtx_q7_vpp_mx6q/Kconfig"
 source "board/retronix/rtx-valor111-plus-mx6dl/Kconfig"
