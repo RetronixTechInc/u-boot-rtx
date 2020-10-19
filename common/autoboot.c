@@ -283,6 +283,7 @@ static int abortboot_normal(int bootdelay)
 						printf("\"Ctrl + D\" : Disable function usbstart.\n");
 						printf("\"ESC\" : Boot system.\n");
 						printf("\n");
+						imx_enable_hdmi_phy();
 					}
 //					printf("Backspace Key \n");
 					printf("Hit any key to stop autoboot: %2d ", bootdelay);

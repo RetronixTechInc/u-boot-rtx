@@ -613,7 +613,7 @@ static void disable_lvds(struct display_info_t const *dev)
 static void do_enable_hdmi(struct display_info_t const *dev)
 {
 	disable_lvds(dev);
-	imx_enable_hdmi_phy();
+	//~ imx_enable_hdmi_phy();
 }
 
 static void enable_lvds(struct display_info_t const *dev)
