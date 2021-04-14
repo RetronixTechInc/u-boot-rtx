@@ -88,7 +88,8 @@ typedef struct __OPTIONS_DATA__ {
 	OPTIONS_LVDS_PAR sLVDSVal ;          	        //(328 +  64) lvds 參數,lvds_val=****
     unsigned long    ulMcuWatchDog ; 		        //(392 +   4) MCU watch dog time. 0 is disable.
     unsigned long    ulMcuWatchDogFlag ;            //(396 +   4) MCU watch dog flag
-	unsigned char    ubRecv01[112] ;                //(400 + 116) 保留
+	unsigned long    ulDdrType ;                	//(400 +   4) DDR Size, 0=512M, 1=1G, 2=2G, ...
+	unsigned char    ubRecv01[112] ;                //(404 + 112) 保留
 	
 	unsigned char    ubProductSerialNO_Vendor[64] ; //(512 +  64) 生產，產品序號
 	unsigned char    ubMAC01_Vendor[8] ;            //(576 +   8) 生產，第1組MAC
@@ -166,6 +167,7 @@ static void vOptions_SetDefaultValue( void )
 	stcOptionsData.ulPasswordLen = 8 ;
 	
 	stcOptionsData.ulCheckCode = 0x5AA5AA55 ;
+	stcOptionsData.ulDdrType = 0x00000000 ;		//DDR Type=0
 }
 
 void vOptions_Init( void )
@@ -549,12 +551,40 @@ static int do_OptionsSetWatchdog(cmd_tbl_t *cmdtp, int flag, int argc, char * co
 	return CMD_RET_USAGE;
 }
 
+static int do_OptionsSetDdrType(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	int iType ;
+
+	if (argc != 3)
+		return CMD_RET_USAGE;
+
+	if ( strcmp( argv[1] , "type" ) == 0 )
+	{
+		if( strlen(argv[2]) < 2 )
+        	{
+			iType = simple_strtoul( argv[2] , NULL , 10 ) ;
+		}
+		else
+		{
+			return CMD_RET_USAGE ;
+		}
+		if( iType <= 0xFF )
+		{
+			stcOptionsData.ulDdrType = iType ;
+			vOptions_WriteSettingData( ) ;
+			return CMD_RET_SUCCESS;
+		}
+	}
+	return CMD_RET_USAGE;
+}
+
 static cmd_tbl_t stcOptionsSubCmd[] = {
 	U_BOOT_CMD_MKENT(function , 3, 0, do_OptionsSetFunction , "", ""),
 	U_BOOT_CMD_MKENT(mac      , 3, 0, do_OptionsSetMac      , "", ""),
 	U_BOOT_CMD_MKENT(menu     , 2, 0, do_OptionsSetMenu     , "", ""),
 	U_BOOT_CMD_MKENT(lvds     , 3, 0, do_OptionsSetLVDS     , "", ""),
 	U_BOOT_CMD_MKENT(watchdog , 3, 0, do_OptionsSetWatchdog , "", ""),
+	U_BOOT_CMD_MKENT(ddrtype  , 3, 0, do_OptionsSetDdrType  , "", ""),
 };
 
 static int do_OptionsSetOps(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -603,6 +633,8 @@ U_BOOT_CMD(
 	"    lvds parameter <refresh,xres,yres,pixclock,left_margin,right_margin,up_margin,low_margin,hsync_len,vsync_len,sync,vmode>\n"
 	"** watchdog class **\n"
 	"    watchdog time 0(max 65535 seconds.)\n"
+	"** ddrtype class **\n"
+	"    ddrtype type 0(0=default, 1=type1, 2=type2, ...)\n"
 );
 
 #ifdef CONFIG_RTX_BOOT_CMD_RESET_SETTING
@@ -777,6 +809,9 @@ static int do_OptionsDumpData(cmd_tbl_t *cmdtp, int flag, int argc, char * const
 			printf( "%c" , '?' ) ;
 		}
 	}
+	printf( "\n" ) ;
+
+	printf( "ulDdrType:%08lX\n" , stcOptionsData.ulDdrType ) ;
 	printf( "\n" ) ;
 
 	return CMD_RET_SUCCESS;

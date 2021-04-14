@@ -16,7 +16,23 @@
 #include <mmc.h>
 #include <image.h>
 
+#include <asm/arch/mx6-ddr.h>
+
 DECLARE_GLOBAL_DATA_PTR;
+
+extern struct mx6_ddr3_cfg rtx_ddr_MT41K256M16JT ;
+extern struct mx6_ddr3_cfg rtx_ddr_MT41K512M16JT ;
+extern struct mx6_ddr_sysinfo rtx_ddr_sysinfo ;
+extern struct mx6_mmdc_calibration mx6dqp_mmcd_calib ;
+
+typedef struct __OPTIONS_DATA__ {
+	unsigned long    ulCheckCode ;                  //(  0 +   4) 檢查碼
+	unsigned char    ubRecv01[396] ;		//(  4 + 396)
+	unsigned long    ulDdrSize ;                	//(400 +   4) DDR Size, 0=512M, 1=1G, 2=2G, ...
+	unsigned char    ubRecv02[624] ;                //(404 + 624)
+	                                                //(1024)
+} OPTIONS_DATA ;
+static OPTIONS_DATA stcOptionsData ;
 
 static int mmc_load_legacy(struct spl_image_info *spl_image, struct mmc *mmc,
 			   ulong sector, struct image_header *header)
@@ -284,9 +300,11 @@ int spl_mmc_load_image(struct spl_image_info *spl_image,
 		       struct spl_boot_device *bootdev)
 {
 	struct mmc *mmc = NULL;
-	u32 boot_mode;
+	u32 boot_mode,u32Size;
 	int err = 0;
 	__maybe_unused int part;
+
+	void * pBuf = (void *)0x10800000 ;
 
 	err = spl_mmc_find_device(&mmc, bootdev->boot_device);
 	if (err)
@@ -298,6 +316,27 @@ int spl_mmc_load_image(struct spl_image_info *spl_image,
 		printf("spl: mmc init failed with error: %d\n", err);
 #endif
 		return err;
+	}
+
+	u32Size=blk_dread( mmc_get_blk_desc(mmc) , 0x600 , 0x00000002 , pBuf );
+	if ( u32Size == 0x00000002 )
+	{
+		memcpy( (void *)&stcOptionsData , (void *)pBuf , sizeof(OPTIONS_DATA) ) ;
+		if( stcOptionsData.ulCheckCode == 0x5aa5aa55 )
+		{
+			switch (stcOptionsData.ulDdrSize) {
+			case 0x00000001 :
+				mx6_dram_cfg(&rtx_ddr_sysinfo, &mx6dqp_mmcd_calib, &rtx_ddr_MT41K256M16JT);
+				printf("switch to rtx_ddr_MT41K256M16JT\n");
+				break;;
+			case 0x00000002 :
+				mx6_dram_cfg(&rtx_ddr_sysinfo, &mx6dqp_mmcd_calib, &rtx_ddr_MT41K512M16JT);
+				printf("switch to rtx_ddr_MT41K512M16JT\n");
+				break;;
+			default:
+				puts("ddrtype : default\n");
+			}
+		}
 	}
 
 	boot_mode = spl_boot_mode(bootdev->boot_device);
