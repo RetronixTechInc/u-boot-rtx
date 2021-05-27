@@ -19,10 +19,6 @@
 #include <environment.h>
 #endif
 
-#ifdef CONFIG_BOOT_SYSTEM
-	#include <rtx/bootsel.h>
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_DELAY_STOP_STR 32
@@ -220,7 +216,6 @@ static int __abortboot(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
-	int iDisplayFlag = 0;
 
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
@@ -242,93 +237,6 @@ static int __abortboot(int bootdelay)
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
-# ifdef CONFIG_Enable_KEYFUNC
-		char presskey;
-			if (tstc()) {
-				presskey = getc();
-				if (presskey == 0x02) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^B Key\n");
-						printf("run update mode /data mount on /dev/sda1\n");
-
-						env_set( "roption" , "update" ) ;
-						env_set( "rstorage" , "usb" ) ;
-						env_set( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-						bootsel_load_backupsystem( ) ;
-					}
-				}else if (presskey == 0x04) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^D Key\n");
-						printf("Disable function menukey \n");
-
-						run_command("bootsel_set function menukey disable", 0);
-					}
-
-				}else if (presskey == 0x0E) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^N Key\n");
-						printf("run NET update mode\n");
-
-						env_set( "roption" , "netupdate" ) ;
-						env_set( "rstorage" , "mmc" ) ;
-						env_set( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-						bootsel_load_backupsystem( ) ;
-					}
-				}else if (presskey == 0x12) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^R Key\n");
-						printf("run update mode\n");
-
-						env_set( "roption" , "recovery" ) ;
-						env_set( "rstorage" , "mmc" ) ;
-						env_set( "ext_args" , CONFIG_ENG_BOOTARGS ) ;
-						bootsel_load_backupsystem( ) ;
-					}
-				}else if (presskey == 0x15) {
-					if ( iDisplayFlag == 1 )
-					{
-						bootdelay = 1;
-						printf("^U Key \n");
-						printf("filesystem mount on /dev/sda1\n");
-
-						env_set( "mmcrootpath" , "root=/dev/sda1 rootwait rw" ) ;
-						run_command( "run bootcmd" , 0 ) ;
-					}
-				}else if ( presskey == '\t') {	/* we got a key press	*/
-					abort  = 1;	/* don't auto boot	*/  
-					bootdelay = 0;	/* no more delay	*/
-					(void) getc();  /* consume input	*/
-					break;
-				}else if ( presskey == '\b') {
-					bootdelay = 30;
-					if( iDisplayFlag == 0 )
-					{
-						iDisplayFlag = 1 ;
-						printf("\n");
-						printf("\"Ctrl + N\" : Netupdate mode.\n");
-						printf("\"Ctrl + R\" : Recovery mode.\n");
-						printf("\"Ctrl + B\" : Update mode /data mount on /dev/sda1.\n");
-						printf("\"Ctrl + U\" : Filesystem mount on /dev/sda1.\n");
-						printf("\"Ctrl + D\" : Disable function menukey.\n");
-						printf("\"ESC\" : Boot system.\n");
-						printf("\n");
-					}
-					printf("\nHit function key, or 'Tab' key to stop autoboot: %2d ", bootdelay);
-					break;
-				}else if ( presskey == '\e') {
-					bootdelay = 0;
-					break;
-				}
-			}
-# else
 			if (tstc()) {	/* we got a key press	*/
 				abort  = 1;	/* don't auto boot	*/
 				bootdelay = 0;	/* no more delay	*/
@@ -339,7 +247,6 @@ static int __abortboot(int bootdelay)
 # endif
 				break;
 			}
-# endif
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
 
@@ -465,10 +372,6 @@ void autoboot_command(const char *s)
 	if (stored_bootdelay != -1 && s && !abortboot(stored_bootdelay)) {
 #if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
-#endif
-
-#if defined(CONFIG_BOOT_SYSTEM)
-		bootsel_checkstorage() ;
 #endif
 
 		run_command_list(s, -1, 0);

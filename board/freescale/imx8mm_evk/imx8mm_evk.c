@@ -29,9 +29,6 @@
 #include <imx_mipi_dsi_bridge.h>
 #include <mipi_dsi_panel.h>
 #include <asm/mach-imx/video.h>
-#if defined(CONFIG_BOOT_SYSTEM)
-#include <rtx/bootsel.h>
-#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -721,11 +718,6 @@ size_t display_count = ARRAY_SIZE(displays);
 
 int board_late_init(void)
 {
-
-#if defined(CONFIG_BOOT_SYSTEM)
-	bootsel_init() ;
-#endif
-
 #ifdef CONFIG_ENV_IS_IN_MMC
 	board_late_mmc_env_init();
 #endif

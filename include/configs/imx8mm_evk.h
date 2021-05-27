@@ -16,41 +16,6 @@
 #define CONFIG_CSF_SIZE			0x2000 /* 8K region */
 #endif
 
-/*-----------------------------------------------------------------------
- *bootsel.c 
- */
-
-#define CONFIG_BOOT_SYSTEM
-#ifdef CONFIG_BOOT_SYSTEM
-	#define CONFIG_BOOT_SYSTEM_SHOW_SETTING_INFO
-	#define CONFIG_BOOT_CMD_RESET_ENV
-	#define CONFIG_BOOT_CMD_RESET_SETTING
-
-	#define CONFIG_BOOT_SYSTEM_SETTING_OFFSET             0xC00
-	#define CONFIG_BOOT_SYSTEM_SETTING_SIZE               0x2
-	#define CONFIG_BOOT_SYSTEM_MAX_EXTSD                  4
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET     	0x1800
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       	0xC800
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 	0x1400
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   	0x400
-	#define CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET         	0xE000
-	#define CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE           	0x8000
-
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         	0x16000
-	#define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           	0x2000
-	#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET         	0x18000
-	#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE           	0x5000
-	#define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1D000
-	#define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  	0x1000
-#endif
-/*-----------------------------------------------------------------------
- * MCU watch dog
- */
-
-#ifdef CONFIG_RTX_EFM32
-	#define CONFIG_MCU_WDOG_BUS	2
-#endif
-
 #define CONFIG_SPL_MAX_SIZE		(148 * 1024)
 #define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
 #define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
@@ -192,55 +157,39 @@
 
 #else
 #define CONFIG_EXTRA_ENV_SETTINGS		\
+	CONFIG_MFG_ENV_SETTINGS \
+	JAILHOUSE_ENV \
 	"script=boot.scr\0" \
 	"image=Image\0" \
-	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
-	"boot_fdt=try\0" \
-	"version=fsl-imx8mm-evk\0" \
-	"count=0\0" \
-	"count1=2\0" \
-	"count2=5\0" \
-	"panel=MIPI2HDMI\0" \
 	"console=ttymxc1,115200 earlycon=ec_imx6q,0x30890000,115200\0" \
 	"fdt_addr=0x43000000\0"			\
 	"fdt_high=0xffffffffffffffff\0"		\
+	"boot_fdt=try\0" \
+	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"initrd_addr=0x43800000\0"		\
 	"initrd_high=0xffffffffffffffff\0" \
 	"mmcdev="__stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
-	"bootargs_gen=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_GEN "\0" \
 	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"mmcroot=" CONFIG_MMCROOT " rootwait rw\0" \
 	"mmcautodetect=yes\0" \
-	"mmcargs=setenv bootargs ${jh_clk} console=${console}; run bootargs_gen\0 " \
-	"ramargs=setenv bootargs ${jh_clk} console=${console} root=/dev/ram0 rootwait rw rdinit=/sbin/init\0 " \
-	"loadm4fw=fatload mmc ${mmcdev}:${mmcpart} 0x7e0000 m4fw.bin;\0" \
+	"mmcargs=setenv bootargs ${jh_clk} console=${console} root=${mmcroot}\0 " \
 	"loadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
-	"loadbootcount=fatload mmc ${mmcdev}:${mmcpart} 0x80002000 boot.count;\0" \
+	"bootscript=echo Running bootscript from mmc ...; " \
+		"source\0" \
 	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
 	"loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
-	"bootscript=echo Running bootscript from mmc ...; source\0" \
-	"mmcboot=echo Booting from mmc ...; run mmcargs; " \
+	"mmcboot=echo Booting from mmc ...; " \
+		"run mmcargs; " \
 		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
-			"if run loadfdt; then booti ${loadaddr} - ${fdt_addr}; " \
-			"else echo WARN: Cannot load the DT; fi; " \
-		"else echo wait for boot; fi;\0" \
-	"r_dtb=mmc read ${fdt_addr} 0x1400 0x400\0" \
-	"r_kernel=mmc read ${loadaddr} 0x1800 0xc800\0" \
-	"r_ramdisk=mmc read ${initrd_addr} 0xE000 0x4000\0" \
-	"mmcboot2=echo Booting from recovery ...; run mmcargs; " \
-		"run r_kernel r_dtb; booti ${loadaddr} - ${fdt_addr};\0" \
-	"ramboot=echo Booting to ramdisk ...; run ramargs; " \
-		"run r_kernel r_dtb r_ramdisk; booti ${loadaddr} ${initrd_addr} ${fdt_addr};\0" \
-	"checkcount=" \
-		"if run loadbootcount; then echo Check count ... ${count}; "\
-			"if test ${count} > ${count2}; then run ramboot; fi; " \
-			"if test ${count} > ${count1}; then run mmcboot2; fi; " \
-			"if run loadimage; then setexpr count ${count} + 1; saveenv; run mmcboot; " \
-			"else run mmcboot2; fi; " \
+			"if run loadfdt; then " \
+				"booti ${loadaddr} - ${fdt_addr}; " \
+			"else " \
+				"echo WARN: Cannot load the DT; " \
+			"fi; " \
 		"else " \
-			"if run loadimage; then run mmcboot; " \
-			"else run mmcboot2; fi; " \
+			"echo wait for boot; " \
 		"fi;\0" \
-	"netargs=setenv bootargs console=${console} " \
+	"netargs=setenv bootargs ${jh_clk} console=${console} " \
 		"root=/dev/nfs " \
 		"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp\0" \
 	"netboot=echo Booting from net ...; " \
@@ -260,13 +209,18 @@
 		"else " \
 			"booti; " \
 		"fi;\0"
+
 #define CONFIG_BOOTCOMMAND \
-	"mmc dev ${mmcdev}; " \
-	"if mmc rescan; then " \
-		"if run loadm4fw; then run loadm4fw; bootaux 0x7e0000; fi; " \
-		"if run loadbootscript; then run bootscript; " \
-		"else run checkcount; fi; " \
-	"else echo Cannot find the mmcdev; fi;"
+	   "mmc dev ${mmcdev}; if mmc rescan; then " \
+		   "if run loadbootscript; then " \
+			   "run bootscript; " \
+		   "else " \
+			   "if run loadimage; then " \
+				   "run mmcboot; " \
+			   "else run netboot; " \
+			   "fi; " \
+		   "fi; " \
+	   "else booti ${loadaddr} - ${fdt_addr}; fi"
 #endif
 
 /* Link Definitions */
@@ -283,22 +237,23 @@
 
 #define CONFIG_ENV_OVERWRITE
 #if defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_ENV_OFFSET               (32 * SZ_64K)
+#define CONFIG_ENV_OFFSET               (64 * SZ_64K)
 #elif defined(CONFIG_ENV_IS_IN_SPI_FLASH)
-#define CONFIG_ENV_OFFSET		(2 * 1024 * 1024)
+#define CONFIG_ENV_OFFSET		(4 * 1024 * 1024)
 #define CONFIG_ENV_SECT_SIZE		(64 * 1024)
 #define CONFIG_ENV_SPI_BUS		CONFIG_SF_DEFAULT_BUS
 #define CONFIG_ENV_SPI_CS		CONFIG_SF_DEFAULT_CS
 #define CONFIG_ENV_SPI_MODE		CONFIG_SF_DEFAULT_MODE
 #define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
 #elif defined(CONFIG_ENV_IS_IN_NAND)
-#define CONFIG_ENV_OFFSET       (30 << 20)
+#define CONFIG_ENV_OFFSET       (60 << 20)
 #endif
-#define CONFIG_ENV_SIZE			0x2000
+#define CONFIG_ENV_SIZE			0x1000
 #define CONFIG_SYS_MMC_ENV_DEV		0   /* USDHC2 */
+#define CONFIG_MMCROOT			"/dev/mmcblk1p2"  /* USDHC2 */
 
 /* Size of malloc() pool */
-#define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (12*1024) + (16*1024)) * 1024)
+#define CONFIG_SYS_MALLOC_LEN		((CONFIG_ENV_SIZE + (2*1024) + (16*1024)) * 1024)
 
 #define CONFIG_SYS_SDRAM_BASE           0x40000000
 #define PHYS_SDRAM                      0x40000000
@@ -312,7 +267,6 @@
 
 #define CONFIG_MXC_UART
 #define CONFIG_MXC_UART_BASE		UART2_BASE_ADDR
-/*#define CONFIG_MXC_UART_BASE		UART4_BASE_ADDR		*/
 
 /* Monitor Command Prompt */
 #undef CONFIG_SYS_PROMPT
@@ -326,19 +280,6 @@
 
 #define CONFIG_IMX_BOOTAUX
 
-
-/*-----------------------------------------------------------------------
- * update and recovery parameter
- */
-/* usb or sd card */
-#define CONFIG_ENG_BOOTARGS \
-	"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} pcba_version=${version} mmcroot=" CONFIG_UPDATEROOT
-#define CONFIG_ENG_BOOTCMD  \
-	"setenv bootargs console=${console}; run ext_args; booti " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR)
-#define CONFIG_ENG_DTB_BOOTCMD  \
-	"setenv bootargs console=${console}; run ext_args; booti " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR) " "  __stringify(CONFIG_DTB_LOADADDR)
-
-
 /* USDHC */
 #define CONFIG_CMD_MMC
 #define CONFIG_FSL_ESDHC
@@ -349,8 +290,6 @@
 #else
 #define CONFIG_SYS_FSL_USDHC_NUM	2
 #endif
-#define CONFIG_DYNAMIC_MMC_DEVNO
-#define CONFIG_SYS_MMC_ENV_PART		0       /* user partition */
 #define CONFIG_SYS_FSL_ESDHC_ADDR       0
 
 #define CONFIG_SUPPORT_EMMC_BOOT	/* eMMC specific */
@@ -359,7 +298,7 @@
 #ifdef CONFIG_FSL_FSPI
 #define CONFIG_SF_DEFAULT_BUS		0
 #define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED		40000000
+#define CONFIG_SF_DEFAULT_SPEED	40000000
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
 #define FSL_FSPI_FLASH_SIZE		SZ_32M
 #define FSL_FSPI_FLASH_NUM		1
@@ -367,6 +306,7 @@
 #define FSPI0_AMBA_BASE			0x0
 #define	CONFIG_SPI_FLASH_BAR
 #define CONFIG_FSPI_QUAD_SUPPORT
+
 #define CONFIG_SYS_FSL_FSPI_AHB
 #endif
 
@@ -439,10 +379,6 @@
 #define CONFIG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_USB_MAX_CONTROLLER_COUNT         2
 
-#define CONFIG_USE_PREBOOT
-#define CONFIG_PREBOOT "setenv stdin serial,usbkbd; setenv stdout serial,vga; usb start;"
-#define CONFIG_Enable_KEYFUNC
-
 #ifdef CONFIG_VIDEO
 #define CONFIG_VIDEO_MXS
 #define CONFIG_VIDEO_LOGO
@@ -458,4 +394,7 @@
 
 #define CONFIG_OF_SYSTEM_SETUP
 
+#if defined(CONFIG_ANDROID_SUPPORT)
+#include "imx8mm_evk_android.h"
+#endif
 #endif

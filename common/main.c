@@ -13,13 +13,6 @@
 #include <console.h>
 #include <version.h>
 
-#if defined(CONFIG_BOOT_SYSTEM)
-#include <rtx/bootsel.h>
-#endif
-#if defined(CONFIG_RTX_EFM32)
-#include <rtx/efm32.h>
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 /*
@@ -38,10 +31,7 @@ static void run_preboot_environment_command(void)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif
 
-		if (bootsel_func_menukey()){
-			printf("preboot : enable usb start!\n");
-			run_command_list(p, -1, 0);
-		}
+		run_command_list(p, -1, 0);
 
 # ifdef CONFIG_AUTOBOOT_KEYED
 		disable_ctrlc(prev);	/* restore Control C checking */
@@ -75,12 +65,6 @@ void main_loop(void)
 
 	autoboot_command(s);
 
-#if defined(CONFIG_BOOT_SYSTEM)
-	bootsel_password();
-#endif
-#if defined(CONFIG_RTX_EFM32)
-	vSet_efm32_watchdog( 0 ) ;
-#endif
 	cli_loop();
 	panic("No CLI available");
 }

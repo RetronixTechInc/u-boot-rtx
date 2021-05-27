@@ -648,11 +648,7 @@ c_flags := $(KBUILD_CFLAGS) $(cpp_flags)
 HAVE_VENDOR_COMMON_LIB = $(if $(wildcard $(srctree)/board/$(VENDOR)/common/Makefile),y,n)
 
 libs-y += lib/
-ifeq ($(VENDOR),retronix)
-libs-y += board/freescale/common/
-else
 libs-$(HAVE_VENDOR_COMMON_LIB) += board/$(VENDOR)/common/
-endif
 libs-$(CONFIG_OF_EMBED) += dts/
 libs-y += fs/
 libs-y += net/
