@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <fdt_support.h>
 #include <i2c.h>
+#include <init.h>
 #include <netdev.h>
 #include <linux/compiler.h>
 #include <asm/mmu.h>
@@ -15,7 +17,6 @@
 #include <asm/immap_85xx.h>
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
-#include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
 #include <fm_eth.h>
 #include <hwconfig.h>
@@ -153,7 +154,7 @@ static int board_mux_lane_to_slot(void)
 	return 0;
 }
 
-#ifdef CONFIG_PPC_T1024
+#ifdef CONFIG_ARCH_T1024
 static void board_mux_setup(void)
 {
 	u8 brdcfg15;
@@ -280,10 +281,6 @@ int board_early_init_r(void)
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 #endif
-	set_liodns();
-#ifdef CONFIG_SYS_DPAA_QBMAN
-	setup_portals();
-#endif
 	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
 	board_mux_lane_to_slot();
 	board_retimer_ds125df111_init();
@@ -337,7 +334,7 @@ unsigned long get_board_ddr_clk(void)
 #define NUM_SRDS_PLL	2
 int misc_init_r(void)
 {
-#ifdef CONFIG_PPC_T1024
+#ifdef CONFIG_ARCH_T1024
 	board_mux_setup();
 #endif
 	return 0;
@@ -368,8 +365,8 @@ int ft_board_setup(void *blob, bd_t *bd)
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
 
@@ -380,7 +377,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 	fdt_fixup_liodn(blob);
 
 #ifdef CONFIG_HAS_FSL_DR_USB
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
 #ifdef CONFIG_SYS_DPAA_FMAN

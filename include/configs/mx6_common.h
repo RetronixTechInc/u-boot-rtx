@@ -1,52 +1,75 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2012-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2012-2016 Freescale Semiconductor, Inc.
  * Copyright (c) 2013, NVIDIA CORPORATION.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Copyright 2018 NXP
  */
 
 #ifndef __MX6_COMMON_H
 #define __MX6_COMMON_H
 
-#ifndef CONFIG_MX6UL
-#define CONFIG_ARM_ERRATA_743622
-#if (defined(CONFIG_MX6QP) || defined(CONFIG_MX6Q) ||\
-defined(CONFIG_MX6DL)) && !defined(CONFIG_MX6SOLO)
-#define CONFIG_ARM_ERRATA_751472
-#define CONFIG_ARM_ERRATA_794072
-#define CONFIG_ARM_ERRATA_761320
-#define CONFIG_ARM_ERRATA_845369
-#endif
-
+#if (defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL))
+#define CONFIG_SC_TIMER_CLK 8000000 /* 8Mhz */
+#define COUNTER_FREQUENCY CONFIG_SC_TIMER_CLK
+#else
 #ifndef CONFIG_SYS_L2CACHE_OFF
 #define CONFIG_SYS_L2_PL310
 #define CONFIG_SYS_PL310_BASE	L2_PL310_BASE
 #endif
 
-#define CONFIG_MP
-#define CONFIG_GPT_TIMER
-#else
-#define CONFIG_SYSCOUNTER_TIMER
-#define CONFIG_SC_TIMER_CLK 8000000 /* 8Mhz */
-#endif /* CONFIG_MX6UL */
-
+#endif
 #define CONFIG_BOARD_POSTCLK_INIT
-#define CONFIG_LDO_BYPASS_CHECK
 #define CONFIG_MXC_GPT_HCLK
-#ifdef CONFIG_MX6QP
-#define CONFIG_MX6Q
+
+#define CONFIG_SYS_BOOTM_LEN	0x1000000
+
+#include <linux/sizes.h>
+#include <asm/arch/imx-regs.h>
+#include <asm/mach-imx/gpio.h>
+
+#ifndef CONFIG_MX6
+#define CONFIG_MX6
 #endif
 
-#define CONFIG_IMX_THERMAL
+#define CONFIG_SYS_FSL_CLK
 
+/* ATAGs */
+#define CONFIG_CMDLINE_TAG
+#define CONFIG_SETUP_MEMORY_TAGS
+#define CONFIG_INITRD_TAG
+#define CONFIG_REVISION_TAG
+
+/* Boot options */
+#if defined(CONFIG_MX6SL) || defined(CONFIG_MX6SLL) || \
+	defined(CONFIG_MX6SX) || \
+	defined(CONFIG_MX6UL) || defined(CONFIG_MX6ULL)
+#define CONFIG_LOADADDR		0x80800000
+#else
+#define CONFIG_LOADADDR		0x12000000
+#endif
+#define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
+
+/* allow to overwrite serial and ethaddr */
+#define CONFIG_ENV_OVERWRITE
+
+/* Miscellaneous configurable options */
+#define CONFIG_SYS_CBSIZE	1024
+#define CONFIG_SYS_MAXARGS	32
+#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
+
+/* NET PHY */
+#define PHY_ANEG_TIMEOUT 20000
+
+/* MMC */
+#define CONFIG_SUPPORT_EMMC_BOOT
+
+#ifdef CONFIG_SPL_BUILD
+#define CONFIG_SPL_DRIVERS_MISC_SUPPORT
+#endif
+
+#ifdef CONFIG_IMX_OPTEE
+#define TEE_ENV "tee=yes\0"
+#else
+#define TEE_ENV "tee=no\0"
+#endif
 #endif

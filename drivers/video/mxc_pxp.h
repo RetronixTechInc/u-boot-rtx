@@ -1,13 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014 Freescale Semiconductor, Inc. All Rights Reserved.
  *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef MXC_PXP_H
 #define MXC_PXP_H
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/regs-common.h>
 
 struct mxs_pxp_regs{
 	mxs_reg_32(pxp_ctrl)           /* 0x00  */

@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Mentor USB OTG Core host controller driver.
  *
  * Copyright (c) 2008 Texas Instruments
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Author: Thomas Abraham t-abraham@ti.com, Texas Instruments
  */
@@ -17,8 +16,8 @@
 extern unsigned char new[];
 #endif
 
-#ifndef CONFIG_MUSB_TIMEOUT
-# define CONFIG_MUSB_TIMEOUT 100000
+#ifndef CONFIG_USB_MUSB_TIMEOUT
+# define CONFIG_USB_MUSB_TIMEOUT 100000
 #endif
 
 /* This defines the endpoint number used for control transfers */

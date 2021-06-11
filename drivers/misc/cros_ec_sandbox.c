@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Chromium OS cros_ec driver - sandbox emulation
  *
  * Copyright (c) 2013 The Chromium OS Authors.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,10 +11,10 @@
 #include <ec_commands.h>
 #include <errno.h>
 #include <hash.h>
-#include <malloc.h>
 #include <os.h>
 #include <u-boot/sha256.h>
 #include <spi.h>
+#include <asm/malloc.h>
 #include <asm/state.h>
 #include <asm/sdl.h>
 #include <linux/input.h>
@@ -51,8 +50,6 @@
  * the EC image in with U-Boot (Vic has demonstrated a prototype for this).
  */
 
-DECLARE_GLOBAL_DATA_PTR;
-
 #define KEYBOARD_ROWS	8
 #define KEYBOARD_COLS	13
 
@@ -77,7 +74,7 @@ struct ec_keymatrix_entry {
  * @recovery_req: Keyboard recovery requested
  */
 struct ec_state {
-	uint8_t vbnv_context[EC_VBNV_BLOCK_SIZE];
+	u8 vbnv_context[EC_VBNV_BLOCK_SIZE_V2];
 	struct fdt_cros_ec ec_config;
 	uint8_t *flash_data;
 	int flash_data_len;
@@ -118,7 +115,7 @@ static int cros_ec_read_state(const void *blob, int node)
 	prop = fdt_getprop(blob, node, "flash-data", &len);
 	if (prop) {
 		ec->flash_data_len = len;
-		ec->flash_data = os_malloc(len);
+		ec->flash_data = malloc(len);
 		if (!ec->flash_data)
 			return -ENOMEM;
 		memcpy(ec->flash_data, prop, len);
@@ -188,18 +185,16 @@ static int get_image_used(struct ec_state *ec, struct fmap_entry *entry)
  * RR=Row CC=Column KKKK=Key Code
  *
  * @param ec	Current emulated EC state
- * @param blob	Device tree blob containing keyscan information
  * @param node	Keyboard node of device tree containing keyscan information
  * @return 0 if ok, -1 on error
  */
-static int keyscan_read_fdt_matrix(struct ec_state *ec, const void *blob,
-				   int node)
+static int keyscan_read_fdt_matrix(struct ec_state *ec, ofnode node)
 {
 	const u32 *cell;
 	int upto;
 	int len;
 
-	cell = fdt_getprop(blob, node, "linux,keymap", &len);
+	cell = ofnode_get_property(node, "linux,keymap", &len);
 	ec->matrix_count = len / 4;
 	ec->matrix = calloc(ec->matrix_count, sizeof(*ec->matrix));
 	if (!ec->matrix) {
@@ -318,13 +313,15 @@ static int process_cmd(struct ec_state *ec,
 
 		switch (req->op) {
 		case EC_VBNV_CONTEXT_OP_READ:
+			/* TODO(sjg@chromium.org): Support full-size context */
 			memcpy(resp->block, ec->vbnv_context,
-			       sizeof(resp->block));
-			len = sizeof(*resp);
+			       EC_VBNV_BLOCK_SIZE);
+			len = 16;
 			break;
 		case EC_VBNV_CONTEXT_OP_WRITE:
-			memcpy(ec->vbnv_context, resp->block,
-			       sizeof(resp->block));
+			/* TODO(sjg@chromium.org): Support full-size context */
+			memcpy(ec->vbnv_context, req->block,
+			       EC_VBNV_BLOCK_SIZE);
 			len = 0;
 			break;
 		default:
@@ -370,7 +367,7 @@ static int process_cmd(struct ec_state *ec,
 		struct fmap_entry *entry;
 		int ret, size;
 
-		entry = &ec->ec_config.region[EC_FLASH_REGION_RW];
+		entry = &ec->ec_config.region[EC_FLASH_REGION_ACTIVE];
 
 		switch (req->cmd) {
 		case EC_VBOOT_HASH_RECALC:
@@ -425,7 +422,7 @@ static int process_cmd(struct ec_state *ec,
 
 		switch (req->region) {
 		case EC_FLASH_REGION_RO:
-		case EC_FLASH_REGION_RW:
+		case EC_FLASH_REGION_ACTIVE:
 		case EC_FLASH_REGION_WP_RO:
 			entry = &ec->ec_config.region[req->region];
 			resp->offset = entry->offset;
@@ -459,6 +456,9 @@ static int process_cmd(struct ec_state *ec,
 	case EC_CMD_MKBP_STATE:
 		len = cros_ec_keyscan(ec, resp_data);
 		break;
+	case EC_CMD_ENTERING_MODE:
+		len = 0;
+		break;
 	default:
 		printf("   ** Unknown EC command %#02x\n", req_hdr->command);
 		return -1;
@@ -467,17 +467,10 @@ static int process_cmd(struct ec_state *ec,
 	return len;
 }
 
-#ifdef CONFIG_DM_CROS_EC
 int cros_ec_sandbox_packet(struct udevice *udev, int out_bytes, int in_bytes)
 {
-	struct cros_ec_dev *dev = udev->uclass_priv;
+	struct cros_ec_dev *dev = dev_get_uclass_priv(udev);
 	struct ec_state *ec = dev_get_priv(dev->dev);
-#else
-int cros_ec_sandbox_packet(struct cros_ec_dev *dev, int out_bytes,
-			   int in_bytes)
-{
-	struct ec_state *ec = &s_state;
-#endif
 	struct ec_host_request *req_hdr = (struct ec_host_request *)dev->dout;
 	const void *req_data = req_hdr + 1;
 	struct ec_host_response *resp_hdr = (struct ec_host_response *)dev->din;
@@ -500,18 +493,9 @@ int cros_ec_sandbox_packet(struct cros_ec_dev *dev, int out_bytes,
 	return in_bytes;
 }
 
-int cros_ec_sandbox_decode_fdt(struct cros_ec_dev *dev, const void *blob)
+void cros_ec_check_keyboard(struct udevice *dev)
 {
-	return 0;
-}
-
-void cros_ec_check_keyboard(struct cros_ec_dev *dev)
-{
-#ifdef CONFIG_DM_CROS_EC
-	struct ec_state *ec = dev_get_priv(dev->dev);
-#else
-	struct ec_state *ec = &s_state;
-#endif
+	struct ec_state *ec = dev_get_priv(dev);
 	ulong start;
 
 	printf("Press keys for EC to detect on reset (ESC=recovery)...");
@@ -525,24 +509,33 @@ void cros_ec_check_keyboard(struct cros_ec_dev *dev)
 	}
 }
 
-#ifdef CONFIG_DM_CROS_EC
 int cros_ec_probe(struct udevice *dev)
 {
 	struct ec_state *ec = dev->priv;
 	struct cros_ec_dev *cdev = dev->uclass_priv;
-	const void *blob = gd->fdt_blob;
-	int node;
+	struct udevice *keyb_dev;
+	ofnode node;
 	int err;
 
 	memcpy(ec, &s_state, sizeof(*ec));
-	err = cros_ec_decode_ec_flash(blob, dev->of_offset, &ec->ec_config);
-	if (err)
+	err = cros_ec_decode_ec_flash(dev, &ec->ec_config);
+	if (err) {
+		debug("%s: Cannot device EC flash\n", __func__);
 		return err;
+	}
 
-	node = fdtdec_next_compatible(blob, 0, COMPAT_GOOGLE_CROS_EC_KEYB);
-	if (node < 0) {
+	node = ofnode_null();
+	for (device_find_first_child(dev, &keyb_dev);
+	     keyb_dev;
+	     device_find_next_child(&keyb_dev)) {
+		if (device_get_uclass_id(keyb_dev) == UCLASS_KEYBOARD) {
+			node = dev_ofnode(keyb_dev);
+			break;
+		}
+	}
+	if (!ofnode_valid(node)) {
 		debug("%s: No cros_ec keyboard found\n", __func__);
-	} else if (keyscan_read_fdt_matrix(ec, blob, node)) {
+	} else if (keyscan_read_fdt_matrix(ec, node)) {
 		debug("%s: Could not read key matrix\n", __func__);
 		return -1;
 	}
@@ -552,14 +545,14 @@ int cros_ec_probe(struct udevice *dev)
 	    ec->flash_data_len != ec->ec_config.flash.length) {
 		printf("EC data length is %x, expected %x, discarding data\n",
 		       ec->flash_data_len, ec->ec_config.flash.length);
-		os_free(ec->flash_data);
+		free(ec->flash_data);
 		ec->flash_data = NULL;
 	}
 
 	/* Otherwise allocate the memory */
 	if (!ec->flash_data) {
 		ec->flash_data_len = ec->ec_config.flash.length;
-		ec->flash_data = os_malloc(ec->flash_data_len);
+		ec->flash_data = malloc(ec->flash_data_len);
 		if (!ec->flash_data)
 			return -ENOMEM;
 	}
@@ -569,76 +562,20 @@ int cros_ec_probe(struct udevice *dev)
 	return cros_ec_register(dev);
 }
 
-#else
-
-/**
- * Initialize sandbox EC emulation.
- *
- * @param dev		CROS_EC device
- * @param blob		Device tree blob
- * @return 0 if ok, -1 on error
- */
-int cros_ec_sandbox_init(struct cros_ec_dev *dev, const void *blob)
-{
-	struct ec_state *ec = &s_state;
-	int node;
-	int err;
-
-	node = fdtdec_next_compatible(blob, 0, COMPAT_GOOGLE_CROS_EC);
-	if (node < 0) {
-		debug("Failed to find chrome-ec node'\n");
-		return -1;
-	}
-
-	err = cros_ec_decode_ec_flash(blob, node, &ec->ec_config);
-	if (err)
-		return err;
-
-	node = fdtdec_next_compatible(blob, 0, COMPAT_GOOGLE_CROS_EC_KEYB);
-	if (node < 0) {
-		debug("%s: No cros_ec keyboard found\n", __func__);
-	} else if (keyscan_read_fdt_matrix(ec, blob, node)) {
-		debug("%s: Could not read key matrix\n", __func__);
-		return -1;
-	}
-
-	/* If we loaded EC data, check that the length matches */
-	if (ec->flash_data &&
-	    ec->flash_data_len != ec->ec_config.flash.length) {
-		printf("EC data length is %x, expected %x, discarding data\n",
-		       ec->flash_data_len, ec->ec_config.flash.length);
-		os_free(ec->flash_data);
-		ec->flash_data = NULL;
-	}
-
-	/* Otherwise allocate the memory */
-	if (!ec->flash_data) {
-		ec->flash_data_len = ec->ec_config.flash.length;
-		ec->flash_data = os_malloc(ec->flash_data_len);
-		if (!ec->flash_data)
-			return -ENOMEM;
-	}
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_DM_CROS_EC
 struct dm_cros_ec_ops cros_ec_ops = {
 	.packet = cros_ec_sandbox_packet,
 };
 
 static const struct udevice_id cros_ec_ids[] = {
-	{ .compatible = "google,cros-ec" },
+	{ .compatible = "google,cros-ec-sandbox" },
 	{ }
 };
 
 U_BOOT_DRIVER(cros_ec_sandbox) = {
-	.name		= "cros_ec",
+	.name		= "cros_ec_sandbox",
 	.id		= UCLASS_CROS_EC,
 	.of_match	= cros_ec_ids,
 	.probe		= cros_ec_probe,
 	.priv_auto_alloc_size = sizeof(struct ec_state),
 	.ops		= &cros_ec_ops,
 };
-#endif

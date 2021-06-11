@@ -1,11 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <clock_legacy.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <asm/io.h>
 #include <asm/processor.h>
@@ -17,41 +17,48 @@
 #include <tsec.h>
 #include <asm/arch/immap_ls102xa.h>
 #include <fsl_sec.h>
+#include <dm.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 void ft_fixup_enet_phy_connect_type(void *fdt)
 {
+#ifdef CONFIG_DM_ETH
+	struct udevice *dev;
+#else
 	struct eth_device *dev;
+#endif
 	struct tsec_private *priv;
 	const char *enet_path, *phy_path;
 	char enet[16];
 	char phy[16];
 	int phy_node;
 	int i = 0;
-	int enet_id = 0;
 	uint32_t ph;
+#ifdef CONFIG_DM_ETH
+	char *name[3] = { "ethernet@2d10000", "ethernet@2d50000",
+			  "ethernet@2d90000" };
+#else
+	char *name[3] = { "eTSEC1", "eTSEC2", "eTSEC3" };
+#endif
 
-	while ((dev = eth_get_dev_by_index(i++)) != NULL) {
-		if (strstr(dev->name, "eTSEC1"))
-			enet_id = 0;
-		else if (strstr(dev->name, "eTSEC2"))
-			enet_id = 1;
-		else if (strstr(dev->name, "eTSEC3"))
-			enet_id = 2;
-		else
+	for (; i < ARRAY_SIZE(name); i++) {
+		dev = eth_get_dev_by_name(name[i]);
+		if (dev) {
+			sprintf(enet, "ethernet%d", i);
+			sprintf(phy, "enet%d_rgmii_phy", i);
+		} else {
 			continue;
+		}
 
 		priv = dev->priv;
 		if (priv->flags & TSEC_SGMII)
 			continue;
 
-		sprintf(enet, "ethernet%d", enet_id);
 		enet_path = fdt_get_alias(fdt, enet);
 		if (!enet_path)
 			continue;
 
-		sprintf(phy, "enet%d_rgmii_phy", enet_id);
 		phy_path = fdt_get_alias(fdt, phy);
 		if (!phy_path)
 			continue;
@@ -68,8 +75,8 @@ void ft_fixup_enet_phy_connect_type(void *fdt)
 		do_fixup_by_path(fdt, enet_path, "phy-connection-type",
 				 phy_string_for_interface(
 				 PHY_INTERFACE_MODE_RGMII_ID),
-				 sizeof(phy_string_for_interface(
-				 PHY_INTERFACE_MODE_RGMII_ID)),
+				 strlen(phy_string_for_interface(
+				 PHY_INTERFACE_MODE_RGMII_ID)) + 1,
 				 1);
 	}
 }
@@ -96,8 +103,6 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 		fdt_fixup_crypto_node(blob, sec_in32(&sec->secvid_ms));
 	}
 #endif
-
-	fdt_fixup_ethernet(blob);
 
 	off = fdt_node_offset_by_prop_value(blob, -1, "device_type", "cpu", 4);
 	while (off != -FDT_ERR_NOTFOUND) {
@@ -170,7 +175,7 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 	do_fixup_by_compat_u32(blob, "fsl, ls1021a-flexcan",
 			       "clock-frequency", busclk / 2, 1);
 
-#ifdef CONFIG_QSPI_BOOT
+#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 	off = fdt_node_offset_by_compat_reg(blob, FSL_IFC_COMPAT,
 					    CONFIG_SYS_IFC_ADDR);
 	fdt_set_node_status(blob, off, FDT_STATUS_DISABLED, 0);

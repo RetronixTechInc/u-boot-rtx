@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
+#include <time.h>
 #include <asm/io.h>
 #include <div64.h>
 #include <asm/arch/immap_ls102xa.h>
@@ -56,12 +56,13 @@ static inline unsigned long long us_to_tick(unsigned long long usec)
 int timer_init(void)
 {
 	struct sctr_regs *sctr = (struct sctr_regs *)SCTR_BASE_ADDR;
-	unsigned long ctrl, val, freq;
+	unsigned long ctrl, freq;
+	unsigned long long val;
 
 	/* Enable System Counter */
 	writel(SYS_COUNTER_CTRL_ENABLE, &sctr->cntcr);
 
-	freq = GENERIC_TIMER_CLK;
+	freq = COUNTER_FREQUENCY;
 	asm("mcr p15, 0, %0, c14, c0, 0" : : "r" (freq));
 
 	/* Set PL1 Physical Timer Ctrl */
@@ -90,14 +91,9 @@ unsigned long long get_ticks(void)
 	return now;
 }
 
-unsigned long get_timer_masked(void)
-{
-	return tick_to_time(get_ticks());
-}
-
 unsigned long get_timer(ulong base)
 {
-	return get_timer_masked() - base;
+	return tick_to_time(get_ticks()) - base;
 }
 
 /* delay x useconds and preserve advance timstamp value */

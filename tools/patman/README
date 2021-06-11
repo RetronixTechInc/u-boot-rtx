@@ -1,7 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2011 The Chromium OS Authors.
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 What is this?
 =============
@@ -84,6 +82,18 @@ Aliases are recursive.
 The checkpatch.pl in the U-Boot tools/ subdirectory will be located and
 used. Failing that you can put it into your path or ~/bin/checkpatch.pl
 
+If you want to avoid sending patches to email addresses that are picked up
+by patman but are known to bounce you can add a [bounces] section to your
+.patman file. Unlike the [alias] section these are simple key: value pairs
+that are not recursive.
+
+>>>
+
+[bounces]
+gonefishing: Fred Bloggs <f.bloggs@napier.net>
+
+<<<
+
 
 If you want to change the defaults for patman's command-line arguments,
 you can add a [settings] section to your .patman file.  This can be used
@@ -97,6 +107,7 @@ patman.py.  For reference, the useful ones (at the moment) shown below
 ignore_errors: True
 process_tags: False
 verbose: True
+smtp_server: /path/to/sendmail
 
 <<<
 
@@ -135,6 +146,17 @@ Similar to the above, but skip the first commit and take the next 5. This
 is useful if your top commit is for setting up testing.
 
 
+How to install it
+=================
+
+The most up to date version of patman can be found in the U-Boot sources.
+However to use it on other projects it may be more convenient to install it as
+a standalone application. A distutils installer is included, this can be used
+to install patman:
+
+$ cd tools/patman && python setup.py install
+
+
 How to add tags
 ===============
 
@@ -154,7 +176,11 @@ Series-version: n
 
 Series-prefix: prefix
 	Sets the subject prefix. Normally empty but it can be RFC for
-	RFC patches, or RESEND if you are being ignored.
+	RFC patches, or RESEND if you are being ignored. The patch subject
+	is like [RFC PATCH] or [RESEND PATCH].
+	In the meantime, git format.subjectprefix option will be added as
+	well. If your format.subjectprefix is set to InternalProject, then
+	the patch shows like: [InternalProject][RFC/RESEND PATCH]
 
 Series-name: name
 	Sets the name of the series. You don't need to have a name, and
@@ -233,12 +259,18 @@ Series-process-log: sort, uniq
 	unique entries. If omitted, no change log processing is done.
 	Separate each tag with a comma.
 
+Change-Id:
+	This tag is stripped out but is used to generate the Message-Id
+	of the emails that will be sent. When you keep the Change-Id the
+	same you are asserting that this is a slightly different version
+	(but logically the same patch) as other patches that have been
+	sent out with the same Change-Id.
+
 Various other tags are silently removed, like these Chrome OS and
 Gerrit tags:
 
 BUG=...
 TEST=...
-Change-Id:
 Review URL:
 Reviewed-on:
 Commit-xxxx: (except Commit-notes)

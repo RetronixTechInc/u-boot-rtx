@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /**
  * Copyright 2014 Freescale Semiconductor
  *
  * Author: Chunhe Lan <Chunhe.Lan@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * This file provides support for the board-specific CPLD used on some Freescale
  * reference boards.
@@ -47,14 +46,8 @@ void cpld_set_altbank(void)
 
 	switch (curbank) {
 	case CPLD_SELECT_BANK0:
-		altbank = CPLD_SELECT_BANK4;
-		CPLD_WRITE(vbank, altbank);
-		override = CPLD_READ(software_on);
-		CPLD_WRITE(software_on, override | CPLD_BANK_SEL_EN);
-		CPLD_WRITE(sys_reset, CPLD_SYSTEM_RESET);
-		break;
 	case CPLD_SELECT_BANK4:
-		altbank = CPLD_SELECT_BANK0;
+		altbank = CPLD_SELECT_BANK4;
 		CPLD_WRITE(vbank, altbank);
 		override = CPLD_READ(software_on);
 		CPLD_WRITE(software_on, override | CPLD_BANK_SEL_EN);

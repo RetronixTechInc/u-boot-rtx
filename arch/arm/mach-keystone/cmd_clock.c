@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * keystone2: commands for clocks
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -67,15 +66,18 @@ U_BOOT_CMD(
 int do_getclk_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	unsigned int clk;
-	unsigned int freq;
+	unsigned long freq;
 
 	if (argc != 2)
 		goto getclk_cmd_usage;
 
 	clk = simple_strtoul(argv[1], NULL, 10);
 
-	freq = clk_get_rate(clk);
-	printf("clock index [%d] - frequency %u\n", clk, freq);
+	freq = ks_clk_get_rate(clk);
+	if (freq)
+		printf("clock index [%d] - frequency %lu\n", clk, freq);
+	else
+		printf("clock index [%d] Not available\n", clk);
 	return 0;
 
 getclk_cmd_usage:

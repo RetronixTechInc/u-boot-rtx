@@ -9,4 +9,6 @@ config SYS_VENDOR
 config SYS_CONFIG_NAME
 	default "dra7xx_evm"
 
+source "board/ti/common/Kconfig"
+
 endif

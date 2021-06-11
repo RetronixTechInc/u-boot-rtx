@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2010-2015 Freescale Semiconductor, Inc. All Rights Reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright (C) 2010-2016 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 /*
  * Based on STMP378X LCDIF
@@ -16,6 +15,8 @@
 #include <malloc.h>
 
 #include <mxc_epdc_fb.h>
+#include <cpu_func.h>
+#include <asm/arch/sys_proto.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -350,6 +351,12 @@ static void draw_splash_screen(void)
 
 void lcd_enable(void)
 {
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_EPDC)) {
+		return;
+	}
+#endif
+
 	if (board_setup_logo_file(lcd_base)) {
 		debug("Load logo failed!\n");
 		return;
@@ -367,6 +374,12 @@ void lcd_enable(void)
 
 void lcd_disable(void)
 {
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_EPDC)) {
+		return;
+	}
+#endif
+
 	debug("lcd_disable\n");
 
 	/* Disable clocks to EPDC */
@@ -381,6 +394,13 @@ void lcd_panel_disable(void)
 void lcd_ctrl_init(void *lcdbase)
 {
 	unsigned int val;
+
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_EPDC)) {
+		printf("EPDC@0x%x is fused, disable it\n", EPDC_BASE_ADDR);
+		return;
+	}
+#endif
 
 	/*
 	 * We rely on lcdbase being a physical address, i.e., either MMU off,
@@ -461,4 +481,6 @@ ulong calc_fbsize(void)
 	return panel_info.vl_row * panel_info.vl_col * 2 \
 		* NBITS(panel_info.vl_bpix) / 8;
 }
+
+
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2004, 2007-2011 Freescale Semiconductor, Inc.
  *
@@ -6,11 +7,10 @@
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <ppc_asm.tmpl>
 #include <linux/compiler.h>
 #include <asm/processor.h>
@@ -27,10 +27,6 @@ DECLARE_GLOBAL_DATA_PTR;
 void get_sys_info(sys_info_t *sys_info)
 {
 	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-#ifdef CONFIG_FSL_IFC
-	struct fsl_ifc *ifc_regs = (void *)CONFIG_SYS_IFC_ADDR;
-	u32 ccr;
-#endif
 #ifdef CONFIG_FSL_CORENET
 	volatile ccsr_clk_t *clk = (void *)(CONFIG_SYS_FSL_CORENET_CLK_ADDR);
 	unsigned int cpu;
@@ -129,8 +125,8 @@ void get_sys_info(sys_info_t *sys_info)
 	 * it uses 6.
 	 * T2080 rev 1.1 and later also use half mem_pll comparing with rev 1.0
 	 */
-#if defined(CONFIG_PPC_T4240) || defined(CONFIG_PPC_T4160) || \
-	defined(CONFIG_PPC_T4080) || defined(CONFIG_PPC_T2080)
+#if defined(CONFIG_ARCH_T4240) || defined(CONFIG_ARCH_T4160) || \
+	defined(CONFIG_ARCH_T2080) || defined(CONFIG_ARCH_T2081)
 	svr = get_svr();
 	switch (SVR_SOC_VER(svr)) {
 	case SVR_T4240:
@@ -200,11 +196,11 @@ void get_sys_info(sys_info_t *sys_info)
 	}
 #endif
 
-#if defined(CONFIG_PPC_B4860) || defined(CONFIG_PPC_B4420) || \
-	defined(CONFIG_PPC_T2080) || defined(CONFIG_PPC_T2081)
+#if defined(CONFIG_ARCH_B4860) || defined(CONFIG_ARCH_B4420) || \
+	defined(CONFIG_ARCH_T2080) || defined(CONFIG_ARCH_T2081)
 #define FM1_CLK_SEL	0xe0000000
 #define FM1_CLK_SHIFT	29
-#elif defined(CONFIG_PPC_T1024) || defined(CONFIG_PPC_T1023)
+#elif defined(CONFIG_ARCH_T1024) || defined(CONFIG_ARCH_T1023)
 #define FM1_CLK_SEL	0x00000007
 #define FM1_CLK_SHIFT	0
 #else
@@ -214,7 +210,7 @@ void get_sys_info(sys_info_t *sys_info)
 #define FM1_CLK_SHIFT	26
 #endif
 #if !defined(CONFIG_FM_PLAT_CLK_DIV) || !defined(CONFIG_PME_PLAT_CLK_DIV)
-#if defined(CONFIG_PPC_T1024) || defined(CONFIG_PPC_T1023)
+#if defined(CONFIG_ARCH_T1024) || defined(CONFIG_ARCH_T1023)
 	rcw_tmp = in_be32(&gur->rcwsr[15]) - 4;
 #else
 	rcw_tmp = in_be32(&gur->rcwsr[7]);
@@ -552,7 +548,7 @@ void get_sys_info(sys_info_t *sys_info)
 #endif
 
 #ifdef CONFIG_QE
-#if defined(CONFIG_P1012) || defined(CONFIG_P1021) || defined(CONFIG_P1025)
+#if defined(CONFIG_ARCH_P1021) || defined(CONFIG_ARCH_P1025)
 	sys_info->freq_qe =  sys_info->freq_systembus;
 #else
 	qe_ratio = ((gur->porpllsr) & MPC85xx_PORPLLSR_QE_RATIO)
@@ -568,47 +564,20 @@ void get_sys_info(sys_info_t *sys_info)
 #endif /* CONFIG_FSL_CORENET */
 
 #if defined(CONFIG_FSL_LBC)
-	uint lcrr_div;
-#if defined(CONFIG_SYS_LBC_LCRR)
-	/* We will program LCRR to this value later */
-	lcrr_div = CONFIG_SYS_LBC_LCRR & LCRR_CLKDIV;
-#else
-	lcrr_div = in_be32(&(LBC_BASE_ADDR)->lcrr) & LCRR_CLKDIV;
-#endif
-	if (lcrr_div == 2 || lcrr_div == 4 || lcrr_div == 8) {
-#if defined(CONFIG_FSL_CORENET)
-		/* If this is corenet based SoC, bit-representation
-		 * for four times the clock divider values.
-		 */
-		lcrr_div *= 4;
-#elif !defined(CONFIG_MPC8540) && !defined(CONFIG_MPC8541) && \
-    !defined(CONFIG_MPC8555) && !defined(CONFIG_MPC8560)
-		/*
-		 * Yes, the entire PQ38 family use the same
-		 * bit-representation for twice the clock divider values.
-		 */
-		lcrr_div *= 2;
-#endif
-		sys_info->freq_localbus = sys_info->freq_systembus / lcrr_div;
-	} else {
-		/* In case anyone cares what the unknown value is */
-		sys_info->freq_localbus = lcrr_div;
-	}
+	sys_info->freq_localbus = sys_info->freq_systembus /
+						CONFIG_SYS_FSL_LBC_CLK_DIV;
 #endif
 
 #if defined(CONFIG_FSL_IFC)
-	ccr = ifc_in32(&ifc_regs->ifc_ccr);
-	ccr = ((ccr & IFC_CCR_CLK_DIV_MASK) >> IFC_CCR_CLK_DIV_SHIFT) + 1;
-
-	sys_info->freq_localbus = sys_info->freq_systembus / ccr;
+	sys_info->freq_localbus = sys_info->freq_systembus /
+						CONFIG_SYS_FSL_IFC_CLK_DIV;
 #endif
 }
 
-
-int get_clocks (void)
+int get_clocks(void)
 {
 	sys_info_t sys_info;
-#ifdef CONFIG_MPC8544
+#ifdef CONFIG_ARCH_MPC8544
 	volatile ccsr_gur_t *gur = (void *) CONFIG_SYS_MPC85xx_GUTS_ADDR;
 #endif
 #if defined(CONFIG_CPM2)
@@ -637,11 +606,11 @@ int get_clocks (void)
 	 * for that SOC. This information is taken from application note
 	 * AN2919.
 	 */
-#if defined(CONFIG_MPC8540) || defined(CONFIG_MPC8541) || \
-	defined(CONFIG_MPC8560) || defined(CONFIG_MPC8555) || \
-	defined(CONFIG_P1022)
+#if defined(CONFIG_ARCH_MPC8540) || defined(CONFIG_ARCH_MPC8541) || \
+	defined(CONFIG_ARCH_MPC8560) || defined(CONFIG_ARCH_MPC8555) || \
+	defined(CONFIG_ARCH_P1022)
 	gd->arch.i2c1_clk = sys_info.freq_systembus;
-#elif defined(CONFIG_MPC8544)
+#elif defined(CONFIG_ARCH_MPC8544)
 	/*
 	 * On the 8544, the I2C clock is the same as the SEC clock.  This can be
 	 * either CCB/2 or CCB/3, depending on the value of cfg_sec_freq. See
@@ -660,8 +629,7 @@ int get_clocks (void)
 	gd->arch.i2c2_clk = gd->arch.i2c1_clk;
 
 #if defined(CONFIG_FSL_ESDHC)
-#if defined(CONFIG_MPC8569) || defined(CONFIG_P1010) ||\
-       defined(CONFIG_P1014)
+#if defined(CONFIG_ARCH_MPC8569) || defined(CONFIG_ARCH_P1010)
 	gd->arch.sdhc_clk = gd->bus_clk;
 #else
 	gd->arch.sdhc_clk = gd->bus_clk / 2;
@@ -684,7 +652,7 @@ int get_clocks (void)
  * get_bus_freq
  * return system bus freq in Hz
  *********************************************/
-ulong get_bus_freq (ulong dummy)
+ulong get_bus_freq(ulong dummy)
 {
 	return gd->bus_clk;
 }

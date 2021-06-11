@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2011-2012
  * Pali Rohár <pali.rohar@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -104,10 +103,6 @@ fix_start:
 
 	/* r6 - maximal u-boot size */
 	ldr	r6, imagesize
-
-	/* fix return address */
-	subhi	lr, lr, r5
-	addlo	lr, lr, r5
 
 	/* r1 - start of u-boot after */
 	ldr	r1, startaddr

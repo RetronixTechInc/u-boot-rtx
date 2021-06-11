@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014 Samsung Electronics
  * Przemyslaw Marczak <p.marczak@samsung.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,12 +11,15 @@
 #include <asm/arch/gpio.h>
 #include <asm/gpio.h>
 #include <asm/arch/cpu.h>
+#include <dm.h>
+#include <env.h>
 #include <power/pmic.h>
+#include <power/regulator.h>
 #include <power/max77686_pmic.h>
 #include <errno.h>
 #include <mmc.h>
 #include <usb.h>
-#include <usb/s3c_udc.h>
+#include <usb/dwc2_udc.h>
 #include <samsung/misc.h>
 #include "setup.h"
 
@@ -53,6 +55,14 @@ void set_board_type(void)
 		gd->board_type = ODROID_TYPE_U3;
 }
 
+void set_board_revision(void)
+{
+	/*
+	 * Revision already set by set_board_type() because it can be
+	 * executed early.
+	 */
+}
+
 const char *get_board_type(void)
 {
 	const char *board_type[] = {"u3", "x2"};
@@ -64,7 +74,7 @@ const char *get_board_type(void)
 #ifdef CONFIG_SET_DFU_ALT_INFO
 char *get_dfu_alt_system(char *interface, char *devstr)
 {
-	return getenv("dfu_alt_system");
+	return env_get("dfu_alt_system");
 }
 
 char *get_dfu_alt_boot(char *interface, char *devstr)
@@ -403,21 +413,6 @@ static void board_gpio_init(void)
 #endif
 }
 
-static int pmic_init_max77686(void)
-{
-	struct pmic *p = pmic_get("MAX77686_PMIC");
-
-	if (pmic_probe(p))
-		return -ENODEV;
-
-	/* Set LDO Voltage */
-	max77686_set_ldo_voltage(p, 20, 1800000);	/* LDO20 eMMC */
-	max77686_set_ldo_voltage(p, 21, 2800000);	/* LDO21 SD */
-	max77686_set_ldo_voltage(p, 22, 2800000);	/* LDO22 eMMC */
-
-	return 0;
-}
-
 int exynos_early_init_f(void)
 {
 	board_clock_init();
@@ -434,8 +429,15 @@ int exynos_init(void)
 
 int exynos_power_init(void)
 {
-	pmic_init(0);
-	pmic_init_max77686();
+	const char *mmc_regulators[] = {
+		"VDDQ_EMMC_1.8V",
+		"VDDQ_EMMC_2.8V",
+		"TFLASH_2.8V",
+		NULL,
+	};
+
+	if (regulator_list_autoset(mmc_regulators, NULL, true))
+		pr_err("Unable to init all mmc regulators\n");
 
 	return 0;
 }
@@ -443,22 +445,22 @@ int exynos_power_init(void)
 #ifdef CONFIG_USB_GADGET
 static int s5pc210_phy_control(int on)
 {
-	struct pmic *p_pmic;
+	struct udevice *dev;
+	int ret;
 
-	p_pmic = pmic_get("MAX77686_PMIC");
-	if (!p_pmic)
-		return -ENODEV;
-
-	if (pmic_probe(p_pmic))
-		return -1;
+	ret = regulator_get_by_platname("VDD_UOTG_3.0V", &dev);
+	if (ret) {
+		pr_err("Regulator get error: %d\n", ret);
+		return ret;
+	}
 
 	if (on)
-		return max77686_set_ldo_mode(p_pmic, 12, OPMODE_ON);
+		return regulator_set_mode(dev, OPMODE_ON);
 	else
-		return max77686_set_ldo_mode(p_pmic, 12, OPMODE_LPM);
+		return regulator_set_mode(dev, OPMODE_LPM);
 }
 
-struct s3c_plat_otg_data s5pc210_otg_data = {
+struct dwc2_plat_otg_data s5pc210_otg_data = {
 	.phy_control	= s5pc210_phy_control,
 	.regs_phy	= EXYNOS4X12_USBPHY_BASE,
 	.regs_otg	= EXYNOS4X12_USBOTG_BASE,
@@ -469,17 +471,33 @@ struct s3c_plat_otg_data s5pc210_otg_data = {
 
 #if defined(CONFIG_USB_GADGET) || defined(CONFIG_CMD_USB)
 
-int board_usb_init(int index, enum usb_init_type init)
+static void set_usb3503_ref_clk(void)
 {
-#ifdef CONFIG_CMD_USB
-	struct pmic *p_pmic;
-
-	/* Set Ref freq 0 => 24MHz, 1 => 26MHz*/
-	/* Odroid Us have it at 24MHz, Odroid Xs at 26MHz */
+#ifdef CONFIG_BOARD_TYPES
+	/*
+	 * gpx3-0 chooses primary (low) or secondary (high) reference clock
+	 * frequencies table.  The choice of clock is done through hard-wired
+	 * REF_SEL pins.
+	 * The Odroid Us have reference clock at 24 MHz (00 entry from secondary
+	 * table) and Odroid Xs have it at 26 MHz (01 entry from primary table).
+	 */
 	if (gd->board_type == ODROID_TYPE_U3)
 		gpio_direction_output(EXYNOS4X12_GPIO_X30, 0);
 	else
 		gpio_direction_output(EXYNOS4X12_GPIO_X30, 1);
+#else
+	/* Choose Odroid Xs frequency without board types */
+	gpio_direction_output(EXYNOS4X12_GPIO_X30, 1);
+#endif /* CONFIG_BOARD_TYPES */
+}
+
+int board_usb_init(int index, enum usb_init_type init)
+{
+#ifdef CONFIG_CMD_USB
+	struct udevice *dev;
+	int ret;
+
+	set_usb3503_ref_clk();
 
 	/* Disconnect, Reset, Connect */
 	gpio_direction_output(EXYNOS4X12_GPIO_X34, 0);
@@ -490,15 +508,31 @@ int board_usb_init(int index, enum usb_init_type init)
 	/* Power off and on BUCK8 for LAN9730 */
 	debug("LAN9730 - Turning power buck 8 OFF and ON.\n");
 
-	p_pmic = pmic_get("MAX77686_PMIC");
-	if (p_pmic && !pmic_probe(p_pmic)) {
-		max77686_set_buck_voltage(p_pmic, 8, 750000);
-		max77686_set_buck_voltage(p_pmic, 8, 3300000);
+	ret = regulator_get_by_platname("VCC_P3V3_2.85V", &dev);
+	if (ret) {
+		pr_err("Regulator get error: %d\n", ret);
+		return ret;
 	}
 
-#endif
+	ret = regulator_set_enable(dev, true);
+	if (ret) {
+		pr_err("Regulator %s enable setting error: %d\n", dev->name, ret);
+		return ret;
+	}
 
+	ret = regulator_set_value(dev, 750000);
+	if (ret) {
+		pr_err("Regulator %s value setting error: %d\n", dev->name, ret);
+		return ret;
+	}
+
+	ret = regulator_set_value(dev, 3300000);
+	if (ret) {
+		pr_err("Regulator %s value setting error: %d\n", dev->name, ret);
+		return ret;
+	}
+#endif
 	debug("USB_udc_probe\n");
-	return s3c_udc_probe(&s5pc210_otg_data);
+	return dwc2_udc_probe(&s5pc210_otg_data);
 }
 #endif

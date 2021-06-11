@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2014 Google, Inc
  *
  * From Coreboot file of the same name
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _ASM_MTRR_H
@@ -21,6 +20,12 @@
 #define MTRR_CAP_MSR		0x0fe
 #define MTRR_DEF_TYPE_MSR	0x2ff
 
+#define MTRR_CAP_SMRR		(1 << 11)
+#define MTRR_CAP_WC		(1 << 10)
+#define MTRR_CAP_FIX		(1 << 8)
+#define MTRR_CAP_VCNT_MASK	0xff
+
+#define MTRR_DEF_TYPE_MASK	0xff
 #define MTRR_DEF_TYPE_EN	(1 << 11)
 #define MTRR_DEF_TYPE_FIX_EN	(1 << 10)
 
@@ -33,6 +38,24 @@
 
 /* Number of MTRRs supported */
 #define MTRR_COUNT		8
+
+#define NUM_FIXED_MTRRS		11
+#define RANGES_PER_FIXED_MTRR	8
+#define NUM_FIXED_RANGES	(NUM_FIXED_MTRRS * RANGES_PER_FIXED_MTRR)
+
+#define MTRR_FIX_64K_00000_MSR	0x250
+#define MTRR_FIX_16K_80000_MSR	0x258
+#define MTRR_FIX_16K_A0000_MSR	0x259
+#define MTRR_FIX_4K_C0000_MSR	0x268
+#define MTRR_FIX_4K_C8000_MSR	0x269
+#define MTRR_FIX_4K_D0000_MSR	0x26a
+#define MTRR_FIX_4K_D8000_MSR	0x26b
+#define MTRR_FIX_4K_E0000_MSR	0x26c
+#define MTRR_FIX_4K_E8000_MSR	0x26d
+#define MTRR_FIX_4K_F0000_MSR	0x26e
+#define MTRR_FIX_4K_F8000_MSR	0x26f
+
+#define MTRR_FIX_TYPE(t)	((t << 24) | (t << 16) | (t << 8) | t)
 
 #if !defined(__ASSEMBLER__)
 
@@ -55,8 +78,9 @@ struct mtrr_state {
  * possibly the cache.
  *
  * @state:	Empty structure to pass in to hold settings
+ * @do_caches:	true to disable caches before opening
  */
-void mtrr_open(struct mtrr_state *state);
+void mtrr_open(struct mtrr_state *state, bool do_caches);
 
 /**
  * mtrr_open() - Clean up after adjusting MTRRs, and enable them
@@ -64,8 +88,9 @@ void mtrr_open(struct mtrr_state *state);
  * This uses the structure containing information returned from mtrr_open().
  *
  * @state:	Structure from mtrr_open()
+ * @state:	true to restore cache state to that before mtrr_open()
  */
-void mtrr_close(struct mtrr_state *state);
+void mtrr_close(struct mtrr_state *state, bool do_caches);
 
 /**
  * mtrr_add_request() - Add a new MTRR request
@@ -91,6 +116,18 @@ int mtrr_add_request(int type, uint64_t start, uint64_t size);
  * @return:	0 on success, non-zero on failure
  */
 int mtrr_commit(bool do_caches);
+
+/**
+ * mtrr_set_next_var() - set up a variable MTRR
+ *
+ * This finds the first free variable MTRR and sets to the given area
+ *
+ * @type:	Requested type (MTRR_TYPE_)
+ * @start:	Start address
+ * @size:	Size
+ * @return 0 on success, -ENOSPC if there are no more MTRRs
+ */
+int mtrr_set_next_var(uint type, uint64_t base, uint64_t size);
 
 #endif
 

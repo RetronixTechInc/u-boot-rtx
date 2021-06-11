@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:  GPL-2.0+
+ * Copyright (C) 2016 Freescale Semiconductor, Inc.
  */
 
 #ifndef __IMX_RDC_H__
@@ -11,6 +10,6 @@
 #include "mx6sx_rdc.h"
 #else
 #error "Please select cpu"
-#endif	/* CONFIG_MX6SX */
+#endif /* CONFIG_MX6SX */
 
 #endif	/* __IMX_RDC_H__*/

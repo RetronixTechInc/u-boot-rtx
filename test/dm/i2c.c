@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2013 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Note: Test coverage does not include 10-bit addressing
  */
@@ -10,19 +9,20 @@
 #include <dm.h>
 #include <fdtdec.h>
 #include <i2c.h>
+#include <asm/state.h>
+#include <asm/test.h>
 #include <dm/device-internal.h>
 #include <dm/test.h>
 #include <dm/uclass-internal.h>
-#include <dm/ut.h>
 #include <dm/util.h>
-#include <asm/state.h>
-#include <asm/test.h>
+#include <hexdump.h>
+#include <test/ut.h>
 
 static const int busnum;
 static const int chip = 0x2c;
 
 /* Test that we can find buses and chips */
-static int dm_test_i2c_find(struct dm_test_state *dms)
+static int dm_test_i2c_find(struct unit_test_state *uts)
 {
 	struct udevice *bus, *dev;
 	const int no_chip = 0x10;
@@ -31,19 +31,19 @@ static int dm_test_i2c_find(struct dm_test_state *dms)
 						       false, &bus));
 
 	/*
-	 * i2c_post_bind() will bind devices to chip selects. Check this then
-	 * remove the emulation and the slave device.
+	 * The post_bind() method will bind devices to chip selects. Check
+	 * this then remove the emulation and the slave device.
 	 */
 	ut_assertok(uclass_get_device_by_seq(UCLASS_I2C, busnum, &bus));
 	ut_assertok(dm_i2c_probe(bus, chip, 0, &dev));
-	ut_asserteq(-ENODEV, dm_i2c_probe(bus, no_chip, 0, &dev));
+	ut_asserteq(-ENOENT, dm_i2c_probe(bus, no_chip, 0, &dev));
 	ut_asserteq(-ENODEV, uclass_get_device_by_seq(UCLASS_I2C, 1, &bus));
 
 	return 0;
 }
 DM_TEST(dm_test_i2c_find, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
-static int dm_test_i2c_read_write(struct dm_test_state *dms)
+static int dm_test_i2c_read_write(struct unit_test_state *uts)
 {
 	struct udevice *bus, *dev;
 	uint8_t buf[5];
@@ -60,12 +60,15 @@ static int dm_test_i2c_read_write(struct dm_test_state *dms)
 }
 DM_TEST(dm_test_i2c_read_write, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
-static int dm_test_i2c_speed(struct dm_test_state *dms)
+static int dm_test_i2c_speed(struct unit_test_state *uts)
 {
 	struct udevice *bus, *dev;
 	uint8_t buf[5];
 
 	ut_assertok(uclass_get_device_by_seq(UCLASS_I2C, busnum, &bus));
+
+	/* Use test mode so we create the required errors for invalid speeds */
+	sandbox_i2c_set_test_mode(bus, true);
 	ut_assertok(i2c_get_chip(bus, chip, 1, &dev));
 	ut_assertok(dm_i2c_set_bus_speed(bus, 100000));
 	ut_assertok(dm_i2c_read(dev, 0, buf, 5));
@@ -73,12 +76,13 @@ static int dm_test_i2c_speed(struct dm_test_state *dms)
 	ut_asserteq(400000, dm_i2c_get_bus_speed(bus));
 	ut_assertok(dm_i2c_read(dev, 0, buf, 5));
 	ut_asserteq(-EINVAL, dm_i2c_write(dev, 0, buf, 5));
+	sandbox_i2c_set_test_mode(bus, false);
 
 	return 0;
 }
 DM_TEST(dm_test_i2c_speed, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
-static int dm_test_i2c_offset_len(struct dm_test_state *dms)
+static int dm_test_i2c_offset_len(struct unit_test_state *uts)
 {
 	struct udevice *bus, *dev;
 	uint8_t buf[5];
@@ -95,18 +99,22 @@ static int dm_test_i2c_offset_len(struct dm_test_state *dms)
 }
 DM_TEST(dm_test_i2c_offset_len, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
-static int dm_test_i2c_probe_empty(struct dm_test_state *dms)
+static int dm_test_i2c_probe_empty(struct unit_test_state *uts)
 {
 	struct udevice *bus, *dev;
 
 	ut_assertok(uclass_get_device_by_seq(UCLASS_I2C, busnum, &bus));
+
+	/* Use test mode so that this chip address will always probe */
+	sandbox_i2c_set_test_mode(bus, true);
 	ut_assertok(dm_i2c_probe(bus, SANDBOX_I2C_TEST_ADDR, 0, &dev));
+	sandbox_i2c_set_test_mode(bus, false);
 
 	return 0;
 }
 DM_TEST(dm_test_i2c_probe_empty, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
-static int dm_test_i2c_bytewise(struct dm_test_state *dms)
+static int dm_test_i2c_bytewise(struct unit_test_state *uts)
 {
 	struct udevice *bus, *dev;
 	struct udevice *eeprom;
@@ -161,7 +169,7 @@ static int dm_test_i2c_bytewise(struct dm_test_state *dms)
 }
 DM_TEST(dm_test_i2c_bytewise, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
 
-static int dm_test_i2c_offset(struct dm_test_state *dms)
+static int dm_test_i2c_offset(struct unit_test_state *uts)
 {
 	struct udevice *eeprom;
 	struct udevice *dev;
@@ -178,35 +186,54 @@ static int dm_test_i2c_offset(struct dm_test_state *dms)
 	ut_assertok(i2c_set_chip_offset_len(dev, 0));
 	ut_assertok(dm_i2c_write(dev, 10 /* ignored */, (uint8_t *)"AB", 2));
 	ut_assertok(dm_i2c_read(dev, 0, buf, 5));
-	ut_assertok(memcmp(buf, "AB\0\0\0\0", sizeof(buf)));
+	ut_asserteq_mem("AB\0\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0, sanbox_i2c_eeprom_get_prev_offset(eeprom));
 
 	/* Offset length 1 */
 	sandbox_i2c_eeprom_set_offset_len(eeprom, 1);
 	ut_assertok(i2c_set_chip_offset_len(dev, 1));
 	ut_assertok(dm_i2c_write(dev, 2, (uint8_t *)"AB", 2));
+	ut_asserteq(2, sanbox_i2c_eeprom_get_prev_offset(eeprom));
 	ut_assertok(dm_i2c_read(dev, 0, buf, 5));
-	ut_assertok(memcmp(buf, "ABAB\0", sizeof(buf)));
+	ut_asserteq_mem("ABAB\0", buf, sizeof(buf));
+	ut_asserteq(0, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+
+	/* Offset length 2 boundary - check model wrapping */
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 2);
+	ut_assertok(i2c_set_chip_offset_len(dev, 2));
+	ut_assertok(dm_i2c_write(dev, 0xFF, (uint8_t *)"A", 1));
+	ut_asserteq(0xFF, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_assertok(dm_i2c_write(dev, 0x100, (uint8_t *)"B", 1));
+	ut_asserteq(0x100, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_assertok(dm_i2c_write(dev, 0x101, (uint8_t *)"C", 1));
+	ut_asserteq(0x101, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_assertok(dm_i2c_read(dev, 0xFF, buf, 5));
+	ut_asserteq_mem("ABCAB", buf, sizeof(buf));
+	ut_asserteq(0xFF, sanbox_i2c_eeprom_get_prev_offset(eeprom));
 
 	/* Offset length 2 */
 	sandbox_i2c_eeprom_set_offset_len(eeprom, 2);
 	ut_assertok(i2c_set_chip_offset_len(dev, 2));
-	ut_assertok(dm_i2c_write(dev, 0x210, (uint8_t *)"AB", 2));
-	ut_assertok(dm_i2c_read(dev, 0x210, buf, 5));
-	ut_assertok(memcmp(buf, "AB\0\0\0", sizeof(buf)));
+	ut_assertok(dm_i2c_write(dev, 0x2020, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x2020, buf, 5));
+	ut_asserteq_mem("AB\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x2020, sanbox_i2c_eeprom_get_prev_offset(eeprom));
 
 	/* Offset length 3 */
-	sandbox_i2c_eeprom_set_offset_len(eeprom, 2);
-	ut_assertok(i2c_set_chip_offset_len(dev, 2));
-	ut_assertok(dm_i2c_write(dev, 0x410, (uint8_t *)"AB", 2));
-	ut_assertok(dm_i2c_read(dev, 0x410, buf, 5));
-	ut_assertok(memcmp(buf, "AB\0\0\0", sizeof(buf)));
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 3);
+	ut_assertok(i2c_set_chip_offset_len(dev, 3));
+	ut_assertok(dm_i2c_write(dev, 0x303030, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x303030, buf, 5));
+	ut_asserteq_mem("AB\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x303030, sanbox_i2c_eeprom_get_prev_offset(eeprom));
 
 	/* Offset length 4 */
-	sandbox_i2c_eeprom_set_offset_len(eeprom, 2);
-	ut_assertok(i2c_set_chip_offset_len(dev, 2));
-	ut_assertok(dm_i2c_write(dev, 0x420, (uint8_t *)"AB", 2));
-	ut_assertok(dm_i2c_read(dev, 0x420, buf, 5));
-	ut_assertok(memcmp(buf, "AB\0\0\0", sizeof(buf)));
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 4);
+	ut_assertok(i2c_set_chip_offset_len(dev, 4));
+	ut_assertok(dm_i2c_write(dev, 0x40404040, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x40404040, buf, 5));
+	ut_asserteq_mem("AB\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x40404040, sanbox_i2c_eeprom_get_prev_offset(eeprom));
 
 	/* Restore defaults */
 	sandbox_i2c_eeprom_set_offset_len(eeprom, 1);
@@ -214,3 +241,68 @@ static int dm_test_i2c_offset(struct dm_test_state *dms)
 	return 0;
 }
 DM_TEST(dm_test_i2c_offset, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);
+
+static int dm_test_i2c_addr_offset(struct unit_test_state *uts)
+{
+	struct udevice *eeprom;
+	struct udevice *dev;
+	u8 buf[5];
+
+	ut_assertok(i2c_get_chip_for_busnum(busnum, chip, 1, &dev));
+
+	/* Do a transfer so we can find the emulator */
+	ut_assertok(dm_i2c_read(dev, 0, buf, 5));
+	ut_assertok(uclass_first_device(UCLASS_I2C_EMUL, &eeprom));
+
+	/* Offset length 0 */
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 0);
+	sandbox_i2c_eeprom_set_chip_addr_offset_mask(eeprom, 0x3);
+	ut_assertok(i2c_set_chip_offset_len(dev, 0));
+	ut_assertok(i2c_set_chip_addr_offset_mask(dev, 0x3));
+	ut_assertok(dm_i2c_write(dev, 0x3, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x3, buf, 5));
+	ut_asserteq_mem("AB\0\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x3, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_asserteq(chip | 0x3, sanbox_i2c_eeprom_get_prev_addr(eeprom));
+
+	/* Offset length 1 */
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 1);
+	sandbox_i2c_eeprom_set_chip_addr_offset_mask(eeprom, 0x3);
+	ut_assertok(i2c_set_chip_offset_len(dev, 1));
+	ut_assertok(i2c_set_chip_addr_offset_mask(dev, 0x3));
+	ut_assertok(dm_i2c_write(dev, 0x310, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x310, buf, 5));
+	ut_asserteq_mem("AB\0\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x310, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_asserteq(chip | 0x3, sanbox_i2c_eeprom_get_prev_addr(eeprom));
+
+	/* Offset length 2 */
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 2);
+	sandbox_i2c_eeprom_set_chip_addr_offset_mask(eeprom, 0x3);
+	ut_assertok(i2c_set_chip_offset_len(dev, 2));
+	ut_assertok(i2c_set_chip_addr_offset_mask(dev, 0x3));
+	ut_assertok(dm_i2c_write(dev, 0x32020, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x32020, buf, 5));
+	ut_asserteq_mem("AB\0\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x32020, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_asserteq(chip | 0x3, sanbox_i2c_eeprom_get_prev_addr(eeprom));
+
+	/* Offset length 3 */
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 3);
+	sandbox_i2c_eeprom_set_chip_addr_offset_mask(eeprom, 0x3);
+	ut_assertok(i2c_set_chip_offset_len(dev, 3));
+	ut_assertok(i2c_set_chip_addr_offset_mask(dev, 0x3));
+	ut_assertok(dm_i2c_write(dev, 0x3303030, (uint8_t *)"AB", 2));
+	ut_assertok(dm_i2c_read(dev, 0x3303030, buf, 5));
+	ut_asserteq_mem("AB\0\0\0\0", buf, sizeof(buf));
+	ut_asserteq(0x3303030, sanbox_i2c_eeprom_get_prev_offset(eeprom));
+	ut_asserteq(chip | 0x3, sanbox_i2c_eeprom_get_prev_addr(eeprom));
+
+	/* Restore defaults */
+	sandbox_i2c_eeprom_set_offset_len(eeprom, 1);
+	sandbox_i2c_eeprom_set_chip_addr_offset_mask(eeprom, 0);
+
+	return 0;
+}
+
+DM_TEST(dm_test_i2c_addr_offset, DM_TESTF_SCAN_PDATA | DM_TESTF_SCAN_FDT);

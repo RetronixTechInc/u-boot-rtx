@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2010-2013, NVIDIA CORPORATION. All rights reserved.
  * Copyright (c) 2011 The Chromium OS Authors.
- *
- * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <common.h>
@@ -78,7 +77,7 @@
 	(((hsm) >= PMUX_HSM_DISABLE) && ((hsm) <= PMUX_HSM_ENABLE))
 #endif
 
-#define _R(offset)	(u32 *)(NV_PA_APB_MISC_BASE + (offset))
+#define _R(offset)	(u32 *)((unsigned long)NV_PA_APB_MISC_BASE + (offset))
 
 #if defined(CONFIG_TEGRA20)
 

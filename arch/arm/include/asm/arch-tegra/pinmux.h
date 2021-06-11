@@ -1,12 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010-2014
  * NVIDIA Corporation <www.nvidia.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _TEGRA_PINMUX_H_
 #define _TEGRA_PINMUX_H_
+
+#include <linux/types.h>
 
 #include <asm/arch/tegra.h>
 

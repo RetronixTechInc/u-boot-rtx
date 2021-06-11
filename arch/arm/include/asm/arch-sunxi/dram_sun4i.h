@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2007-2012
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
@@ -5,8 +6,6 @@
  * Tom Cubie <tangliang@allwinnertech.com>
  *
  * Sunxi platform dram register definition.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _SUNXI_DRAM_SUN4I_H
@@ -164,8 +163,7 @@ struct dram_para {
 
 #define DRAM_ZQSR_ZDONE (1 << 31) /* ZQ calibration completion flag */
 
-#define DRAM_IOCR_ODT_EN(n) ((((n) & 0x3) << 30) | ((n) & 0x3) << 0)
-#define DRAM_IOCR_ODT_EN_MASK DRAM_IOCR_ODT_EN(0x3)
+#define DRAM_IOCR_ODT_EN ((3 << 30) | (3 << 0))
 
 #define DRAM_MR_BURST_LENGTH(n) (((n) & 0x7) << 0)
 #define DRAM_MR_BURST_LENGTH_MASK DRAM_MR_BURST_LENGTH(0x7)

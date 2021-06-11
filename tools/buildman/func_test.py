@@ -1,7 +1,5 @@
-#
+# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2014 Google, Inc
-#
-# SPDX-License-Identifier:      GPL-2.0+
 #
 
 import os
@@ -29,7 +27,7 @@ settings_data = '''
 [make-flags]
 src=/home/sjg/c/src
 chroot=/home/sjg/c/chroot
-vboot=USE_STDINT=1 VBOOT_DEBUG=1 MAKEFLAGS_VBOOT=DEBUG=1 CFLAGS_EXTRA_VBOOT=-DUNROLL_LOOPS VBOOT_SOURCE=${src}/platform/vboot_reference
+vboot=VBOOT_DEBUG=1 MAKEFLAGS_VBOOT=DEBUG=1 CFLAGS_EXTRA_VBOOT=-DUNROLL_LOOPS VBOOT_SOURCE=${src}/platform/vboot_reference
 chromeos_coreboot=VBOOT=${chroot}/build/link/usr ${vboot}
 chromeos_daisy=VBOOT=${chroot}/build/daisy/usr ${vboot}
 chromeos_peach=VBOOT=${chroot}/build/peach_pit/usr ${vboot}
@@ -39,7 +37,6 @@ boards = [
     ['Active', 'arm', 'armv7', '', 'Tester', 'ARM Board 1', 'board0',  ''],
     ['Active', 'arm', 'armv7', '', 'Tester', 'ARM Board 2', 'board1', ''],
     ['Active', 'powerpc', 'powerpc', '', 'Tester', 'PowerPC board 1', 'board2', ''],
-    ['Active', 'powerpc', 'mpc5xx', '', 'Tester', 'PowerPC board 2', 'board3', ''],
     ['Active', 'sandbox', 'sandbox', '', 'Tester', 'Sandbox board', 'board4', ''],
 ]
 
@@ -178,9 +175,10 @@ class TestFunctional(unittest.TestCase):
     """
     def setUp(self):
         self._base_dir = tempfile.mkdtemp()
+        self._output_dir = tempfile.mkdtemp()
         self._git_dir = os.path.join(self._base_dir, 'src')
         self._buildman_pathname = sys.argv[0]
-        self._buildman_dir = os.path.dirname(sys.argv[0])
+        self._buildman_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
         command.test_result = self._HandleCommand
         self.setupToolchains()
         self._toolchains.Add('arm-gcc', test=False)
@@ -210,6 +208,7 @@ class TestFunctional(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self._base_dir)
+        shutil.rmtree(self._output_dir)
 
     def setupToolchains(self):
         self._toolchains = toolchain.Toolchains()
@@ -232,7 +231,10 @@ class TestFunctional(unittest.TestCase):
         command.test_result = None
         result = self._RunBuildman('-H')
         help_file = os.path.join(self._buildman_dir, 'README')
-        self.assertEqual(len(result.stdout), os.path.getsize(help_file))
+        # Remove possible extraneous strings
+        extra = '::::::::::::::\n' + help_file + '\n::::::::::::::\n'
+        gothelp = result.stdout.replace(extra, '')
+        self.assertEqual(len(gothelp), os.path.getsize(help_file))
         self.assertEqual(0, len(result.stderr))
         self.assertEqual(0, result.return_code)
 
@@ -255,6 +257,8 @@ class TestFunctional(unittest.TestCase):
         self.assertEqual(gitutil.use_no_decorate, True)
 
     def _HandleCommandGitLog(self, args):
+        if args[-1] == '--':
+            args = args[:-1]
         if '-n0' in args:
             return command.CommandResult(return_code=0)
         elif args[-1] == 'upstream/master..%s' % self._test_branch:
@@ -266,7 +270,7 @@ class TestFunctional(unittest.TestCase):
                                             stdout=''.join(commit_log[:count]))
 
         # Not handled, so abort
-        print 'git log', args
+        print('git log', args)
         sys.exit(1)
 
     def _HandleCommandGitConfig(self, args):
@@ -282,7 +286,7 @@ class TestFunctional(unittest.TestCase):
                                          stdout='refs/heads/master\n')
 
         # Not handled, so abort
-        print 'git config', args
+        print('git config', args)
         sys.exit(1)
 
     def _HandleCommandGit(self, in_args):
@@ -316,13 +320,16 @@ class TestFunctional(unittest.TestCase):
             return command.CommandResult(return_code=0)
 
         # Not handled, so abort
-        print 'git', git_args, sub_cmd, args
+        print('git', git_args, sub_cmd, args)
         sys.exit(1)
 
     def _HandleCommandNm(self, args):
         return command.CommandResult(return_code=0)
 
     def _HandleCommandObjdump(self, args):
+        return command.CommandResult(return_code=0)
+
+    def _HandleCommandObjcopy(self, args):
         return command.CommandResult(return_code=0)
 
     def _HandleCommandSize(self, args):
@@ -344,7 +351,7 @@ class TestFunctional(unittest.TestCase):
             if pipe_list[1] == ['wc', '-l']:
                 wc = True
             else:
-                print 'invalid pipe', kwargs
+                print('invalid pipe', kwargs)
                 sys.exit(1)
         cmd = pipe_list[0][0]
         args = pipe_list[0][1:]
@@ -357,12 +364,14 @@ class TestFunctional(unittest.TestCase):
             return self._HandleCommandNm(args)
         elif cmd.endswith('objdump'):
             return self._HandleCommandObjdump(args)
+        elif cmd.endswith('objcopy'):
+            return self._HandleCommandObjcopy(args)
         elif cmd.endswith( 'size'):
             return self._HandleCommandSize(args)
 
         if not result:
             # Not handled, so abort
-            print 'unknown command', kwargs
+            print('unknown command', kwargs)
             sys.exit(1)
 
         if wc:
@@ -395,14 +404,14 @@ class TestFunctional(unittest.TestCase):
             return command.CommandResult(return_code=0)
 
         # Not handled, so abort
-        print 'make', stage
+        print('make', stage)
         sys.exit(1)
 
     # Example function to print output lines
     def print_lines(self, lines):
-        print len(lines)
+        print(len(lines))
         for line in lines:
-            print line
+            print(line)
         #self.print_lines(terminal.GetPrintTestLines())
 
     def testNoBoards(self):
@@ -414,7 +423,7 @@ class TestFunctional(unittest.TestCase):
     def testCurrentSource(self):
         """Very simple test to invoke buildman on the current source"""
         self.setupToolchains();
-        self._RunControl()
+        self._RunControl('-o', self._output_dir)
         lines = terminal.GetPrintTestLines()
         self.assertIn('Building current source for %d boards' % len(boards),
                       lines[0].text)
@@ -427,7 +436,7 @@ class TestFunctional(unittest.TestCase):
     def testBadToolchain(self):
         """Test that missing toolchains are detected"""
         self.setupToolchains();
-        ret_code = self._RunControl('-b', TEST_BRANCH)
+        ret_code = self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir)
         lines = terminal.GetPrintTestLines()
 
         # Buildman always builds the upstream commit as well
@@ -451,13 +460,13 @@ class TestFunctional(unittest.TestCase):
 
     def testBranch(self):
         """Test building a branch with all toolchains present"""
-        self._RunControl('-b', TEST_BRANCH)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir)
         self.assertEqual(self._builder.count, self._total_builds)
         self.assertEqual(self._builder.fail, 0)
 
     def testCount(self):
         """Test building a specific number of commitst"""
-        self._RunControl('-b', TEST_BRANCH, '-c2')
+        self._RunControl('-b', TEST_BRANCH, '-c2', '-o', self._output_dir)
         self.assertEqual(self._builder.count, 2 * len(boards))
         self.assertEqual(self._builder.fail, 0)
         # Each board has a mrproper, config, and then one make per commit
@@ -465,34 +474,34 @@ class TestFunctional(unittest.TestCase):
 
     def testIncremental(self):
         """Test building a branch twice - the second time should do nothing"""
-        self._RunControl('-b', TEST_BRANCH)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir)
 
         # Each board has a mrproper, config, and then one make per commit
         self.assertEqual(self._make_calls, len(boards) * (self._commits + 2))
         self._make_calls = 0
-        self._RunControl('-b', TEST_BRANCH, clean_dir=False)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir, clean_dir=False)
         self.assertEqual(self._make_calls, 0)
         self.assertEqual(self._builder.count, self._total_builds)
         self.assertEqual(self._builder.fail, 0)
 
     def testForceBuild(self):
         """The -f flag should force a rebuild"""
-        self._RunControl('-b', TEST_BRANCH)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir)
         self._make_calls = 0
-        self._RunControl('-b', TEST_BRANCH, '-f', clean_dir=False)
+        self._RunControl('-b', TEST_BRANCH, '-f', '-o', self._output_dir, clean_dir=False)
         # Each board has a mrproper, config, and then one make per commit
         self.assertEqual(self._make_calls, len(boards) * (self._commits + 2))
 
     def testForceReconfigure(self):
         """The -f flag should force a rebuild"""
-        self._RunControl('-b', TEST_BRANCH, '-C')
+        self._RunControl('-b', TEST_BRANCH, '-C', '-o', self._output_dir)
         # Each commit has a mrproper, config and make
         self.assertEqual(self._make_calls, len(boards) * self._commits * 3)
 
     def testErrors(self):
         """Test handling of build errors"""
         self._error['board2', 1] = 'fred\n'
-        self._RunControl('-b', TEST_BRANCH)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir)
         self.assertEqual(self._builder.count, self._total_builds)
         self.assertEqual(self._builder.fail, 1)
 
@@ -500,13 +509,13 @@ class TestFunctional(unittest.TestCase):
         # not be rebuilt
         del self._error['board2', 1]
         self._make_calls = 0
-        self._RunControl('-b', TEST_BRANCH, clean_dir=False)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir, clean_dir=False)
         self.assertEqual(self._builder.count, self._total_builds)
         self.assertEqual(self._make_calls, 0)
         self.assertEqual(self._builder.fail, 1)
 
         # Now use the -F flag to force rebuild of the bad commit
-        self._RunControl('-b', TEST_BRANCH, '-F', clean_dir=False)
+        self._RunControl('-b', TEST_BRANCH, '-o', self._output_dir, '-F', clean_dir=False)
         self.assertEqual(self._builder.count, self._total_builds)
         self.assertEqual(self._builder.fail, 0)
         self.assertEqual(self._make_calls, 3)
@@ -517,3 +526,12 @@ class TestFunctional(unittest.TestCase):
         self._RunControl('-b', self._test_branch, clean_dir=False)
         self.assertEqual(self._builder.count, self._total_builds)
         self.assertEqual(self._builder.fail, 0)
+
+    def testBadOutputDir(self):
+        """Test building with an output dir the same as out current dir"""
+        self._test_branch = '/__dev/__testbranch'
+        with self.assertRaises(SystemExit):
+            self._RunControl('-b', self._test_branch, '-o', os.getcwd())
+        with self.assertRaises(SystemExit):
+            self._RunControl('-b', self._test_branch, '-o',
+                             os.path.join(os.getcwd(), 'test'))

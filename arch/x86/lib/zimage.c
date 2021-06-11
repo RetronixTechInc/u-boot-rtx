@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, <daniel@omicron.se>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -14,6 +13,10 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <irq_func.h>
+#include <malloc.h>
+#include <asm/acpi_table.h>
 #include <asm/io.h>
 #include <asm/ptrace.h>
 #include <asm/zimage.h>
@@ -24,6 +27,7 @@
 #include <asm/arch/timestamp.h>
 #endif
 #include <linux/compiler.h>
+#include <linux/libfdt.h>
 
 /*
  * Memory lay-out:
@@ -40,31 +44,21 @@
 
 #define COMMAND_LINE_SIZE	2048
 
-unsigned generic_install_e820_map(unsigned max_entries,
-				  struct e820entry *entries)
-{
-	return 0;
-}
-
-unsigned install_e820_map(unsigned max_entries,
-			  struct e820entry *entries)
-	__attribute__((weak, alias("generic_install_e820_map")));
-
 static void build_command_line(char *command_line, int auto_boot)
 {
 	char *env_command_line;
 
 	command_line[0] = '\0';
 
-	env_command_line =  getenv("bootargs");
+	env_command_line =  env_get("bootargs");
 
 	/* set console= argument if we use a serial console */
 	if (!strstr(env_command_line, "console=")) {
-		if (!strcmp(getenv("stdout"), "serial")) {
+		if (!strcmp(env_get("stdout"), "serial")) {
 
 			/* We seem to use serial console */
 			sprintf(command_line, "console=ttyS0,%s ",
-				getenv("baudrate"));
+				env_get("baudrate"));
 		}
 	}
 
@@ -100,6 +94,38 @@ static int get_boot_protocol(struct setup_header *hdr)
 		printf("Magic signature not found\n");
 		return 0x0100;
 	}
+}
+
+static int setup_device_tree(struct setup_header *hdr, const void *fdt_blob)
+{
+	int bootproto = get_boot_protocol(hdr);
+	struct setup_data *sd;
+	int size;
+
+	if (bootproto < 0x0209)
+		return -ENOTSUPP;
+
+	if (!fdt_blob)
+		return 0;
+
+	size = fdt_totalsize(fdt_blob);
+	if (size < 0)
+		return -EINVAL;
+
+	size += sizeof(struct setup_data);
+	sd = (struct setup_data *)malloc(size);
+	if (!sd) {
+		printf("Not enough memory for DTB setup data\n");
+		return -ENOMEM;
+	}
+
+	sd->next = hdr->setup_data;
+	sd->type = SETUP_DTB;
+	sd->len = fdt_totalsize(fdt_blob);
+	memcpy(sd->data, fdt_blob, sd->len);
+	hdr->setup_data = (unsigned long)sd;
+
+	return 0;
 }
 
 struct boot_params *load_zimage(char *image, unsigned long kernel_size,
@@ -173,7 +199,7 @@ struct boot_params *load_zimage(char *image, unsigned long kernel_size,
 		 * A very old kernel MUST have its real-mode code
 		 * loaded at 0x90000
 		 */
-		if ((u32)setup_base != 0x90000) {
+		if ((ulong)setup_base != 0x90000) {
 			/* Copy the real-mode kernel */
 			memmove((void *)0x90000, setup_base, setup_size);
 
@@ -258,6 +284,22 @@ int setup_zimage(struct boot_params *setup_base, char *cmd_line, int auto_boot,
 		build_command_line(cmd_line, auto_boot);
 	}
 
+#ifdef CONFIG_INTEL_MID
+	if (bootproto >= 0x0207)
+		hdr->hardware_subarch = X86_SUBARCH_INTEL_MID;
+#endif
+
+#ifdef CONFIG_GENERATE_ACPI_TABLE
+	setup_base->acpi_rsdp_addr = acpi_get_rsdp_addr();
+#endif
+
+	setup_device_tree(hdr, (const void *)env_get_hex("fdtaddr", 0));
+	setup_video(&setup_base->screen_info);
+
+#ifdef CONFIG_EFI_STUB
+	setup_efi_info(&setup_base->efi_info);
+#endif
+
 	return 0;
 }
 
@@ -287,7 +329,7 @@ int do_zboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 		/* argv[1] holds the address of the bzImage */
 		s = argv[1];
 	} else {
-		s = getenv("fileaddr");
+		s = env_get("fileaddr");
 	}
 
 	if (s)

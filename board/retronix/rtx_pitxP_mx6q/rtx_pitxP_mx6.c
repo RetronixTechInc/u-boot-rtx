@@ -9,15 +9,15 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux.h>
-#include <asm/arch/mx6-pins.h>
-#include <asm/errno.h>
+#include <asm/arch-mx6/mx6-pins.h>
+#include <errno.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/boot_mode.h>
-#include <asm/imx-common/video.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/video.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <miiphy.h>
 #include <netdev.h>
 
@@ -46,7 +46,7 @@
 #include <asm/imx-common/sata.h>
 #endif
 #ifdef CONFIG_FSL_FASTBOOT
-#include <fsl_fastboot.h>
+#include <fastboot.h>
 #ifdef CONFIG_ANDROID_RECOVERY
 #include <recovery.h>
 #endif
@@ -116,6 +116,7 @@ static iomux_v3_cfg_t const gpio_pads_init[] = {
 };
 
 #define GPIO_USB_HUB_RESET_B IMX_GPIO_NR(2, 23) /* USB_HUB_RESET_B */
+#define GPIO_MEM_3V3 IMX_GPIO_NR(3, 31) 	/* MEM 3V3 */
 static void setup_iomux_gpio_init(void)
 {
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
@@ -132,10 +133,12 @@ static void setup_iomux_gpio_init(void)
 	reg &= ~(IOMUXC_GPR2_LVDS_CH0_MODE_MASK | IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
 	writel(reg, &iomux->gpr[2]);
 	// init gpio usb
+	gpio_request(GPIO_USB_HUB_RESET_B, "hub reset");
 	gpio_direction_output(GPIO_USB_HUB_RESET_B , 0);
 	// init gpio mcu
 	gpio_direction_output(IMX_GPIO_NR(6, 9) , 0);
-	gpio_direction_input(IMX_GPIO_NR(3, 31));
+
+	gpio_direction_input(GPIO_MEM_3V3);
 	gpio_direction_output(IMX_GPIO_NR(6, 11), 1);
 	// init gpio 1~2
 	gpio_direction_output(IMX_GPIO_NR(5, 2) , 0);
@@ -255,17 +258,13 @@ static void enable_rgb(struct display_info_t const *dev)
 
 static struct i2c_pads_info i2c_pad_info0 = {
 	.scl = {
-		.i2c_mode = MX6_PAD_CSI0_DAT9__I2C1_SCL
-				| I2C_PAD,
-		.gpio_mode = MX6_PAD_CSI0_DAT9__GPIO5_IO27
-				| I2C_PAD,
+		.i2c_mode = MX6_PAD_CSI0_DAT9__I2C1_SCL | I2C_PAD,
+		.gpio_mode = MX6_PAD_CSI0_DAT9__GPIO5_IO27 | I2C_PAD,
 		.gp = IMX_GPIO_NR(5, 27)
 	},
 	.sda = {
-		.i2c_mode = MX6_PAD_CSI0_DAT8__I2C1_SDA
-				| I2C_PAD,
-		.gpio_mode = MX6_PAD_CSI0_DAT8__GPIO5_IO26
-				| I2C_PAD,
+		.i2c_mode = MX6_PAD_CSI0_DAT8__I2C1_SDA | I2C_PAD,
+		.gpio_mode = MX6_PAD_CSI0_DAT8__GPIO5_IO26 | I2C_PAD,
 		.gp = IMX_GPIO_NR(5, 26)
 	}
 };
@@ -305,10 +304,10 @@ static void setup_pcie(void)
 {
 	imx_iomux_v3_setup_multiple_pads(pcie_pads, ARRAY_SIZE(pcie_pads));
 	// init gpio pcie
-    gpio_direction_input(IMX_GPIO_NR(5, 20));
+    	gpio_direction_input(IMX_GPIO_NR(5, 20));
 	gpio_direction_output(IMX_GPIO_NR(7, 11) , 1);
 	gpio_direction_output(IMX_GPIO_NR(7, 12) , 0);
-    udelay(50000);
+	udelay(50000);
 	gpio_set_value(IMX_GPIO_NR(7, 12), 1);
 }
 
@@ -371,7 +370,7 @@ static void setup_iomux_uart(void)
  	gpio_direction_output(IMX_GPIO_NR(6, 16) , 0);
 }
 
-#ifdef CONFIG_FSL_ESDHC
+
 struct fsl_esdhc_cfg usdhc_cfg[3] = {
 	{USDHC2_BASE_ADDR},
 	{USDHC3_BASE_ADDR},
@@ -463,19 +462,20 @@ int board_mmc_init(bd_t *bis)
 		switch (i) {
 		case 0:
 			imx_iomux_v3_setup_multiple_pads(
-				usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
+			usdhc2_pads, ARRAY_SIZE(usdhc2_pads));
 			//gpio_direction_input(USDHC2_CD_GPIO);
 			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
 			break;
 		case 1:
 			imx_iomux_v3_setup_multiple_pads(
-				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+			usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+			gpio_request(USDHC3_CD_GPIO, "usdhc3 cd");
 			gpio_direction_input(USDHC3_CD_GPIO);
 			usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 			break;
 		case 2:
 			imx_iomux_v3_setup_multiple_pads(
-				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
+			usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
 			usdhc_cfg[2].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 			break;
 		default:
@@ -530,11 +530,11 @@ int board_mmc_init(bd_t *bis)
 	return fsl_esdhc_initialize(bis, &usdhc_cfg[0]);
 #endif
 }
-#endif
+
 
 int check_mmc_autodetect(void)
 {
-	char *autodetect_str = getenv("mmcautodetect");
+	char *autodetect_str = env_get("mmcautodetect");
 
 	if ((autodetect_str != NULL) &&
 		(strcmp(autodetect_str, "yes") == 0)) {
@@ -548,17 +548,17 @@ void board_late_mmc_env_init(void)
 {
 	//char cmd[32];
 	char mmcblk[32];
+	char *s = env_get("mmcrootpath");
 	u32 dev_no = mmc_get_env_devno();
 
 	if (!bootsel_func_changestorage())
 		return;
 
-	setenv_ulong("mmc_num", dev_no);
+	env_set_ulong("mmc_num", dev_no);
 
 	/* Set mmcblk env */
-	sprintf(mmcblk, "root=/dev/mmcblk%dp1 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcrootpath", mmcblk);
+	sprintf(mmcblk, "root=/dev/mmcblk%dp%c rootwait rw", mmc_map_to_kernel_blk(dev_no),*(s+18));
+	env_set("mmcrootpath", mmcblk);
 
 	//sprintf(cmd, "mmc dev %d", dev_no);
 	//run_command(cmd, 0);
@@ -793,7 +793,8 @@ static void setup_3v3(void)
 {
 	imx_iomux_v3_setup_multiple_pads(men_3v3_pads,
 					 ARRAY_SIZE(men_3v3_pads));
-	gpio_direction_output(IMX_GPIO_NR(3, 31) , 1);
+	gpio_request(GPIO_MEM_3V3, "mem 3v3");
+	gpio_direction_output(GPIO_MEM_3V3, 1);
 }
 
 int board_ehci_hcd_init(int port)
@@ -862,9 +863,7 @@ int board_init(void)
 	setup_usb();
 #endif
 
-#ifdef CONFIG_POWER_3V3
 	setup_3v3();
-	#endif
 
 #if defined(CONFIG_MX6DL) && defined(CONFIG_MXC_EPDC)
 	setup_epdc();
@@ -1106,116 +1105,6 @@ int checkboard(void)
 	puts("Board: MX6-PITX\n");
 	return 0;
 }
-
-#ifdef CONFIG_FSL_FASTBOOT
-
-void board_fastboot_setup(void)
-{
-	switch (get_boot_device()) {
-#if defined(CONFIG_FASTBOOT_STORAGE_SATA)
-	case SATA_BOOT:
-		if (!getenv("fastboot_dev"))
-			setenv("fastboot_dev", "sata");
-		if (!getenv("bootcmd"))
-			setenv("bootcmd", "boota sata");
-		break;
-#endif /*CONFIG_FASTBOOT_STORAGE_SATA*/
-#if defined(CONFIG_FASTBOOT_STORAGE_MMC)
-	case SD2_BOOT:
-	case MMC2_BOOT:
-	    if (!getenv("fastboot_dev"))
-			setenv("fastboot_dev", "mmc0");
-	    if (!getenv("bootcmd"))
-			setenv("bootcmd", "boota mmc0");
-	    break;
-	case SD3_BOOT:
-	case MMC3_BOOT:
-	    if (!getenv("fastboot_dev"))
-			setenv("fastboot_dev", "mmc1");
-	    if (!getenv("bootcmd"))
-			setenv("bootcmd", "boota mmc1");
-	    break;
-	case MMC4_BOOT:
-	    if (!getenv("fastboot_dev"))
-			setenv("fastboot_dev", "mmc2");
-	    if (!getenv("bootcmd"))
-			setenv("bootcmd", "boota mmc2");
-	    break;
-#endif /*CONFIG_FASTBOOT_STORAGE_MMC*/
-	default:
-		printf("unsupported boot devices\n");
-		break;
-	}
-
-}
-
-#ifdef CONFIG_ANDROID_RECOVERY
-
-//#define GPIO_VOL_DN_KEY IMX_GPIO_NR(1, 5)
-iomux_v3_cfg_t const recovery_key_pads[] = {
-	(MX6_PAD_GPIO_5__GPIO1_IO05 | MUX_PAD_CTRL(NO_PAD_CTRL)),
-};
-
-int check_recovery_cmd_file(void)
-{
-    int button_pressed = 0;
-    int recovery_mode = 0;
-
-    recovery_mode = recovery_check_and_clean_flag();
-
-    /* Check Recovery Combo Button press or not.
-	imx_iomux_v3_setup_multiple_pads(recovery_key_pads,
-			ARRAY_SIZE(recovery_key_pads));
-
-    gpio_direction_input(GPIO_VOL_DN_KEY);
-
-    if (gpio_get_value(GPIO_VOL_DN_KEY) == 0) { // VOL_DN key is low assert
-		button_pressed = 1;
-		printf("Recovery key pressed\n");
-    }*/
-
-    return recovery_mode || button_pressed;
-}
-
-void board_recovery_setup(void)
-{
-	int bootdev = get_boot_device();
-
-	switch (bootdev) {
-#if defined(CONFIG_FASTBOOT_STORAGE_SATA)
-	case SATA_BOOT:
-		if (!getenv("bootcmd_android_recovery"))
-			setenv("bootcmd_android_recovery",
-				"boota sata recovery");
-		break;
-#endif /*CONFIG_FASTBOOT_STORAGE_SATA*/
-#if defined(CONFIG_FASTBOOT_STORAGE_MMC)
-	case SD2_BOOT:
-	case MMC2_BOOT:
-	case SD3_BOOT:
-	case MMC3_BOOT:
-	case MMC4_BOOT:
-		if (!getenv("bootcmd_android_recovery"))
-		{
-			setenv( "ext_args" , CONFIG_ANDROID_RECOVERY_BOOTARGS ) ;
-			setenv("bootcmd_android_recovery", CONFIG_ANDROID_RECOVERY_BOOTCMD );
-		}
-		break;
-#endif /*CONFIG_FASTBOOT_STORAGE_MMC*/
-	default:
-		printf("Unsupported bootup device for recovery: dev: %d\n",
-			bootdev);
-		return;
-	}
-
-    vSet_efm32_watchdog( 0 ) ;
-	printf("setup env for recovery..\n");
-	setenv("bootcmd", "run bootcmd_android_recovery");
-}
-
-#endif /*CONFIG_ANDROID_RECOVERY*/
-
-#endif /*CONFIG_FSL_FASTBOOT*/
 
 #ifdef CONFIG_SPL_BUILD
 #include <spl.h>

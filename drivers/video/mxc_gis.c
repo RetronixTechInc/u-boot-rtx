@@ -1,7 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc. All Rights Reserved.
  *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,7 +10,7 @@
 
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 
 #include <linux/string.h>
@@ -102,6 +102,11 @@ static void config_channel(struct channel_param *ch)
 {
 	u32 val, i;
 	u32 reg_offset;
+
+	if (ch->cmd_num > 3 || ch->ch_num > 5) {
+		printf("Error val cmd_num=%d, ch_num=%d\n , \n", ch->cmd_num, ch->ch_num);
+		return;
+	}
 
 	/* Config channel map and command */
 	switch (ch->ch_num) {
@@ -299,7 +304,21 @@ void mxc_enable_gis(void)
 	struct pxp_config_data pxp_conf;
 	struct display_panel panel;
 	u32 csimemsize, pxpmemsize;
-	char const *gis_input = getenv("gis");
+	char const *gis_input = env_get("gis");
+
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_CSI)) {
+		printf("CSI@0x%x is fused, disable it\n", CSI1_BASE_ADDR);
+		return;
+	}
+#endif
+
+#ifdef CONFIG_MX6
+	if (check_module_fused(MX6_MODULE_PXP)) {
+		printf("PXP@0x%x is fused, disable it\n", PXP_BASE_ADDR);
+		return;
+	}
+#endif
 
 	gis_regs = (struct mxs_gis_regs *)GIS_BASE_ADDR;
 	pxp_regs = (struct mxs_pxp_regs *)PXP_BASE_ADDR;
@@ -307,7 +326,7 @@ void mxc_enable_gis(void)
 
 	gis_running = false;
 
-	if (!strcmp(gis_input, "vadc")) {
+	if (gis_input != NULL && !strcmp(gis_input, "vadc")) {
 		printf("gis input --- vadc\n");
 		/* vadc_in 0 */
 		vadc_config(0);

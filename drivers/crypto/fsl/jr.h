@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  */
 
@@ -9,10 +8,11 @@
 #define __JR_H
 
 #include <linux/compiler.h>
+#include "type.h"
 
 #define JR_SIZE 4
-/* Timeout currently defined as 90 sec */
-#define CONFIG_SEC_DEQ_TIMEOUT	90000000U
+/* Timeout currently defined as 10 sec */
+#define CONFIG_USEC_DEQ_TIMEOUT	10000000U
 
 #define DEFAULT_JR_ID		0
 #define DEFAULT_JR_LIODN	0
@@ -21,6 +21,11 @@
 #define MCFGR_SWRST       ((uint32_t)(1)<<31) /* Software Reset */
 #define MCFGR_DMA_RST     ((uint32_t)(1)<<28) /* DMA Reset */
 #define MCFGR_PS_SHIFT          16
+#define MCFGR_AWCACHE_SHIFT	8
+#define MCFGR_AWCACHE_MASK	(0xf << MCFGR_AWCACHE_SHIFT)
+#define MCFGR_ARCACHE_SHIFT	12
+#define MCFGR_ARCACHE_MASK	(0xf << MCFGR_ARCACHE_SHIFT)
+
 #define JR_INTMASK	  0x00000001
 #define JRCR_RESET                  0x01
 #define JRINT_ERR_HALT_INPROGRESS   0x4
@@ -34,15 +39,16 @@
 #define JQ_DEQ_TO_ERR		-2
 #define JQ_ENQ_ERR		-3
 
+#define RNG4_MAX_HANDLES	2
+
 struct op_ring {
-	dma_addr_t desc;
+	caam_dma_addr_t desc;
 	uint32_t status;
 } __packed;
 
 struct jr_info {
-	void (*callback)(dma_addr_t desc, uint32_t status, void *arg);
-	dma_addr_t desc_phys_addr;
-	uint32_t desc_addr;
+	void (*callback)(uint32_t status, void *arg);
+	caam_dma_addr_t desc_phys_addr;
 	uint32_t desc_len;
 	uint32_t op_done;
 	void *arg;
@@ -71,12 +77,14 @@ struct jobring {
 	int write_idx;
 	/* Size of the rings. */
 	int size;
+	/* Op ring size aligned to cache line size */
+	int op_size;
 	/* The ip and output rings have to be accessed by SEC. So the
 	 * pointers will ahve to point to the housekeeping region provided
 	 * by SEC
 	 */
 	/*Circular  Ring of i/p descriptors */
-	dma_addr_t *input_ring;
+	caam_dma_addr_t *input_ring;
 	/* Circular Ring of o/p descriptors */
 	/* Circula Ring containing info regarding descriptors in i/p
 	 * and o/p ring
@@ -84,6 +92,9 @@ struct jobring {
 	/* This ring can be on the stack */
 	struct jr_info info[JR_SIZE];
 	struct op_ring *output_ring;
+	/* Offset in CCSR to the SEC engine to which this JR belongs */
+	uint32_t sec_offset;
+
 };
 
 struct result {

@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 /******************************************************************************
  * Copyright (c) 2004, 2008 IBM Corporation
  * Copyright (c) 2009 Pattrick Hueper <phueper@hueper.net>
  * All rights reserved.
- *
- * SPDX-License-Identifier:	BSD-2-Clause
  *
  * Contributors:
  *     IBM Corporation - initial implementation
@@ -12,7 +11,7 @@
 #define _VBE_H
 
 /* these structs are for input from and output to OF */
-struct __packed screen_info {
+struct __packed vbe_screen_info {
 	u8 display_type;	/* 0=NONE, 1= analog, 2=digital */
 	u16 screen_width;
 	u16 screen_height;
@@ -23,7 +22,7 @@ struct __packed screen_info {
 	u8 edid_block_zero[128];
 };
 
-struct __packed screen_info_input {
+struct __packed vbe_screen_info_input {
 	u8 signature[4];
 	u16 size_reserved;
 	u8 monitor_number;
@@ -102,7 +101,13 @@ struct vbe_ddc_info {
 #define VESA_SET_MODE		0x4f02
 #define VESA_GET_CUR_MODE	0x4f03
 
-struct graphic_device;
-int vbe_get_video_info(struct graphic_device *gdev);
+extern struct vbe_mode_info mode_info;
+
+struct video_priv;
+struct video_uc_platdata;
+int vbe_setup_video_priv(struct vesa_mode_info *vesa,
+			 struct video_priv *uc_priv,
+			 struct video_uc_platdata *plat);
+int vbe_setup_video(struct udevice *dev, int (*int15_handler)(void));
 
 #endif

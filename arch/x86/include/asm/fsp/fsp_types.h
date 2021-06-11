@@ -1,20 +1,11 @@
+/* SPDX-License-Identifier: Intel */
 /*
  * Copyright (C) 2013, Intel Corporation
  * Copyright (C) 2014, Bin Meng <bmeng.cn@gmail.com>
- *
- * SPDX-License-Identifier:	Intel
  */
 
 #ifndef __FSP_TYPES_H__
 #define __FSP_TYPES_H__
-
-/* 128 bit buffer containing a unique identifier value */
-struct efi_guid {
-	u32	data1;
-	u16	data2;
-	u16	data3;
-	u8	data4[8];
-};
 
 /**
  * Returns a 16-bit signature built from 2 ASCII characters.
@@ -67,16 +58,5 @@ struct efi_guid {
  */
 #define SIGNATURE_64(A, B, C, D, E, F, G, H)	\
 	(SIGNATURE_32(A, B, C, D) | ((u64)(SIGNATURE_32(E, F, G, H)) << 32))
-
-/*
- * Define FSP API return status code.
- * Compatiable with EFI_STATUS defined in PI Spec.
- */
-#define FSP_SUCCESS		0
-#define FSP_INVALID_PARAM	0x80000002
-#define FSP_UNSUPPORTED		0x80000003
-#define FSP_DEVICE_ERROR	0x80000007
-#define FSP_NOT_FOUND		0x8000000E
-#define FSP_ALREADY_STARTED	0x80000014
 
 #endif

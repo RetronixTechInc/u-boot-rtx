@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2010-2015 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
  */
 
 #include <common.h>
@@ -9,14 +8,16 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/clock.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/boot_mode.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <miiphy.h>
 #include <netdev.h>
 #include <usb.h>
+#include <asm/arch/sys_proto.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -47,11 +48,24 @@ int dram_init(void)
 	return 0;
 }
 
+#if defined(CONFIG_MX6DQ_POP_LPDDR2)
+int dram_init_banksize(void)
+{
+	gd->bd->bi_dram[0].start = PHYS_SDRAM_0;
+	gd->bd->bi_dram[0].size = (phys_size_t)CONFIG_DDR_MB * 1024 * 1024;
+	gd->bd->bi_dram[1].start = PHYS_SDRAM_1;
+	gd->bd->bi_dram[1].size = (phys_size_t)CONFIG_DDR_MB * 1024 * 1024;
+
+    return 0;
+}
+#endif
+
 iomux_v3_cfg_t const uart4_pads[] = {
 	MX6_PAD_KEY_COL0__UART4_TX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 	MX6_PAD_KEY_ROW0__UART4_RX_DATA | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#ifndef CONFIG_DM_MMC
 iomux_v3_cfg_t const usdhc3_pads[] = {
 	MX6_PAD_SD3_CLK__SD3_CLK   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD3_CMD__SD3_CMD   | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -82,6 +96,7 @@ iomux_v3_cfg_t const usdhc4_pads[] = {
 	MX6_PAD_SD4_DAT6__SD4_DATA6 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT7__SD4_DATA7 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 };
+#endif
 
 iomux_v3_cfg_t const enet_pads[] = {
 	MX6_PAD_KEY_COL1__ENET_MDIO        | MUX_PAD_CTRL(ENET_PAD_CTRL),
@@ -112,40 +127,13 @@ static void setup_iomux_enet(void)
 	imx_iomux_v3_setup_multiple_pads(enet_pads, ARRAY_SIZE(enet_pads));
 }
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
+#ifndef CONFIG_DM_MMC
 struct fsl_esdhc_cfg usdhc_cfg[2] = {
 	{USDHC3_BASE_ADDR},
 	{USDHC4_BASE_ADDR},
 };
 
-int mmc_get_env_devno(void)
-{
-	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
-	u32 dev_no;
-	u32 bootsel;
-
-	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
-
-	/* If not boot from sd/mmc, use default value */
-	if (bootsel != 1)
-		return CONFIG_SYS_MMC_ENV_DEV;
-
-	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
-	dev_no = (soc_sbmr & 0x00001800) >> 11;
-
-	/* need ubstract 1 to map to the mmc device id
-	 * see the comments in board_mmc_init function
-	 */
-
-	dev_no -= 2;
-
-	return dev_no;
-}
-
-int mmc_map_to_kernel_blk(int dev_no)
-{
-	return dev_no + 2;
-}
 int board_mmc_getcd(struct mmc *mmc)
 {
 	int ret = 1;
@@ -193,39 +181,7 @@ int board_mmc_init(bd_t *bis)
 
 	return 0;
 }
-
-int check_mmc_autodetect(void)
-{
-	char *autodetect_str = getenv("mmcautodetect");
-
-	if ((autodetect_str != NULL) &&
-		(strcmp(autodetect_str, "yes") == 0)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-void board_late_mmc_env_init(void)
-{
-	char cmd[32];
-	char mmcblk[32];
-	u32 dev_no = mmc_get_env_devno();
-
-	if (!check_mmc_autodetect())
-		return;
-
-	setenv_ulong("mmcdev", dev_no);
-
-	/* Set mmcblk env */
-	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
-		mmc_map_to_kernel_blk(dev_no));
-	setenv("mmcroot", mmcblk);
-
-	sprintf(cmd, "mmc dev %d", dev_no);
-	run_command(cmd, 0);
-}
-
+#endif
 #endif
 
 #define MII_MMD_ACCESS_CTRL_REG		0xd
@@ -233,58 +189,48 @@ void board_late_mmc_env_init(void)
 #define MII_DBG_PORT_REG		0x1d
 #define MII_DBG_PORT2_REG		0x1e
 
-int fecmxc_mii_postcall(int phy)
+static int ar8031_phy_fixup(struct phy_device *phydev)
 {
 	unsigned short val;
 
-	/*
-	 * Due to the i.MX6Q Armadillo2 board HW design,there is
-	 * no 125Mhz clock input from SOC. In order to use RGMII,
-	 * We need enable AR8031 ouput a 125MHz clk from CLK_25M
-	 */
-	miiphy_write("FEC", phy, MII_MMD_ACCESS_CTRL_REG, 0x7);
-	miiphy_write("FEC", phy, MII_MMD_ACCESS_ADDR_DATA_REG, 0x8016);
-	miiphy_write("FEC", phy, MII_MMD_ACCESS_CTRL_REG, 0x4007);
-	miiphy_read("FEC", phy, MII_MMD_ACCESS_ADDR_DATA_REG, &val);
+	/* To enable AR8031 ouput a 125MHz clk from CLK_25M */
+	phy_write(phydev, MDIO_DEVAD_NONE, MII_MMD_ACCESS_CTRL_REG, 0x7);
+	phy_write(phydev, MDIO_DEVAD_NONE, MII_MMD_ACCESS_ADDR_DATA_REG, 0x8016);
+	phy_write(phydev, MDIO_DEVAD_NONE, MII_MMD_ACCESS_CTRL_REG, 0x4007);
+
+	val = phy_read(phydev, MDIO_DEVAD_NONE, MII_MMD_ACCESS_ADDR_DATA_REG);
 	val &= 0xffe3;
 	val |= 0x18;
-	miiphy_write("FEC", phy, MII_MMD_ACCESS_ADDR_DATA_REG, val);
+	phy_write(phydev, MDIO_DEVAD_NONE, MII_MMD_ACCESS_ADDR_DATA_REG, val);
 
-	/* For the RGMII phy, we need enable tx clock delay */
-	miiphy_write("FEC", phy, MII_DBG_PORT_REG, 0x5);
-	miiphy_read("FEC", phy, MII_DBG_PORT2_REG, &val);
+	/* introduce tx clock delay */
+	phy_write(phydev, MDIO_DEVAD_NONE, MII_DBG_PORT_REG, 0x5);
+	val = phy_read(phydev, MDIO_DEVAD_NONE, MII_DBG_PORT2_REG);
 	val |= 0x0100;
-	miiphy_write("FEC", phy, MII_DBG_PORT2_REG, val);
+	phy_write(phydev, MDIO_DEVAD_NONE, MII_DBG_PORT2_REG, val);
 
-	miiphy_write("FEC", phy, MII_BMCR, 0xa100);
+	return 0;
+}
+
+int board_phy_config(struct phy_device *phydev)
+{
+	ar8031_phy_fixup(phydev);
+
+	if (phydev->drv->config)
+		phydev->drv->config(phydev);
 
 	return 0;
 }
 
 int board_eth_init(bd_t *bis)
 {
-	struct eth_device *dev;
-	int ret = cpu_eth_init(bis);
+	setup_iomux_enet();
 
-	if (ret)
-		return ret;
-
-	dev = eth_get_dev_by_name("FEC");
-	if (!dev) {
-		printf("FEC MXC: Unable to get FEC device entry\n");
-		return -EINVAL;
-	}
-
-	ret = fecmxc_register_mii_postcall(dev, fecmxc_mii_postcall);
-	if (ret) {
-		printf("FEC MXC: Unable to register FEC mii postcall\n");
-		return ret;
-	}
-
-	return 0;
+	return cpu_eth_init(bis);
 }
 
 #ifdef CONFIG_USB_EHCI_MX6
+#ifndef CONFIG_DM_USB
 #define USB_OTHERREGS_OFFSET	0x800
 #define UCTRL_PWR_POL		(1 << 9)
 
@@ -320,11 +266,11 @@ int board_ehci_hcd_init(int port)
 	return 0;
 }
 #endif
+#endif
 
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
-	setup_iomux_enet();
 
 	return 0;
 }
@@ -335,7 +281,15 @@ int board_init(void)
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
 #ifdef CONFIG_USB_EHCI_MX6
+#ifndef CONFIG_DM_USB
 	setup_usb();
+#else
+	/*
+	 * set daisy chain for otg_pin_id on 6q.
+	 * for 6dl, this bit is reserved
+	 */
+	imx_iomux_set_gpr_register(1, 13, 1, 1);
+#endif
 #endif
 
 	return 0;
@@ -360,6 +314,7 @@ int checkboard(void)
 
 	return 0;
 }
+
 #ifdef CONFIG_LDO_BYPASS_CHECK
 /* no external pmic, always ldo_enable */
 void ldo_mode_set(int ldo_bypass)

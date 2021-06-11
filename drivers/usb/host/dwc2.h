@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2014 Marek Vasut <marex@denx.de>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __DWC2_H__
@@ -152,6 +151,8 @@ struct dwc2_core_regs {
 #define DWC2_GUSBCFG_ULPI_INT_VBUS_INDICATOR_OFFSET	21
 #define DWC2_GUSBCFG_TERM_SEL_DL_PULSE			(1 << 22)
 #define DWC2_GUSBCFG_TERM_SEL_DL_PULSE_OFFSET		22
+#define DWC2_GUSBCFG_INDICATOR_PASSTHROUGH		(1 << 24)
+#define DWC2_GUSBCFG_INDICATOR_PASSTHROUGH_OFFSET	24
 #define DWC2_GUSBCFG_IC_USB_CAP				(1 << 26)
 #define DWC2_GUSBCFG_IC_USB_CAP_OFFSET			26
 #define DWC2_GUSBCFG_IC_TRAFFIC_PULL_REMOVE		(1 << 27)
@@ -500,6 +501,7 @@ struct dwc2_core_regs {
 #define DWC2_HFNUM_FRNUM_OFFSET				0
 #define DWC2_HFNUM_FRREM_MASK				(0xFFFF << 16)
 #define DWC2_HFNUM_FRREM_OFFSET				16
+#define DWC2_HFNUM_MAX_FRNUM				0x3FFF
 #define DWC2_HPTXSTS_PTXFSPCAVAIL_MASK			(0xFFFF << 0)
 #define DWC2_HPTXSTS_PTXFSPCAVAIL_OFFSET		0
 #define DWC2_HPTXSTS_PTXQSPCAVAIL_MASK			(0xFF << 16)
@@ -536,6 +538,9 @@ struct dwc2_core_regs {
 #define DWC2_HPRT0_PRTPWR_OFFSET			12
 #define DWC2_HPRT0_PRTTSTCTL_MASK			(0xF << 13)
 #define DWC2_HPRT0_PRTTSTCTL_OFFSET			13
+#define DWC2_HPRT0_PRTSPD_HIGH				(0 << 17)
+#define DWC2_HPRT0_PRTSPD_FULL				(1 << 17)
+#define DWC2_HPRT0_PRTSPD_LOW				(2 << 17)
 #define DWC2_HPRT0_PRTSPD_MASK				(0x3 << 17)
 #define DWC2_HPRT0_PRTSPD_OFFSET			17
 #define DWC2_HAINT_CH0					(1 << 0)
@@ -729,6 +734,7 @@ struct dwc2_core_regs {
 #define DWC2_PCGCCTL_DEEP_SLEEP				(1 << 7)
 #define DWC2_PCGCCTL_DEEP_SLEEP_OFFSET			7
 #define DWC2_SNPSID_DEVID_VER_2xx			(0x4f542 << 12)
+#define DWC2_SNPSID_DEVID_VER_3xx			(0x4f543 << 12)
 #define DWC2_SNPSID_DEVID_MASK				(0xfffff << 12)
 #define DWC2_SNPSID_DEVID_OFFSET			12
 
@@ -768,7 +774,9 @@ struct dwc2_core_regs {
 #define DWC2_PHY_TYPE_UTMI		1
 #define DWC2_PHY_TYPE_ULPI		2
 #define CONFIG_DWC2_PHY_TYPE		DWC2_PHY_TYPE_UTMI	/* PHY type */
+#ifndef CONFIG_DWC2_UTMI_WIDTH
 #define CONFIG_DWC2_UTMI_WIDTH		8	/* UTMI bus width (8/16) */
+#endif
 
 #undef CONFIG_DWC2_PHY_ULPI_DDR			/* ULPI PHY uses DDR mode */
 #define CONFIG_DWC2_PHY_ULPI_EXT_VBUS		/* ULPI PHY controls VBUS */

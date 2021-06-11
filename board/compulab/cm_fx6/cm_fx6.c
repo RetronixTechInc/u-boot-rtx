@@ -1,18 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Board functions for Compulab CM-FX6 board
  *
  * Copyright (C) 2014, Compulab Ltd - http://compulab.co.il/
  *
  * Author: Nikita Kiryanov <nikita@compulab.co.il>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
+#include <ahci.h>
 #include <dm.h>
-#include <fsl_esdhc.h>
+#include <dwc_ahsata.h>
+#include <env.h>
+#include <fsl_esdhc_imx.h>
+#include <init.h>
 #include <miiphy.h>
+#include <mtd_node.h>
 #include <netdev.h>
+#include <errno.h>
+#include <usb.h>
 #include <fdt_support.h>
 #include <sata.h>
 #include <splash.h>
@@ -20,12 +26,14 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/mxc_hdmi.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/sata.h>
-#include <asm/imx-common/video.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/sata.h>
+#include <asm/mach-imx/video.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <dm/platform_data/serial_mxc.h>
+#include <dm/device-internal.h>
+#include <jffs2/load_kernel.h>
 #include "common.h"
 #include "../common/eeprom.h"
 #include "../common/common.h"
@@ -37,7 +45,26 @@ static struct splash_location cm_fx6_splash_locations[] = {
 	{
 		.name = "sf",
 		.storage = SPLASH_STORAGE_SF,
+		.flags = SPLASH_STORAGE_RAW,
 		.offset = 0x100000,
+	},
+	{
+		.name = "mmc_fs",
+		.storage = SPLASH_STORAGE_MMC,
+		.flags = SPLASH_STORAGE_FS,
+		.devpart = "2:1",
+	},
+	{
+		.name = "usb_fs",
+		.storage = SPLASH_STORAGE_USB,
+		.flags = SPLASH_STORAGE_FS,
+		.devpart = "0:1",
+	},
+	{
+		.name = "sata_fs",
+		.storage = SPLASH_STORAGE_SATA,
+		.flags = SPLASH_STORAGE_FS,
+		.devpart = "0:1",
 	},
 };
 
@@ -51,49 +78,79 @@ int splash_screen_prepare(void)
 #ifdef CONFIG_IMX_HDMI
 static void cm_fx6_enable_hdmi(struct display_info_t const *dev)
 {
+	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
+	imx_setup_hdmi();
+	setbits_le32(&mxc_ccm->CCGR3, MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK);
 	imx_enable_hdmi_phy();
 }
 
-struct display_info_t const displays[] = {
-	{
-		.bus	= -1,
-		.addr	= 0,
-		.pixfmt	= IPU_PIX_FMT_RGB24,
-		.detect	= detect_hdmi,
-		.enable	= cm_fx6_enable_hdmi,
-		.mode	= {
-			.name           = "HDMI",
-			.refresh        = 60,
-			.xres           = 1024,
-			.yres           = 768,
-			.pixclock       = 40385,
-			.left_margin    = 220,
-			.right_margin   = 40,
-			.upper_margin   = 21,
-			.lower_margin   = 7,
-			.hsync_len      = 60,
-			.vsync_len      = 10,
-			.sync           = FB_SYNC_EXT,
-			.vmode          = FB_VMODE_NONINTERLACED,
-		}
-	},
+static struct display_info_t preset_hdmi_1024X768 = {
+	.bus	= -1,
+	.addr	= 0,
+	.pixfmt	= IPU_PIX_FMT_RGB24,
+	.enable	= cm_fx6_enable_hdmi,
+	.mode	= {
+		.name           = "HDMI",
+		.refresh        = 60,
+		.xres           = 1024,
+		.yres           = 768,
+		.pixclock       = 40385,
+		.left_margin    = 220,
+		.right_margin   = 40,
+		.upper_margin   = 21,
+		.lower_margin   = 7,
+		.hsync_len      = 60,
+		.vsync_len      = 10,
+		.sync           = FB_SYNC_EXT,
+		.vmode          = FB_VMODE_NONINTERLACED,
+	}
 };
-size_t display_count = ARRAY_SIZE(displays);
 
 static void cm_fx6_setup_display(void)
 {
-	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
-	int reg;
+	struct iomuxc *const iomuxc_regs = (struct iomuxc *)IOMUXC_BASE_ADDR;
 
 	enable_ipu_clock();
-	imx_setup_hdmi();
-	reg = __raw_readl(&mxc_ccm->CCGR3);
-	reg |= MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK;
-	writel(reg, &mxc_ccm->CCGR3);
+	clrbits_le32(&iomuxc_regs->gpr[3], MXC_CCM_CCGR3_IPU1_IPU_DI0_MASK);
+}
+
+int board_video_skip(void)
+{
+	int ret;
+	struct display_info_t *preset;
+	char const *panel = env_get("displaytype");
+
+	if (!panel) /* Also accept panel for backward compatibility */
+		panel = env_get("panel");
+
+	if (!panel)
+		return -ENOENT;
+
+	if (!strcmp(panel, "HDMI"))
+		preset = &preset_hdmi_1024X768;
+	else
+		return -EINVAL;
+
+	ret = ipuv3_fb_init(&preset->mode, 0, preset->pixfmt);
+	if (ret) {
+		printf("Can't init display %s: %d\n", preset->mode.name, ret);
+		return ret;
+	}
+
+	preset->enable(preset);
+	printf("Display: %s (%ux%u)\n", preset->mode.name, preset->mode.xres,
+	       preset->mode.yres);
+
+	return 0;
 }
 #else
 static inline void cm_fx6_setup_display(void) {}
 #endif /* CONFIG_VIDEO_IPUV3 */
+
+int ipu_displays_init(void)
+{
+	return board_video_skip();
+}
 
 #ifdef CONFIG_DWC_AHSATA
 static int cm_fx6_issd_gpios[] = {
@@ -158,46 +215,7 @@ static int cm_fx6_setup_issd(void)
 }
 
 #define CM_FX6_SATA_INIT_RETRIES	10
-int sata_initialize(void)
-{
-	int err, i;
 
-	/* Make sure this gpio has logical 0 value */
-	gpio_direction_output(CM_FX6_SATA_PWLOSS_INT, 0);
-	udelay(100);
-	cm_fx6_sata_power(1);
-
-	for (i = 0; i < CM_FX6_SATA_INIT_RETRIES; i++) {
-		err = setup_sata();
-		if (err) {
-			printf("SATA setup failed: %d\n", err);
-			return err;
-		}
-
-		udelay(100);
-
-		err = __sata_initialize();
-		if (!err)
-			break;
-
-		/* There is no device on the SATA port */
-		if (sata_port_status(0, 0) == 0)
-			break;
-
-		/* There's a device, but link not established. Retry */
-	}
-
-	return err;
-}
-
-int sata_stop(void)
-{
-	__sata_stop();
-	cm_fx6_sata_power(0);
-	mdelay(250);
-
-	return 0;
-}
 #else
 static int cm_fx6_setup_issd(void) { return 0; }
 #endif
@@ -302,6 +320,11 @@ static int cm_fx6_setup_usb_otg(void)
 	clrbits_le32(&iomux->gpr[1], IOMUXC_GPR1_OTG_ID_MASK);
 	/* disable ext. charger detect, or it'll affect signal quality at dp. */
 	return gpio_direction_output(SB_FX6_USB_OTG_PWR, 0);
+}
+
+int board_usb_phy_mode(int port)
+{
+	return USB_INIT_HOST;
 }
 
 int board_ehci_hcd_init(int port)
@@ -417,7 +440,7 @@ static int handle_mac_address(char *env_var, uint eeprom_bus)
 	unsigned char enetaddr[6];
 	int rc;
 
-	rc = eth_getenv_enetaddr(env_var, enetaddr);
+	rc = eth_env_get_enetaddr(env_var, enetaddr);
 	if (rc)
 		return 0;
 
@@ -425,10 +448,10 @@ static int handle_mac_address(char *env_var, uint eeprom_bus)
 	if (rc)
 		return rc;
 
-	if (!is_valid_ether_addr(enetaddr))
+	if (!is_valid_ethaddr(enetaddr))
 		return -1;
 
-	return eth_setenv_enetaddr(env_var, enetaddr);
+	return eth_env_set_enetaddr(env_var, enetaddr);
 }
 
 #define SB_FX6_I2C_EEPROM_BUS	0
@@ -489,35 +512,6 @@ static void cm_fx6_setup_gpmi_nand(void)
 static void cm_fx6_setup_gpmi_nand(void) {}
 #endif
 
-#ifdef CONFIG_FSL_ESDHC
-static struct fsl_esdhc_cfg usdhc_cfg[3] = {
-	{USDHC1_BASE_ADDR},
-	{USDHC2_BASE_ADDR},
-	{USDHC3_BASE_ADDR},
-};
-
-static enum mxc_clock usdhc_clk[3] = {
-	MXC_ESDHC_CLK,
-	MXC_ESDHC2_CLK,
-	MXC_ESDHC3_CLK,
-};
-
-int board_mmc_init(bd_t *bis)
-{
-	int i;
-
-	cm_fx6_set_usdhc_iomux();
-	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
-		usdhc_cfg[i].sdhc_clk = mxc_get_clock(usdhc_clk[i]);
-		usdhc_cfg[i].max_bus_width = 4;
-		fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
-		enable_usdhc_clk(1, i);
-	}
-
-	return 0;
-}
-#endif
-
 #ifdef CONFIG_MXC_SPI
 int cm_fx6_setup_ecspi(void)
 {
@@ -529,20 +523,54 @@ int cm_fx6_setup_ecspi(void) { return 0; }
 #endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
+#define USDHC3_PATH	"/soc/aips-bus@02100000/usdhc@02198000/"
+
+static const struct node_info nodes[] = {
+	/*
+	 * Both entries target the same flash chip. The st,m25p compatible
+	 * is used in the vendor device trees, while upstream uses (the
+	 * documented) jedec,spi-nor compatible.
+	 */
+	{ "st,m25p",	MTD_DEV_TYPE_NOR,	},
+	{ "jedec,spi-nor",	MTD_DEV_TYPE_NOR,	},
+};
+
 int ft_board_setup(void *blob, bd_t *bd)
 {
+	u32 baseboard_rev;
+	int nodeoffset;
 	uint8_t enetaddr[6];
+	char baseboard_name[16];
+	int err;
+
+	fdt_shrink_to_minimum(blob, 0); /* Make room for new properties */
 
 	/* MAC addr */
-	if (eth_getenv_enetaddr("ethaddr", enetaddr)) {
+	if (eth_env_get_enetaddr("ethaddr", enetaddr)) {
 		fdt_find_and_setprop(blob,
 				     "/soc/aips-bus@02100000/ethernet@02188000",
 				     "local-mac-address", enetaddr, 6, 1);
 	}
 
-	if (eth_getenv_enetaddr("eth1addr", enetaddr)) {
+	if (eth_env_get_enetaddr("eth1addr", enetaddr)) {
 		fdt_find_and_setprop(blob, "/eth@pcie", "local-mac-address",
 				     enetaddr, 6, 1);
+	}
+
+	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+
+	baseboard_rev = cl_eeprom_get_board_rev(0);
+	err = cl_eeprom_get_product_name((uchar *)baseboard_name, 0);
+	if (err || baseboard_rev == 0)
+		return 0; /* Assume not an early revision SB-FX6m baseboard */
+
+	if (!strncmp("SB-FX6m", baseboard_name, 7) && baseboard_rev <= 120) {
+		nodeoffset = fdt_path_offset(blob, USDHC3_PATH);
+		fdt_delprop(blob, nodeoffset, "cd-gpios");
+		fdt_find_and_setprop(blob, USDHC3_PATH, "broken-cd",
+				     NULL, 0, 1);
+		fdt_find_and_setprop(blob, USDHC3_PATH, "keep-power-in-suspend",
+				     NULL, 0, 1);
 	}
 
 	return 0;
@@ -585,6 +613,38 @@ int board_init(void)
 
 	cm_fx6_setup_display();
 
+	/* This should be done in the MMC driver when MX6 has a clock driver */
+#ifdef CONFIG_FSL_ESDHC_IMX
+	if (IS_ENABLED(CONFIG_BLK)) {
+		int i;
+
+		cm_fx6_set_usdhc_iomux();
+		for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++)
+			enable_usdhc_clk(1, i);
+	}
+#endif
+
+	return 0;
+}
+
+int board_late_init(void)
+{
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	char baseboard_name[16];
+	int err;
+
+	if (is_mx6dq())
+		env_set("board_rev", "MX6Q");
+	else if (is_mx6dl())
+		env_set("board_rev", "MX6DL");
+
+	err = cl_eeprom_get_product_name((uchar *)baseboard_name, 0);
+	if (err)
+		return 0;
+
+	if (!strncmp("SB-FX6m", baseboard_name, 7))
+		env_set("board_name", "Utilite");
+#endif
 	return 0;
 }
 
@@ -594,7 +654,14 @@ int checkboard(void)
 	return 0;
 }
 
-void dram_init_banksize(void)
+int misc_init_r(void)
+{
+	cl_print_pcb_info();
+
+	return 0;
+}
+
+int dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
@@ -626,6 +693,8 @@ void dram_init_banksize(void)
 		gd->bd->bi_dram[1].size = 0x7FF00000;
 		break;
 	}
+
+	return 0;
 }
 
 int dram_init(void)
@@ -650,7 +719,7 @@ int dram_init(void)
 
 u32 get_board_rev(void)
 {
-	return cl_eeprom_get_board_rev();
+	return cl_eeprom_get_board_rev(CONFIG_SYS_I2C_EEPROM_BUS);
 }
 
 static struct mxc_serial_platdata cm_fx6_mxc_serial_plat = {
@@ -661,3 +730,66 @@ U_BOOT_DEVICE(cm_fx6_serial) = {
 	.name	= "serial_mxc",
 	.platdata = &cm_fx6_mxc_serial_plat,
 };
+
+#if CONFIG_IS_ENABLED(AHCI)
+static int sata_imx_probe(struct udevice *dev)
+{
+	int i, err;
+
+	/* Make sure this gpio has logical 0 value */
+	gpio_direction_output(CM_FX6_SATA_PWLOSS_INT, 0);
+	udelay(100);
+	cm_fx6_sata_power(1);
+
+	for (i = 0; i < CM_FX6_SATA_INIT_RETRIES; i++) {
+		err = setup_sata();
+		if (err) {
+			printf("SATA setup failed: %d\n", err);
+			return err;
+		}
+
+		udelay(100);
+
+		err = dwc_ahsata_probe(dev);
+		if (!err)
+			break;
+
+		/* There is no device on the SATA port */
+		if (sata_dm_port_status(0, 0) == 0)
+			break;
+
+		/* There's a device, but link not established. Retry */
+		device_remove(dev, DM_REMOVE_NORMAL);
+	}
+
+	return 0;
+}
+
+static int sata_imx_remove(struct udevice *dev)
+{
+	cm_fx6_sata_power(0);
+	mdelay(250);
+
+	return 0;
+}
+
+struct ahci_ops sata_imx_ops = {
+	.port_status = dwc_ahsata_port_status,
+	.reset	= dwc_ahsata_bus_reset,
+	.scan	= dwc_ahsata_scan,
+};
+
+static const struct udevice_id sata_imx_ids[] = {
+	{ .compatible = "fsl,imx6q-ahci" },
+	{ }
+};
+
+U_BOOT_DRIVER(sata_imx) = {
+	.name		= "dwc_ahci",
+	.id		= UCLASS_AHCI,
+	.of_match	= sata_imx_ids,
+	.ops		= &sata_imx_ops,
+	.probe		= sata_imx_probe,
+	.remove		= sata_imx_remove,  /* reset bus to stop it */
+};
+#endif /* AHCI */

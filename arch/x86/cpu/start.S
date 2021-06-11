@@ -1,13 +1,24 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  *  U-Boot - x86 Startup Code
+ *
+ * This is always the first code to run from the U-Boot source. To spell it out:
+ *
+ * 1. When TPL (Tertiary Program Loader) is enabled, the boot flow is
+ * TPL->SPL->U-Boot and this file is used for TPL. Then start_from_tpl.S is used
+ * for SPL and start_from_spl.S is used for U-Boot proper.
+ *
+ * 2. When SPL (Secondary Program Loader) is enabled, but not TPL, the boot
+ * flow is SPL->U-Boot and this file is used for SPL. Then start_from_spl.S is
+ * used for U-Boot proper.
+ *
+ * 3. When neither TPL nor SPL is used, this file is used for U-Boot proper.
  *
  * (C) Copyright 2008-2011
  * Graeme Russ, <graeme.russ@gmail.com>
  *
  * (C) Copyright 2002
  * Daniel Engström, Omicron Ceti AB, <daniel@omicron.se>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -17,19 +28,20 @@
 #include <asm/processor-flags.h>
 #include <generated/generic-asm-offsets.h>
 #include <generated/asm-offsets.h>
+#include <linux/linkage.h>
 
-.section .text
+.section .text.start
 .code32
 .globl _start
 .type _start, @function
 .globl _x86boot_start
 _x86boot_start:
 	/*
-	 * This is the fail safe 32-bit bootstrap entry point. The
-	 * following code is not executed from a cold-reset (actually, a
-	 * lot of it is, but from real-mode after cold reset. It is
-	 * repeated here to put the board into a state as close to cold
-	 * reset as necessary)
+	 * This is the fail-safe 32-bit bootstrap entry point.
+	 *
+	 * This code is used when booting from another boot loader like
+	 * coreboot or EFI. So we repeat some of the same init found in
+	 * start16.
 	 */
 	cli
 	cld
@@ -40,20 +52,32 @@ _x86boot_start:
 	movl	%eax, %cr0
 	wbinvd
 
-	/* Tell 32-bit code it is being entered from an in-RAM copy */
-	movw	$GD_FLG_WARM_BOOT, %bx
-	jmp	1f
-_start:
 	/*
-	 * This is the 32-bit cold-reset entry point. Initialize %bx to 0
-	 * in case we're preceeded by some sort of boot stub.
+	 * Zero the BIST (Built-In Self Test) value since we don't have it.
+	 * It must be 0 or the previous loader would have reported an error.
 	 */
-	movw	$GD_FLG_COLD_BOOT, %bx
-1:
+	movl	$0, %ebp
+
+	jmp	1f
+
+	/* Add a way for tools to discover the _start entry point */
+	.align	4
+	.long	0x12345678
+_start:
+	/* This is the 32-bit cold-reset entry point, coming from start16 */
+
 	/* Save BIST */
 	movl	%eax, %ebp
+1:
 
-	/* Load the segement registes to match the gdt loaded in start16.S */
+	/* Save table pointer */
+	movl	%ecx, %esi
+
+#ifdef CONFIG_X86_LOAD_FROM_32_BIT
+	lgdt	gdt_ptr2
+#endif
+
+	/* Load the segement registers to match the GDT loaded in start16.S */
 	movl	$(X86_GDT_ENTRY_32BIT_DS * X86_GDT_ENTRY_SIZE), %eax
 	movw	%ax, %fs
 	movw	%ax, %ds
@@ -64,7 +88,11 @@ _start:
 	/* Clear the interrupt vectors */
 	lidt	blank_idt_ptr
 
-	/* Early platform init (setup gpio, etc ) */
+	/*
+	 * Critical early platform init - generally not used, we prefer init
+	 * to happen later when we have a console, in case something goes
+	 * wrong.
+	 */
 	jmp	early_board_init
 .globl early_board_init_ret
 early_board_init_ret:
@@ -74,19 +102,18 @@ early_board_init_ret:
 	jmp	car_init
 .globl car_init_ret
 car_init_ret:
-#ifndef CONFIG_HAVE_FSP
+#ifdef CONFIG_USE_CAR
 	/*
 	 * We now have CONFIG_SYS_CAR_SIZE bytes of Cache-As-RAM (or SRAM,
 	 * or fully initialised SDRAM - we really don't care which)
 	 * starting at CONFIG_SYS_CAR_ADDR to be used as a temporary stack
-	 * and early malloc area. The MRC requires some space at the top.
+	 * and early malloc() area. The MRC requires some space at the top.
 	 *
 	 * Stack grows down from top of CAR. We have:
 	 *
 	 * top-> CONFIG_SYS_CAR_ADDR + CONFIG_SYS_CAR_SIZE
 	 *	MRC area
-	 *	global_data
-	 *	x86 global descriptor table
+	 *	global_data with x86 global descriptor table
 	 *	early malloc area
 	 *	stack
 	 * bottom-> CONFIG_SYS_CAR_ADDR
@@ -97,63 +124,53 @@ car_init_ret:
 #endif
 #else
 	/*
-	 * When we get here after car_init, esp points to a temporary stack
-	 * and esi holds the HOB list address returned by the FSP.
+	 * U-Boot enters here twice. For the first time it comes from
+	 * car_init_done() with esp points to a temporary stack and esi
+	 * set to zero. For the second time it comes from fsp_init_done()
+	 * with esi holding the HOB list address returned by the FSP.
 	 */
 #endif
+	/* Set up global data */
+	mov	%esp, %eax
+	call	board_init_f_alloc_reserve
+	mov	%eax, %esp
+	call	board_init_f_init_reserve
 
-	/* Reserve space on stack for global data */
-	subl	$GENERATED_GBL_DATA_SIZE, %esp
+#ifdef CONFIG_DEBUG_UART
+	call	debug_uart_init
+#endif
 
-	/* Align global data to 16-byte boundary */
-	andl	$0xfffffff0, %esp
-	post_code(POST_START_STACK)
-
-	/* Zero the global data since it won't happen later */
-	xorl	%eax, %eax
-	movl	$GENERATED_GBL_DATA_SIZE, %ecx
-	movl	%esp, %edi
-	rep	stosb
+	/* Get address of global_data */
+	mov	%fs:0, %edx
+#if defined(CONFIG_USE_HOB) && !defined(CONFIG_USE_CAR)
+	/* Store the HOB list if we have one */
+	test	%esi, %esi
+	jz	skip_hob
+	movl	%esi, GD_HOB_LIST(%edx)
 
 #ifdef CONFIG_HAVE_FSP
-	/* Store HOB list */
-	movl	%esp, %edx
-	addl	$GD_HOB_LIST, %edx
-	movl	%esi, (%edx)
+	/*
+	 * After fsp_init() returns, the stack has already been switched to a
+	 * place within system memory as defined by CONFIG_FSP_TEMP_RAM_ADDR.
+	 * Enlarge the size of malloc() pool before relocation since we have
+	 * plenty of memory now.
+	 */
+	subl	$CONFIG_FSP_SYS_MALLOC_F_LEN, %esp
+	movl	%esp, GD_MALLOC_BASE(%edx)
 #endif
-
-	/* Setup first parameter to setup_gdt, pointer to global_data */
-	movl	%esp, %eax
-
-	/* Reserve space for global descriptor table */
-	subl	$X86_GDT_SIZE, %esp
-
-	/* Align temporary global descriptor table to 16-byte boundary */
-	andl	$0xfffffff0, %esp
-	movl	%esp, %ecx
-
-#if defined(CONFIG_SYS_MALLOC_F_LEN)
-	subl	$CONFIG_SYS_MALLOC_F_LEN, %esp
-	movl	%eax, %edx
-	addl	$GD_MALLOC_BASE, %edx
-	movl	%esp, (%edx)
+skip_hob:
+#else
+	/* Store table pointer */
+	movl	%esi, GD_TABLE(%edx)
 #endif
 	/* Store BIST */
-	movl	%eax, %edx
-	addl	$GD_BIST, %edx
-	movl	%ebp, (%edx)
-
-	/* Set second parameter to setup_gdt */
-	movl	%ecx, %edx
-
-	/* Setup global descriptor table so gd->xyz works */
-	call	setup_gdt
+	movl	%ebp, GD_BIST(%edx)
 
 	/* Set parameter to board_init_f() to boot flags */
 	post_code(POST_START_DONE)
 	xorl	%eax, %eax
 
-	/* Enter, U-boot! */
+	/* Enter, U-Boot! */
 	call	board_init_f
 
 	/* indicate (lack of) progress */
@@ -174,51 +191,33 @@ board_init_f_r_trampoline:
 	/* Stack grows down from top of SDRAM */
 	movl	%eax, %esp
 
-	/* Reserve space on stack for global data */
-	subl	$GENERATED_GBL_DATA_SIZE, %esp
-
-	/* Align global data to 16-byte boundary */
-	andl	$0xfffffff0, %esp
-
-	/* Setup first parameter to memcpy (and setup_gdt) */
-	movl	%esp, %eax
-
-	/* Setup second parameter to memcpy */
-	fs movl 0, %edx
-
-	/* Set third parameter to memcpy */
-	movl	$GENERATED_GBL_DATA_SIZE, %ecx
-
-	/* Copy global data from CAR to SDRAM stack */
-	call	memcpy
-
-	/* Reserve space for global descriptor table */
-	subl	$X86_GDT_SIZE, %esp
-
-	/* Align global descriptor table to 16-byte boundary */
-	andl	$0xfffffff0, %esp
-
-	/* Set second parameter to setup_gdt */
-	movl	%esp, %edx
-
-	/* Setup global descriptor table so gd->xyz works */
-	call	setup_gdt
-
-	/* Set if we need to disable CAR */
-.weak	car_uninit
-	movl	$car_uninit, %eax
-	cmpl	$0, %eax
-	jz	1f
-
+	/* See if we need to disable CAR */
 	call	car_uninit
-1:
-	/* Re-enter U-Boot by calling board_init_f_r */
+
+	/* Re-enter U-Boot by calling board_init_f_r() */
 	call	board_init_f_r
+
+#ifdef CONFIG_TPL
+.globl jump_to_spl
+.type jump_to_spl, @function
+jump_to_spl:
+	/* Reset stack to the top of CAR space */
+	movl	$(CONFIG_SYS_CAR_ADDR + CONFIG_SYS_CAR_SIZE - 4), %esp
+#ifdef CONFIG_DCACHE_RAM_MRC_VAR_SIZE
+	subl	$CONFIG_DCACHE_RAM_MRC_VAR_SIZE, %esp
+#endif
+
+	jmp	*%eax
+#endif
 
 die:
 	hlt
 	jmp	die
 	hlt
+
+WEAK(car_uninit)
+	ret
+ENDPROC(car_uninit)
 
 blank_idt_ptr:
 	.word	0		/* limit */
@@ -226,9 +225,10 @@ blank_idt_ptr:
 
 	.p2align	2	/* force 4-byte alignment */
 
+	/* Add a multiboot header so U-Boot can be loaded by GRUB2 */
 multiboot_header:
 	/* magic */
-	.long	0x1BADB002
+	.long	0x1badb002
 	/* flags */
 	.long	(1 << 16)
 	/* checksum */
@@ -243,3 +243,71 @@ multiboot_header:
 	.long	0
 	/* entry addr */
 	.long	CONFIG_SYS_TEXT_BASE
+
+#ifdef CONFIG_X86_LOAD_FROM_32_BIT
+	/*
+	 * The following Global Descriptor Table is just enough to get us into
+	 * 'Flat Protected Mode' - It will be discarded as soon as the final
+	 * GDT is setup in a safe location in RAM
+	 */
+gdt_ptr2:
+	.word	0x1f		/* limit (31 bytes = 4 GDT entries - 1) */
+	.long	gdt_rom2	/* base */
+
+	/* Some CPUs are picky about GDT alignment... */
+	.align	16
+.globl gdt_rom2
+gdt_rom2:
+	/*
+	 * The GDT table ...
+	 *
+	 *	 Selector	Type
+	 *	 0x00		NULL
+	 *	 0x08		Unused
+	 *	 0x10		32bit code
+	 *	 0x18		32bit data/stack
+	 */
+	/* The NULL Desciptor - Mandatory */
+	.word	0x0000		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x00		/* access */
+	.byte	0x00		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+
+	/* Unused Desciptor - (matches Linux) */
+	.word	0x0000		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x00		/* access */
+	.byte	0x00		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+
+	/*
+	 * The Code Segment Descriptor:
+	 * - Base   = 0x00000000
+	 * - Size   = 4GB
+	 * - Access = Present, Ring 0, Exec (Code), Readable
+	 * - Flags  = 4kB Granularity, 32-bit
+	 */
+	.word	0xffff		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x9b		/* access */
+	.byte	0xcf		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+
+	/*
+	 * The Data Segment Descriptor:
+	 * - Base   = 0x00000000
+	 * - Size   = 4GB
+	 * - Access = Present, Ring 0, Non-Exec (Data), Writable
+	 * - Flags  = 4kB Granularity, 32-bit
+	 */
+	.word	0xffff		/* limit_low */
+	.word	0x0000		/* base_low */
+	.byte	0x00		/* base_middle */
+	.byte	0x93		/* access */
+	.byte	0xcf		/* flags + limit_high */
+	.byte	0x00		/* base_high */
+#endif

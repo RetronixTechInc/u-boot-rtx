@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2010-2013 Freescale Semiconductor, Inc.
  * Copyright (C) 2014, Bachmann electronic GmbH
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -10,16 +9,17 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux.h>
+#include <env.h>
 #include <malloc.h>
 #include <asm/arch/mx6-pins.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/sata.h>
-#include <asm/imx-common/mxc_i2c.h>
-#include <asm/imx-common/boot_mode.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/sata.h>
+#include <asm/mach-imx/mxc_i2c.h>
+#include <asm/mach-imx/boot_mode.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/sys_proto.h>
 #include <mmc.h>
-#include <fsl_esdhc.h>
+#include <fsl_esdhc_imx.h>
 #include <netdev.h>
 #include <i2c.h>
 #include <pca953x.h>
@@ -120,6 +120,42 @@ static void setup_iomux_features(void)
 		ARRAY_SIZE(feature_pads));
 }
 
+#define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
+
+/* I2C2 - EEPROM */
+static struct i2c_pads_info i2c_pad_info1 = {
+	.scl = {
+		.i2c_mode = MX6_PAD_EIM_EB2__I2C2_SCL | PC,
+		.gpio_mode = MX6_PAD_EIM_EB2__GPIO2_IO30 | PC,
+		.gp = IMX_GPIO_NR(2, 30)
+	},
+	.sda = {
+		.i2c_mode = MX6_PAD_EIM_D16__I2C2_SDA | PC,
+		.gpio_mode = MX6_PAD_EIM_D16__GPIO3_IO16 | PC,
+		.gp = IMX_GPIO_NR(3, 16)
+	}
+};
+
+/* I2C3 - IO expander  */
+static struct i2c_pads_info i2c_pad_info2 = {
+	.scl = {
+		.i2c_mode = MX6_PAD_EIM_D17__I2C3_SCL | PC,
+		.gpio_mode = MX6_PAD_EIM_D17__GPIO3_IO17 | PC,
+		.gp = IMX_GPIO_NR(3, 17)
+	},
+	.sda = {
+		.i2c_mode = MX6_PAD_EIM_D18__I2C3_SDA | PC,
+		.gpio_mode = MX6_PAD_EIM_D18__GPIO3_IO18 | PC,
+		.gp = IMX_GPIO_NR(3, 18)
+	}
+};
+
+static void setup_iomux_i2c(void)
+{
+	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
+	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
+}
+
 static void ccgr_init(void)
 {
 	struct mxc_ccm_reg *ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
@@ -133,17 +169,6 @@ static void ccgr_init(void)
 	writel(0x000003FF, &ccm->CCGR6);
 }
 
-static void gpr_init(void)
-{
-	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
-
-	/* enable AXI cache for VDOA/VPU/IPU */
-	writel(0xF00000CF, &iomux->gpr[4]);
-	/* set IPU AXI-id0 Qos=0xf(bypass) AXI-id1 Qos=0x7 */
-	writel(0x007F007F, &iomux->gpr[6]);
-	writel(0x007F007F, &iomux->gpr[7]);
-}
-
 int board_early_init_f(void)
 {
 	ccgr_init();
@@ -151,6 +176,7 @@ int board_early_init_f(void)
 
 	setup_iomux_uart();
 	setup_iomux_spi();
+	setup_iomux_i2c();
 	setup_iomux_features();
 
 	return 0;
@@ -236,26 +262,6 @@ int board_mmc_init(bd_t *bis)
 	return 0;
 }
 
-#define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
-
-/* I2C3 - IO expander  */
-static struct i2c_pads_info i2c_pad_info2 = {
-	.scl = {
-		.i2c_mode = MX6_PAD_EIM_D17__I2C3_SCL | PC,
-		.gpio_mode = MX6_PAD_EIM_D17__GPIO3_IO17 | PC,
-		.gp = IMX_GPIO_NR(3, 17)
-	},
-	.sda = {
-		.i2c_mode = MX6_PAD_EIM_D18__I2C3_SDA | PC,
-		.gpio_mode = MX6_PAD_EIM_D18__GPIO3_IO18 | PC,
-		.gp = IMX_GPIO_NR(3, 18)
-	}
-};
-
-static iomux_v3_cfg_t const pwm_pad[] = {
-	MX6_PAD_SD1_CMD__PWM4_OUT | MUX_PAD_CTRL(OUTPUT_40OHM),
-};
-
 static void leds_on(void)
 {
 	/* turn on all possible leds connected via GPIO expander */
@@ -284,29 +290,33 @@ int board_eth_init(bd_t *bis)
 
 	bus = fec_get_miibus(base, -1);
 	if (!bus)
-		return 0;
+		return -EINVAL;
 
 	/* scan phy 0 and 5 */
 	phydev = phy_find_by_mask(bus, 0x21, PHY_INTERFACE_MODE_RGMII);
 	if (!phydev) {
-		free(bus);
-		return 0;
+		ret = -EINVAL;
+		goto free_bus;
 	}
 
 	/* depending on the phy address we can detect our board version */
 	if (phydev->addr == 0)
-		setenv("boardver", "");
+		env_set("boardver", "");
 	else
-		setenv("boardver", "mr");
+		env_set("boardver", "mr");
 
 	printf("using phy at %d\n", phydev->addr);
 	ret = fec_probe(bis, -1, base, bus, phydev);
-	if (ret) {
-		printf("FEC MXC: %s:failed\n", __func__);
-		free(phydev);
-		free(bus);
-	}
+	if (ret)
+		goto free_phydev;
+
 	return 0;
+
+free_phydev:
+	free(phydev);
+free_bus:
+	free(bus);
+	return ret;
 }
 
 int board_init(void)
@@ -315,11 +325,9 @@ int board_init(void)
 
 	backlight_lcd_off();
 
-	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info2);
-
 	leds_on();
 
-#ifdef CONFIG_CMD_SATA
+#ifdef CONFIG_SATA
 	setup_sata();
 #endif
 

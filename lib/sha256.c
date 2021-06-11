@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * FIPS-180-2 compliant SHA-256 implementation
  *
  * Copyright (C) 2001-2003  Christophe Devine
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef USE_HOSTCC
@@ -14,6 +13,12 @@
 #endif /* USE_HOSTCC */
 #include <watchdog.h>
 #include <u-boot/sha256.h>
+
+const uint8_t sha256_der_prefix[SHA256_DER_LEN] = {
+	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
+	0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
+	0x00, 0x04, 0x20
+};
 
 /*
  * 32-bit integer manipulation macros (big endian)
@@ -283,4 +288,44 @@ void sha256_csum_wd(const unsigned char *input, unsigned int ilen,
 #endif
 
 	sha256_finish(&ctx, output);
+}
+
+/*
+ * Output = HMAC-SHA-256( input buffer, hmac key )
+ */
+void sha256_hmac(const unsigned char *key, int keylen,
+	       const unsigned char *input, unsigned int ilen,
+	       unsigned char *output)
+{
+	int i;
+	sha256_context ctx;
+	unsigned char k_ipad[64];
+	unsigned char k_opad[64];
+	unsigned char tmpbuf[32];
+
+	memset (k_ipad, 0x36, 64);
+	memset (k_opad, 0x5C, 64);
+
+	for (i = 0; i < keylen; i++) {
+		if (i >= 64)
+			break;
+
+		k_ipad[i] ^= key[i];
+		k_opad[i] ^= key[i];
+	}
+
+	sha256_starts (&ctx);
+	sha256_update (&ctx, k_ipad, 64);
+	sha256_update (&ctx, input, ilen);
+	sha256_finish (&ctx, tmpbuf);
+
+	sha256_starts (&ctx);
+	sha256_update (&ctx, k_opad, 64);
+	sha256_update (&ctx, tmpbuf, 32);
+	sha256_finish (&ctx, output);
+
+	memset (k_ipad, 0, 64);
+	memset (k_opad, 0, 64);
+	memset (tmpbuf, 0, 32);
+	memset (&ctx, 0, sizeof (sha256_context));
 }

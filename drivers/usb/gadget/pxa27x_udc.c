@@ -1,20 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * PXA27x USB device driver for u-boot.
  *
  * Copyright (C) 2007 Rodolfo Giometti <giometti@linux.it>
  * Copyright (C) 2007 Eurotech S.p.A.  <info@eurotech.it>
  * Copyright (C) 2008 Vivek Kutal      <vivek.kutal@azingo.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
 #include <common.h>
-#include <config.h>
-#include <asm/byteorder.h>
-#include <usbdevice.h>
 #include <asm/arch/hardware.h>
+#include <asm/byteorder.h>
 #include <asm/io.h>
+#include <usbdevice.h>
 #include <usb/pxa27x_udc.h>
 #include <usb/udc.h>
 

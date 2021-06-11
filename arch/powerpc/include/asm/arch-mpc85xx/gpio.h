@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright 2014 Freescale Semiconductor, Inc.
  */
 
 /*
@@ -11,5 +12,15 @@
 
 #ifndef __ASM_ARCH_MX85XX_GPIO_H
 #define __ASM_ARCH_MX85XX_GPIO_H
+
+#ifndef CONFIG_MPC85XX_GPIO
+#include <asm/mpc85xx_gpio.h>
+#endif
+
+struct mpc8xxx_gpio_plat {
+	ulong addr;
+	unsigned long size;
+	uint ngpios;
+};
 
 #endif

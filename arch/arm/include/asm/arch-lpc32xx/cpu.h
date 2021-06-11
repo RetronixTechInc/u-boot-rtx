@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 by Vladimir Zapolskiy <vz@mleia.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _LPC32XX_CPU_H
@@ -27,7 +26,7 @@
 #define HS_UART7_BASE	0x4001C000	/* High speed UART 7 registers base */
 #define RTC_BASE	0x40024000	/* RTC registers base               */
 #define GPIO_BASE	0x40028000	/* GPIO registers base              */
-#define MUX_BASE	0x40028100	/* MUX registers base               */
+#define MUX_BASE	0x40028000	/* MUX registers base               */
 #define WDT_BASE	0x4003C000	/* Watchdog timer registers base    */
 #define TIMER0_BASE	0x40044000	/* Timer0 registers base            */
 #define TIMER1_BASE	0x4004C000	/* Timer1 registers base            */

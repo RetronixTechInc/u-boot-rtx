@@ -6,10 +6,12 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "freescale"
 
-config SYS_SOC
-	default "mx6"
-
 config SYS_CONFIG_NAME
 	default "mx6sxsabresd"
 
+config MX6SXSABRESD_EMMC_REWORK
+	bool "Select for the board with eMMC rework"
+
+config SYS_TEXT_BASE
+	default 0x87800000
 endif

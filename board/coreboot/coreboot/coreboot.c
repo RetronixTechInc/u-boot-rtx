@@ -1,24 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2013 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
+ * Copyright (C) 2018, Bin Meng <bmeng.cn@gmail.com>
  */
 
 #include <common.h>
-#include <cros_ec.h>
-#include <asm/gpio.h>
+#include <init.h>
 
-int arch_early_init_r(void)
+int board_early_init_r(void)
 {
-#ifdef CONFIG_CROS_EC
-	if (cros_ec_board_init())
-		return -1;
-#endif
+	/*
+	 * Make sure PCI bus is enumerated so that peripherals on the PCI bus
+	 * can be discovered by their drivers
+	 */
+	pci_init();
 
 	return 0;
-}
-
-void setup_pch_gpios(u16 gpiobase, const struct pch_gpio_map *gpio)
-{
-	return;
 }

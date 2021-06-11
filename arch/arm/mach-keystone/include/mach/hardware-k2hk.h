@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * K2HK: SoC definitions
  *
  * (C) Copyright 2012-2014
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_HARDWARE_K2HK_H
@@ -14,10 +13,6 @@
 
 /* PA SS Registers */
 #define KS2_PASS_BASE			0x02000000
-
-/* PLL control registers */
-#define KS2_DDR3BPLLCTL0		(KS2_DEVICE_STATE_CTRL_BASE + 0x368)
-#define KS2_DDR3BPLLCTL1		(KS2_DEVICE_STATE_CTRL_BASE + 0x36C)
 
 /* Power and Sleep Controller (PSC) Domains */
 #define KS2_LPSC_MOD			0

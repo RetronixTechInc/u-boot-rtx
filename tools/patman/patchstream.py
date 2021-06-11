@@ -1,8 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0+
 # Copyright (c) 2011 The Chromium OS Authors.
 #
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
+import datetime
+import math
 import os
 import re
 import shutil
@@ -14,7 +15,7 @@ import gitutil
 from series import Series
 
 # Tags that we detect and remove
-re_remove = re.compile('^BUG=|^TEST=|^BRANCH=|^Change-Id:|^Review URL:'
+re_remove = re.compile('^BUG=|^TEST=|^BRANCH=|^Review URL:'
     '|Reviewed-on:|Commit-\w*:')
 
 # Lines which are allowed after a TEST= line
@@ -31,6 +32,9 @@ re_cover_cc = re.compile('^Cover-letter-cc: *(.*)')
 
 # Patch series tag
 re_series_tag = re.compile('^Series-([a-z-]*): *(.*)')
+
+# Change-Id will be used to generate the Message-Id and then be stripped
+re_change_id = re.compile('^Change-Id: *(.*)')
 
 # Commit series tag
 re_commit_tag = re.compile('^Commit-([a-z-]*): *(.*)')
@@ -111,6 +115,14 @@ class PatchStream:
         if self.commit and self.is_log:
             self.series.AddCommit(self.commit)
             self.commit = None
+        # If 'END' is missing in a 'Cover-letter' section, and that section
+        # happens to show up at the very end of the commit message, this is
+        # the chance for us to fix it up.
+        if self.in_section == 'cover' and self.is_log:
+            self.series.cover = self.section
+            self.in_section = None
+            self.skip_blank = True
+            self.section = []
 
     def ProcessLine(self, line):
         """Process a single line of a patch file or commit log
@@ -148,7 +160,9 @@ class PatchStream:
 
         # Handle state transition and skipping blank lines
         series_tag_match = re_series_tag.match(line)
+        change_id_match = re_change_id.match(line)
         commit_tag_match = re_commit_tag.match(line)
+        cover_match = re_cover.match(line)
         cover_cc_match = re_cover_cc.match(line)
         signoff_match = re_signoff.match(line)
         tag_match = None
@@ -166,6 +180,33 @@ class PatchStream:
                 self.state += 1
         elif commit_match:
             self.state = STATE_MSG_HEADER
+
+        # If a tag is detected, or a new commit starts
+        if series_tag_match or commit_tag_match or change_id_match or \
+           cover_match or cover_cc_match or signoff_match or \
+           self.state == STATE_MSG_HEADER:
+            # but we are already in a section, this means 'END' is missing
+            # for that section, fix it up.
+            if self.in_section:
+                self.warn.append("Missing 'END' in section '%s'" % self.in_section)
+                if self.in_section == 'cover':
+                    self.series.cover = self.section
+                elif self.in_section == 'notes':
+                    if self.is_log:
+                        self.series.notes += self.section
+                elif self.in_section == 'commit-notes':
+                    if self.is_log:
+                        self.commit.notes += self.section
+                else:
+                    self.warn.append("Unknown section '%s'" % self.in_section)
+                self.in_section = None
+                self.skip_blank = True
+                self.section = []
+            # but we are already in a change list, that means a blank line
+            # is missing, fix it up.
+            if self.in_change:
+                self.warn.append("Missing 'blank line' in section 'Series-changes'")
+                self.in_change = 0
 
         # If we are in a section, keep collecting lines until we see END
         if self.in_section:
@@ -202,7 +243,7 @@ class PatchStream:
             self.skip_blank = False
 
         # Detect the start of a cover letter section
-        elif re_cover.match(line):
+        elif cover_match:
             self.in_section = 'cover'
             self.skip_blank = False
 
@@ -239,6 +280,16 @@ class PatchStream:
                 self.AddToSeries(line, name, value)
                 self.skip_blank = True
 
+        # Detect Change-Id tags
+        elif change_id_match:
+            value = change_id_match.group(1)
+            if self.is_log:
+                if self.commit.change_id:
+                    raise ValueError("%s: Two Change-Ids: '%s' vs. '%s'" %
+                        (self.commit.hash, self.commit.change_id, value))
+                self.commit.change_id = value
+            self.skip_blank = True
+
         # Detect Commit-xxx tags
         elif commit_tag_match:
             name = commit_tag_match.group(1)
@@ -271,15 +322,6 @@ class PatchStream:
 
         # Well that means this is an ordinary line
         else:
-            pos = 1
-            # Look for ugly ASCII characters
-            for ch in line:
-                # TODO: Would be nicer to report source filename and line
-                if ord(ch) > 0x80:
-                    self.warn.append("Line %d/%d ('%s') has funny ascii char" %
-                        (self.linenum, pos, line))
-                pos += 1
-
             # Look for space before tab
             m = re_space_before_tab.match(line)
             if m:
@@ -318,6 +360,47 @@ class PatchStream:
             self.warn.append('Found %d lines after TEST=' %
                     self.lines_after_test)
 
+    def WriteMessageId(self, outfd):
+        """Write the Message-Id into the output.
+
+        This is based on the Change-Id in the original patch, the version,
+        and the prefix.
+
+        Args:
+            outfd: Output stream file object
+        """
+        if not self.commit.change_id:
+            return
+
+        # If the count is -1 we're testing, so use a fixed time
+        if self.commit.count == -1:
+            time_now = datetime.datetime(1999, 12, 31, 23, 59, 59)
+        else:
+            time_now = datetime.datetime.now()
+
+        # In theory there is email.utils.make_msgid() which would be nice
+        # to use, but it already produces something way too long and thus
+        # will produce ugly commit lines if someone throws this into
+        # a "Link:" tag in the final commit.  So (sigh) roll our own.
+
+        # Start with the time; presumably we wouldn't send the same series
+        # with the same Change-Id at the exact same second.
+        parts = [time_now.strftime("%Y%m%d%H%M%S")]
+
+        # These seem like they would be nice to include.
+        if 'prefix' in self.series:
+            parts.append(self.series['prefix'])
+        if 'version' in self.series:
+            parts.append("v%s" % self.series['version'])
+
+        parts.append(str(self.commit.count + 1))
+
+        # The Change-Id must be last, right before the @
+        parts.append(self.commit.change_id)
+
+        # Join parts together with "." and write it out.
+        outfd.write('Message-Id: <%s@changeid>\n' % '.'.join(parts))
+
     def ProcessStream(self, infd, outfd):
         """Copy a stream from infd to outfd, filtering out unwanting things.
 
@@ -331,6 +414,9 @@ class PatchStream:
         fname = None
         last_fname = None
         re_fname = re.compile('diff --git a/(.*) b/.*')
+
+        self.WriteMessageId(outfd)
+
         while True:
             line = infd.readline()
             if not line:
@@ -375,7 +461,7 @@ def GetMetaDataForList(commit_range, git_dir=None, count=None,
     if not series:
         series = Series()
     series.allow_overwrite = allow_overwrite
-    params = gitutil.LogCmd(commit_range,reverse=True, count=count,
+    params = gitutil.LogCmd(commit_range, reverse=True, count=count,
                             git_dir=git_dir)
     stdout = command.RunPipe([params], capture=True).stdout
     ps = PatchStream(series, is_log=True)
@@ -396,6 +482,19 @@ def GetMetaData(start, count):
     """
     return GetMetaDataForList('HEAD~%d' % start, None, count)
 
+def GetMetaDataForTest(text):
+    """Process metadata from a file containing a git log. Used for tests
+
+    Args:
+        text:
+    """
+    series = Series()
+    ps = PatchStream(series, is_log=True)
+    for line in text.splitlines():
+        ps.ProcessLine(line)
+    ps.Finalize()
+    return series
+
 def FixPatch(backup_dir, fname, series, commit):
     """Fix up a patch file, by adding/removing as required.
 
@@ -412,8 +511,8 @@ def FixPatch(backup_dir, fname, series, commit):
         A list of errors, or [] if all ok.
     """
     handle, tmpname = tempfile.mkstemp()
-    outfd = os.fdopen(handle, 'w')
-    infd = open(fname, 'r')
+    outfd = os.fdopen(handle, 'w', encoding='utf-8')
+    infd = open(fname, 'r', encoding='utf-8')
     ps = PatchStream(series)
     ps.commit = commit
     ps.ProcessStream(infd, outfd)
@@ -441,15 +540,15 @@ def FixPatches(series, fnames):
     for fname in fnames:
         commit = series.commits[count]
         commit.patch = fname
+        commit.count = count
         result = FixPatch(backup_dir, fname, series, commit)
         if result:
-            print '%d warnings for %s:' % (len(result), fname)
+            print('%d warnings for %s:' % (len(result), fname))
             for warn in result:
-                print '\t', warn
+                print('\t', warn)
             print
         count += 1
-    print 'Cleaned %d patches' % count
-    return series
+    print('Cleaned %d patches' % count)
 
 def InsertCoverLetter(fname, series, count):
     """Inserts a cover letter with the required info into patch 0
@@ -468,8 +567,10 @@ def InsertCoverLetter(fname, series, count):
     prefix = series.GetPatchPrefix()
     for line in lines:
         if line.startswith('Subject:'):
-            # TODO: if more than 10 patches this should save 00/xx, not 0/xx
-            line = 'Subject: [%s 0/%d] %s\n' % (prefix, count, text[0])
+            # if more than 10 or 100 patches, it should say 00/xx, 000/xxx, etc
+            zero_repeat = int(math.log10(count)) + 1
+            zero = '0' * zero_repeat
+            line = 'Subject: [%s %s/%d] %s\n' % (prefix, zero, count, text[0])
 
         # Insert our cover letter
         elif line.startswith('*** BLURB HERE ***'):

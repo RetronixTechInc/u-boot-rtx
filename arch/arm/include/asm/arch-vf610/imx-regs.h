@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2013-2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_ARCH_IMX_REGS_H__
@@ -52,6 +51,7 @@
 #define SAI2_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00031000)
 #define SAI3_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00032000)
 #define CRC_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00033000)
+#define USBC0_BASE_ADDR     (AIPS0_BASE_ADDR + 0x00034000)
 #define PDB_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00036000)
 #define PIT_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00037000)
 #define FTM0_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00038000)
@@ -65,27 +65,40 @@
 #define QSPI0_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00044000)
 #define IOMUXC_BASE_ADDR	(AIPS0_BASE_ADDR + 0x00048000)
 #define ANADIG_BASE_ADDR	(AIPS0_BASE_ADDR + 0x00050000)
-#define SCSCM_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00052000)
+#define USB_PHY0_BASE_ADDR  (AIPS0_BASE_ADDR + 0x00050800)
+#define USB_PHY1_BASE_ADDR  (AIPS0_BASE_ADDR + 0x00050C00)
+#define SCSC_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00052000)
+#define DCU0_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00058000)
 #define ASRC_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00060000)
 #define SPDIF_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00061000)
 #define ESAI_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00062000)
 #define ESAI_FIFO_BASE_ADDR	(AIPS0_BASE_ADDR + 0x00063000)
 #define WDOG_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00065000)
-#define I2C0_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00066000)
+#define I2C1_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00066000)
+#define I2C2_BASE_ADDR		(AIPS0_BASE_ADDR + 0x00067000)
+#define I2C3_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000E6000)
+#define I2C4_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000E7000)
 #define WKUP_BASE_ADDR		(AIPS0_BASE_ADDR + 0x0006A000)
 #define CCM_BASE_ADDR		(AIPS0_BASE_ADDR + 0x0006B000)
 #define GPC_BASE_ADDR		(AIPS0_BASE_ADDR + 0x0006C000)
 #define VREG_DIG_BASE_ADDR	(AIPS0_BASE_ADDR + 0x0006D000)
 #define SRC_BASE_ADDR		(AIPS0_BASE_ADDR + 0x0006E000)
 #define CMU_BASE_ADDR		(AIPS0_BASE_ADDR + 0x0006F000)
+#define GPIO0_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000FF000)
+#define GPIO1_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000FF040)
+#define GPIO2_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000FF080)
+#define GPIO3_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000FF0C0)
+#define GPIO4_BASE_ADDR		(AIPS0_BASE_ADDR + 0x000FF100)
 
 /* AIPS 1 */
 #define OCOTP_BASE_ADDR		(AIPS1_BASE_ADDR + 0x00025000)
 #define DDR_BASE_ADDR		(AIPS1_BASE_ADDR + 0x0002E000)
 #define ESDHC0_BASE_ADDR	(AIPS1_BASE_ADDR + 0x00031000)
 #define ESDHC1_BASE_ADDR	(AIPS1_BASE_ADDR + 0x00032000)
+#define USBC1_BASE_ADDR     (AIPS1_BASE_ADDR + 0x00034000)
 #define ENET_BASE_ADDR		(AIPS1_BASE_ADDR + 0x00050000)
 #define ENET1_BASE_ADDR		(AIPS1_BASE_ADDR + 0x00051000)
+#define DCU1_BASE_ADDR		(AIPS1_BASE_ADDR + 0x00058000)
 #define NFC_BASE_ADDR		(AIPS1_BASE_ADDR + 0x00060000)
 
 #define QSPI0_AMBA_BASE		0x20000000
@@ -136,7 +149,7 @@
 #define DDRMC_CR18_TCKE(v)				((v) & 0x7)
 #define DDRMC_CR20_AP_EN				(1 << 24)
 #define DDRMC_CR21_TRCD_INT(v)				(((v) & 0xff) << 16)
-#define DDRMC_CR21_TRAS_LOCKOUT				(1 << 8)
+#define DDRMC_CR21_TRAS_LOCKOUT(v)			((v) << 8)
 #define DDRMC_CR21_CCMAP_EN				1
 #define DDRMC_CR22_TDAL(v)				(((v) & 0x3f) << 16)
 #define DDRMC_CR23_BSTLEN(v)				(((v) & 0x7) << 24)
@@ -187,21 +200,34 @@
 #define DDRMC_CR78_Q_FULLNESS(v)			(((v) & 0x7) << 24)
 #define DDRMC_CR78_BUR_ON_FLY_BIT(v)			((v) & 0xf)
 #define DDRMC_CR79_CTLUPD_AREF(v)			(((v) & 0x1) << 24)
-#define DDRMC_CR82_INT_MASK				0x10000000
-#define DDRMC_CR87_ODT_WR_MAPCS0			(1 << 24)
-#define DDRMC_CR87_ODT_RD_MAPCS0			(1 << 16)
+#define DDRMC_CR80_MC_INIT_COMPLETE			(1 << 8)
+#define DDRMC_CR82_INT_MASK				(1 << 28)
+#define DDRMC_CR87_ODT_WR_MAPCS0(v)			((v) << 24)
+#define DDRMC_CR87_ODT_RD_MAPCS0(v)			((v) << 16)
 #define DDRMC_CR88_TODTL_CMD(v)				(((v) & 0x1f) << 16)
 #define DDRMC_CR89_AODT_RWSMCS(v)			((v) & 0xf)
 #define DDRMC_CR91_R2W_SMCSDL(v)			(((v) & 0x7) << 16)
+#define DDRMC_CR93_SW_LVL_MODE_OFF			(8)
+#define DDRMC_CR93_SW_LVL_MODE(v) (((v) & 0x3) << DDRMC_CR93_SW_LVL_MODE_OFF)
+#define DDRMC_CR93_SWLVL_LOAD				BIT(16)
+#define DDRMC_CR93_SWLVL_START				BIT(24)
+#define DDRMC_CR94_SWLVL_EXIT				BIT(0)
+#define DDRMC_CR94_SWLVL_OP_DONE			BIT(8)
+#define DDRMC_CR94_SWLVL_RESP_0_OFF			(24)
+#define DDRMC_CR95_SWLVL_RESP_1_OFF			(0)
 #define DDRMC_CR96_WLMRD(v)				(((v) & 0x3f) << 8)
 #define DDRMC_CR96_WLDQSEN(v)				((v) & 0x3f)
 #define DDRMC_CR97_WRLVL_EN				(1 << 24)
-#define DDRMC_CR98_WRLVL_DL_0				(0)
-#define DDRMC_CR99_WRLVL_DL_1				(0)
+#define DDRMC_CR98_WRLVL_DL_0(v)			((v) & 0xffff)
+#define DDRMC_CR99_WRLVL_DL_1(v)			((v) & 0xffff)
+#define DDRMC_CR101_PHY_RDLVL_EDGE_OFF			(24)
+#define DDRMC_CR101_PHY_RDLVL_EDGE BIT(DDRMC_CR101_PHY_RDLVL_EDGE_OFF)
 #define DDRMC_CR102_RDLVL_GT_REGEN			(1 << 16)
 #define DDRMC_CR102_RDLVL_REG_EN			(1 << 8)
-#define DDRMC_CR105_RDLVL_DL_0(v)			(((v) & 0xff) << 8)
+#define DDRMC_CR105_RDLVL_DL_0_OFF			(8)
+#define DDRMC_CR105_RDLVL_DL_0(v) (((v) & 0xff) << DDRMC_CR105_RDLVL_DL_0_OFF)
 #define DDRMC_CR106_RDLVL_GTDL_0(v)			((v) & 0xff)
+#define DDRMC_CR110_RDLVL_DL_1_OFF			(0)
 #define DDRMC_CR110_RDLVL_DL_1(v)			((v) & 0xff)
 #define DDRMC_CR110_RDLVL_GTDL_1(v)			(((v) & 0xff) << 16)
 #define DDRMC_CR114_RDLVL_GTDL_2(v)			(((v) & 0xffff) << 8)
@@ -226,7 +252,7 @@
 #define DDRMC_CR132_RDLAT_ADJ(v)			((v) & 0x3f)
 #define DDRMC_CR137_PHYCTL_DL(v)			(((v) & 0xf) << 16)
 #define DDRMC_CR138_PHY_WRLV_MXDL(v)			(((v) & 0xffff) << 16)
-#define DDRMC_CR138_PHYDRAM_CK_EN(v)			(((v) & 0x8) << 8)
+#define DDRMC_CR138_PHYDRAM_CK_EN(v)			(((v) & 0x7) << 8)
 #define DDRMC_CR139_PHY_WRLV_RESPLAT(v)			(((v) & 0xff) << 24)
 #define DDRMC_CR139_PHY_WRLV_LOAD(v)			(((v) & 0xff) << 16)
 #define DDRMC_CR139_PHY_WRLV_DLL(v)			(((v) & 0xff) << 8)
@@ -263,6 +289,16 @@
 #define SRC_SRSR_WDOG_M4				(0x1 << 4)
 #define SRC_SRSR_WDOG_A5				(0x1 << 3)
 #define SRC_SRSR_POR_RST				(0x1 << 0)
+#define SRC_SBMR1_BOOTCFG1_SDMMC        BIT(6)
+#define SRC_SBMR1_BOOTCFG1_MMC          BIT(4)
+#define SRC_SBMR2_BMOD_MASK             (0x3 << 24)
+#define SRC_SBMR2_BMOD_SHIFT            24
+#define SRC_SBMR2_BMOD_FUSES            0x0
+#define SRC_SBMR2_BMOD_SERIAL           0x1
+#define SRC_SBMR2_BMOD_RCON             0x2
+
+/* Slow Clock Source Controller Module (SCSC) */
+#define SCSC_SOSC_CTR_SOSC_EN            0x1
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>
@@ -409,34 +445,6 @@ struct fuse_bank4_regs {
 	u32 rsvd7[3];
 };
 
-/* UART */
-struct lpuart_fsl {
-	u8 ubdh;
-	u8 ubdl;
-	u8 uc1;
-	u8 uc2;
-	u8 us1;
-	u8 us2;
-	u8 uc3;
-	u8 ud;
-	u8 uma1;
-	u8 uma2;
-	u8 uc4;
-	u8 uc5;
-	u8 ued;
-	u8 umodem;
-	u8 uir;
-	u8 reserved;
-	u8 upfifo;
-	u8 ucfifo;
-	u8 usfifo;
-	u8 utwfifo;
-	u8 utcfifo;
-	u8 urwfifo;
-	u8 urcfifo;
-	u8 rsvd[28];
-};
-
 /* MSCM Interrupt Router */
 struct mscm_ir {
 	u32 ircp0ir;
@@ -446,6 +454,24 @@ struct mscm_ir {
 	u32 rsvd2[23];
 	u16 irsprc[112];
 	u16 rsvd3[848];
+};
+
+/* SCSC */
+struct scsc_reg {
+	u32 sirc_ctr;
+	u32 sosc_ctr;
+};
+
+/* MSCM */
+struct mscm {
+	u32 cpxtype;
+	u32 cpxnum;
+	u32 cpxmaster;
+	u32 cpxcount;
+	u32 cpxcfg0;
+	u32 cpxcfg1;
+	u32 cpxcfg2;
+	u32 cpxcfg3;
 };
 
 #endif	/* __ASSEMBLER__*/

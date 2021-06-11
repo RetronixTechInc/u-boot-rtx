@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2012 Freescale Semiconductor, Inc.
  *	Roy Zang <tie-fei.zang@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* MAXFRM - maximum frame length */
@@ -12,7 +11,7 @@
 #include <phy.h>
 #include <asm/types.h>
 #include <asm/io.h>
-#include <asm/fsl_memac.h>
+#include <fsl_memac.h>
 
 #include "fm.h"
 
@@ -84,12 +83,16 @@ static void memac_set_interface_mode(struct fsl_enet_mac *mac,
 		if_mode |= IF_MODE_GMII;
 		break;
 	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
 		if_mode |= (IF_MODE_GMII | IF_MODE_RG);
 		break;
 	case PHY_INTERFACE_MODE_RMII:
 		if_mode |= (IF_MODE_GMII | IF_MODE_RM);
 		break;
 	case PHY_INTERFACE_MODE_SGMII:
+	case PHY_INTERFACE_MODE_SGMII_2500:
 	case PHY_INTERFACE_MODE_QSGMII:
 		if_mode &= ~IF_MODE_MASK;
 		if_mode |= (IF_MODE_GMII);
@@ -105,7 +108,10 @@ static void memac_set_interface_mode(struct fsl_enet_mac *mac,
 	if (type != PHY_INTERFACE_MODE_XGMII)
 		if_mode |= IF_MODE_EN_AUTO;
 
-	if (type == PHY_INTERFACE_MODE_RGMII) {
+	if (type == PHY_INTERFACE_MODE_RGMII ||
+	    type == PHY_INTERFACE_MODE_RGMII_ID ||
+	    type == PHY_INTERFACE_MODE_RGMII_RXID ||
+	    type == PHY_INTERFACE_MODE_RGMII_TXID) {
 		if_mode &= ~IF_MODE_EN_AUTO;
 		if_mode &= ~IF_MODE_SETSP_MASK;
 		switch (speed) {
