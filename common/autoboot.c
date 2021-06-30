@@ -17,6 +17,7 @@
 
 #ifdef is_boot_from_usb
 #include <environment.h>
+#include <rtx/efm32.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -312,6 +313,7 @@ const char *bootdelay_process(void)
 	bootdelay = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
 
 #if defined(is_boot_from_usb)
+	vSet_efm32_watchdog( 0 ) ;
 	if (is_boot_from_usb() && env_get("bootcmd_mfg")) {
 		disconnect_from_pc();
 		printf("Boot from USB for mfgtools\n");
