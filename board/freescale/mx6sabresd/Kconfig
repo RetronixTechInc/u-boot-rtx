@@ -12,4 +12,102 @@ config SYS_CONFIG_NAME
 config SYS_TEXT_BASE
     default 0x17800000
 
+config BOOTARGS_GEN
+	string "bootagrs parameter"
+	default "init=/init"
+	help
+	  bootargs parameter.
+	  
+config DEFAULT_MAC02
+	string "mac02 default address"
+	default "06:67:ba:04:fd:44"
+	help
+	  smsc mac default address.
+
+config DEFAULT_MAC01
+	string "mac01 default address"
+	default "1E:ED:19:27:1A:B3"
+	help
+	  MAC address.
+
+config BOOTARGS_APP
+	string "bootargs append"
+	default ""
+	help
+	  bootargs append
+
+config DEF_LOADADDR
+	hex "loadaddr"
+	default "0x10800000"
+	help
+	  loadaddr.
+
+config DTB_LOADADDR
+	hex "dtb_loadaddr"
+	default "0x11C00000"
+	help
+	  dtb_loadaddr.
+
+config RD_LOADADDR
+	hex "rd_loadaddr"
+	default "0x11D00000"
+	help
+	  rd_loadaddr.
+
+config BOOTSEL_FUNC_PASSWORD
+	bool "Bootsel password function."
+	default n
+	help
+	  Uboot passwork funciton.
+
+config BOOTSEL_FUNC_CHANG_PW
+	bool "Bootsel change password function."
+	default n
+	help
+	  Uboot change passwork funciton.
+
+config BOOTSEL_FUNC_UD_EXTSD
+	bool "Bootsel scan extsd function."
+	default n
+	help
+	  Uboot scan external sd card magic code funciton.
+
+config BOOTSEL_FUNC_UD_USB
+	bool "Bootsel scan usb function."
+	default n
+	help
+	  Uboot scan usb storage magic code funciton.
+
+config BOOTSEL_FUNC_MENU
+	bool "Bootsel menu function."
+	default n
+	help
+	  Uboot munu funciton.It is u/U, r/R, a/A and p/P mode.
+	  u/U mode : roption is update.
+	  r/R mode : roption is recovery.
+	  a/A mode : this is android recovery mode.
+	  p/P mode : this is change password mode.
+
+config BOOTSEL_FUNC_CHG_STORAGE
+	bool "Bootsel autodetect storage function."
+	default n
+	help
+	  Uboot autodetect upstart device number funciton.
+	  usdhc1 is unknow.
+	  usdhc2 is mmcblk2
+	  usdhc3 is mmcblk1
+	  usdhc4 is mmcblk0
+
+config BOOTSEL_FUNC_SCANFILE_SELF
+	bool "Bootsel scan self function."
+	default n
+	help
+	  Uboot scan self magic code funciton.
+
+config MCU_WATCHDOG_TIME
+	hex "uboot to os start-up time."
+	default "0"
+	help
+	  uboot to os start-up time.disable if set is 0.
+
 endif

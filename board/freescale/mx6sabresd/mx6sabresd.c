@@ -1456,6 +1456,10 @@ int board_late_init(void)
 {
 vSet_efm32_watchdog( 0 ) ;
 
+#ifdef CONFIG_BOOT_SYSTEM
+	bootsel_init() ;
+#endif
+
 #ifdef CONFIG_CMD_BMODE
 	add_board_boot_modes(board_boot_modes);
 #endif
