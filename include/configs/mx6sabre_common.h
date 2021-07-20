@@ -398,7 +398,7 @@
 #endif
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_ENV_OFFSET		(896 * 1024)
+#define CONFIG_ENV_OFFSET		(1024 * 1024)
 #elif defined(CONFIG_ENV_IS_IN_SPI_FLASH)
 #define CONFIG_ENV_OFFSET              (896 * 1024)
 #define CONFIG_ENV_SECT_SIZE           (64 * 1024)
