@@ -43,9 +43,18 @@
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_BOOTCOMMAND
 
+#define CONFIG_BAUDRATE		115200
+
 #define CONFIG_EXTRA_ENV_SETTINGS	\
-	"bootcmd=run bootargs_base; setenv ethaddr ${mac1_val}; setenv fec_addr ${mac1_val}; boota ${fastboot_dev}\0"	\
-	"bootargs_base=setenv bootargs console=ttymxc1,115200 init=/init video=mxcfb0:dev=hdmi,1920x1080M@60,if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off video=mxcfb3:off vmalloc=128M androidboot.console=ttymxc1 consoleblank=0 androidboot.hardware=freescale cma=320M galcore.contiguousSize=33554432 loop.max_part=7 hpddis smsc_mac=${mac2_val}\0" \
+	"bootcmd=run bootargs_base set_display bootargs_console set_mac1 set_mac2 set_hdmi_attr; boota ${fastboot_dev}\0"	\
+	"bootargs_base=setenv bootargs init=/init consoleblank=0 androidboot.hardware=freescale cma=320M galcore.contiguousSize=33554432 loop.max_part=7\0" \
+	"set_display=run " CONFIG_GUIPORT "\0" \
+	"bootargs_console=setenv bootargs ${bootargs} console=" CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONSOLE_DEV "\0"	\
+	"set_mac1=setenv ethaddr ${mac1_val}; setenv fec_addr ${mac1_val}\0" \
+	"set_mac2=setenv bootargs ${bootargs} smsc_mac=${mac2_val}\0" \
+	"set_hdmi_attr=setenv bootargs ${bootargs} ${hdmi.attr}\0" \
+	"hdmi.attr=hpddis\0"	\
+	"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
 	"splashpos=m,m\0"	\
 	"fdt_high=0xffffffff\0"	\
 	"initrd_high=0xffffffff\0" \

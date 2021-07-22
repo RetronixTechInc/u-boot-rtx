@@ -179,9 +179,10 @@ int env_load(void)
 
 		printf("Loading Environment from %s... ", drv->name);
 		ret = drv->load();
-		if (ret)
+		if (ret) {
 			printf("Failed (%d)\n", ret);
-		else
+			env_save();
+		} else
 			printf("OK\n");
 
 		if (!ret)

@@ -23,26 +23,24 @@
 	#define CONFIG_BOOT_SYSTEM_MAX_EXTSD                  4
 #endif
 
-#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET	0x800
+#define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET		0x800
 #define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE       	0x5400
 #define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET 	0x5C00
 #define CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE   	0x400
-#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET 		0x6400
-#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE   		0x400
-#define CONFIG_BOOT_SYSTEM_KERNEL_OFFSET     		0x6800
-#define CONFIG_BOOT_SYSTEM_KERNEL_SIZE       		0x5800
+#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET 			0x6400
+#define CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE   			0x400
+#define CONFIG_BOOT_SYSTEM_KERNEL_OFFSET     			0x6800
+#define CONFIG_BOOT_SYSTEM_KERNEL_SIZE       			0x5800
 #define CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET         	0xC000
 #define CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE           	0x1000
 #define CONFIG_BOOT_SYSTEM_RECOVERY_FS_OFFSET         	0xD000
 #define CONFIG_BOOT_SYSTEM_RECOVERY_FS_SIZE           	0x2000
-#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET		0xF000
-#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE		0x10000
+#define CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET			0xF000
+#define CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE			0x10000
 #define CONFIG_BOOT_SYSTEM_LOGO_OFFSET                	0x1F000
 #define CONFIG_BOOT_SYSTEM_LOGO_SIZE                  	0x1000
 
-#ifndef CONFIG_DM_I2C
 #define CONFIG_MCU_WDOG_BUS	2
-#endif
 
 #define CONFIG_MACH_TYPE	3980
 #define CONFIG_MXC_UART_BASE	UART2_BASE
@@ -58,6 +56,16 @@
 #endif
 
 #include "mx6sabre_common.h"
+
+/* update and recovery parameter*/
+/* usb or sd card */
+#define CONFIG_ENG_BOOTARGS \
+	"setenv bootargs ${bootargs} root=/dev/ram0 rdinit=/sbin/init rdisk_option=${roption} storage=${rstorage} mmcroot=" CONFIG_UPDATEROOT
+#define CONFIG_ENG_BOOTCMD  \
+	"run bootargs_base set_display bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR) " "  __stringify(CONFIG_DTB_LOADADDR)
+#define CONFIG_ENG_DTB_BOOTCMD  \
+	"run bootargs_base set_display bootargs_console ext_args; bootm " __stringify(CONFIG_LOADADDR) " " __stringify(CONFIG_RD_LOADADDR) " "  __stringify(CONFIG_DTB_LOADADDR)
+
 
 /* Falcon Mode */
 #define CONFIG_SPL_FS_LOAD_ARGS_NAME	"args"

@@ -495,11 +495,10 @@ int bootsel_load_backupsystem( void )
 }
 #endif
 
-#if 0
 static int bootsel_load_system_from_files( const char *ifname ,  const char *dev_part_str , int needcheckcode )
 {
 	u32 blksize ;
-	
+
 	if ( needcheckcode )
 	{
 		blksize = bootsel_load( FS_TYPE_ANY , ifname , dev_part_str , "check_code" , 0 , 0 , (unsigned long)CONFIG_LOADADDR ) ;
@@ -512,26 +511,24 @@ static int bootsel_load_system_from_files( const char *ifname ,  const char *dev
 			return 0 ;
 		}
 	}
-	
 	if ( ! bootsel_load( FS_TYPE_ANY , ifname , dev_part_str , "uImage-recovery" , 0 , 0 , (unsigned long)CONFIG_LOADADDR ) )
 	{
 		goto run_backup_command ;
 	}
-	if ( ! image_check_magic( (const image_header_t *)CONFIG_LOADADDR ) )
-	{
-		return 0 ;
-	}
+	//skip kernel image header check
+//	if ( ! image_check_magic( (const image_header_t *)CONFIG_LOADADDR ) )
+//	{
+//		return 0 ;
+//	}
 	//env_set( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm" ) ;
-	
 	if ( ! bootsel_load( FS_TYPE_ANY , ifname , dev_part_str , "uramdisk-recovery.img" , 0 , 0 , (unsigned long)CONFIG_RD_LOADADDR ) )
 	{
 		return 0 ;
 	}
-	if ( ! image_check_magic( (const image_header_t *)CONFIG_RD_LOADADDR ) )
-	{
-		return 0 ;
-	}
-
+//	if ( ! image_check_magic( (const image_header_t *)CONFIG_RD_LOADADDR ) )
+//	{
+//		return 0 ;
+//	}
 	env_set( "bootcmd_update"  , CONFIG_ENG_BOOTCMD ) ;
 	
 	if ( bootsel_load( FS_TYPE_ANY , ifname , dev_part_str , "recovery.dtb" , 0 , 0  , (unsigned long)CONFIG_DTB_LOADADDR ) )
@@ -541,20 +538,17 @@ static int bootsel_load_system_from_files( const char *ifname ,  const char *dev
 			env_set( "bootcmd_update"  , CONFIG_ENG_DTB_BOOTCMD ) ;
 		}
 	}
-
 	printf("boot from %s [%s]\n" , ifname , dev_part_str ) ;
 	run_command( "run bootcmd_update" , 0 ) ;
 	return 0 ;
 
 run_backup_command :
 	/* run from backup system */
-	env_set( "roption" , "recovery" ) ;
-	bootsel_load_backupsystem( ) ;
+	//env_set( "roption" , "recovery" ) ;
+	//bootsel_load_backupsystem( ) ;
 	return 0 ;
 }
-#endif
 
-#if 0
 static int bootsel_load_system_from_emmc( int sdid )
 {
 	int needcheckcode = 0 ;
@@ -568,14 +562,14 @@ static int bootsel_load_system_from_emmc( int sdid )
 	{
 		return 0 ;
 	}
-				
+
 	if( mmc_init( extsd_dev ) != 0 )
 	{
 		return 0 ;
 	}
 
 #ifdef CONFIG_BISHOP_MAGIC_PACKAGE
-	if ( blk_dread(mmc_get_blk_desc(extsd_dev) , 0 , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
+	if ( blk_dread( mmc_get_blk_desc(extsd_dev) , 0 , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 	{
 		return 0 ;
 	}
@@ -585,7 +579,7 @@ static int bootsel_load_system_from_emmc( int sdid )
 		goto run_old_command ;
 	}	
 #endif
-	if ( blk_dread(mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (void *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
+	if ( blk_dread( mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (void *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 	{
 		return 0 ;
 	}
@@ -596,28 +590,28 @@ static int bootsel_load_system_from_emmc( int sdid )
 		goto run_file_command ;
 	}
 
-	if ( ! blk_dread(mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE , (void *)CONFIG_LOADADDR ) )
+	if ( ! blk_dread( mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE , (void *)CONFIG_LOADADDR ) )
 	{
 		goto run_file_command ;
 	}
-	if ( ! image_check_magic( (const image_header_t *)CONFIG_LOADADDR ) )
-	{
-		goto run_file_command ;
-	}
+//	if ( ! image_check_magic( (const image_header_t *)CONFIG_LOADADDR ) )
+//	{
+//		goto run_file_command ;
+//	}
 	//env_set( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm" ) ;
 	
-	if ( ! blk_dread(mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET , CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE , (void *)CONFIG_RD_LOADADDR ) )
+	if ( ! blk_dread( mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET , CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE , (void *)CONFIG_RD_LOADADDR ) )
 	{	
 		goto run_file_command ;
 	}
-	if ( ! image_check_magic( (const image_header_t *)CONFIG_RD_LOADADDR ) )
-	{
-		goto run_file_command ;
-	}
+//	if ( ! image_check_magic( (const image_header_t *)CONFIG_RD_LOADADDR ) )
+//	{
+//		goto run_file_command ;
+//	}
 	
 	env_set( "bootcmd_update"  , CONFIG_ENG_BOOTCMD ) ;
 	
-	if ( blk_dread(mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE , (void *)CONFIG_DTB_LOADADDR ) )
+	if ( blk_dread( mmc_get_blk_desc(extsd_dev) , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE , (void *)CONFIG_DTB_LOADADDR ) )
 	{
 		if ( fdt_magic((const void *)CONFIG_DTB_LOADADDR) == FDT_MAGIC)
 		{
@@ -658,9 +652,7 @@ run_boot_exit :
 	env_set( "bootcmd_update" , NULL ) ;
 	return 0 ;
 }
-#endif
 
-#if 0
 static int bootsel_load_system_from_usb( int usbid )
 {
 	int needcheckcode = 0 ;
@@ -673,24 +665,23 @@ static int bootsel_load_system_from_usb( int usbid )
 	}
 	
 	sprintf( usbidstr , "%d" , usbid ) ;
-	stor_dev = &usb_dev_desc[usbid];
+	stor_dev = blk_get_devnum_by_type(IF_TYPE_USB, usbid ) ;
 	if ( !stor_dev )
 	{
 		return 0 ;
 	}
 #ifdef CONFIG_BISHOP_MAGIC_PACKAGE
-	if ( blkdev->block_read(mmc_get_blk_desc(stor_dev) , 0 , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
+	if ( blk_dread( stor_dev , 0 , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 	{
 		return 0 ;
 	}
-
 	if( !memcmp( (const char *)CONFIG_LOADADDR , CONFIG_RTX_MAGIC_PACKAGE , strlen( CONFIG_RTX_MAGIC_PACKAGE ) ))
 	{
 		goto run_old_command ;
 	}
 //	printf("read: %s, sizeof: %d, strlen: %d,strlen2: %d\n ", CONFIG_LOADADDR , sizeof(CONFIG_LOADADDR), strlen(CONFIG_LOADADDR),strlen( CONFIG_RTX_MAGIC_PACKAGE ) ) ;
 #endif
-	if ( blk_dread(mmc_get_blk_desc(stor_dev) , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
+	if ( blk_dread( stor_dev , CONFIG_BOOT_SYSTEM_SETTING_OFFSET , CONFIG_BOOT_SYSTEM_SETTING_SIZE , (ulong *)CONFIG_LOADADDR ) != CONFIG_BOOT_SYSTEM_SETTING_SIZE )
 	{
 		return 0 ;
 	}
@@ -701,33 +692,33 @@ static int bootsel_load_system_from_usb( int usbid )
 		goto run_file_command ;
 	}
 	
-	if ( ! blk_dread(mmc_get_blk_desc(stor_dev) , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE , (ulong *)CONFIG_LOADADDR ) )
+	if ( ! blk_dread( stor_dev , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_SIZE , (ulong *)CONFIG_LOADADDR ) )
 	{
 		goto run_file_command ;
 	}
-	if ( ! image_check_magic( (const image_header_t *)CONFIG_LOADADDR ) )
-	{
-		goto run_file_command ;
-	}
+	//if ( ! image_check_magic( (const image_header_t *)CONFIG_LOADADDR ) )
+	//{
+	//	goto run_file_command ;
+	//}
 	//env_set( "bootcmd_update"  , "run bootargs_base ext_args set_display set_mem; bootm" ) ;
 
-	if ( ! blk_dread(mmc_get_blk_desc(stor_dev) , CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET , CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE , (ulong *)CONFIG_RD_LOADADDR ) )
+	if ( ! blk_dread( stor_dev , CONFIG_BOOT_SYSTEM_UPDATE_FS_OFFSET , CONFIG_BOOT_SYSTEM_UPDATE_FS_SIZE , (ulong *)CONFIG_RD_LOADADDR ) )
 	{
 		goto run_file_command ;
 	}
-	if ( ! image_check_magic( (const image_header_t *)CONFIG_RD_LOADADDR ) )
-	{
-		goto run_file_command ;
-	}
+	//if ( ! image_check_magic( (const image_header_t *)CONFIG_RD_LOADADDR ) )
+	//{
+	//	goto run_file_command ;
+	//}
 	env_set( "bootcmd_update"  , CONFIG_ENG_BOOTCMD ) ;
 
-	if ( blk_dread(mmc_get_blk_desc(stor_dev) , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE , (ulong *)CONFIG_DTB_LOADADDR ) )
-	{
-		if ( fdt_magic((const void *)CONFIG_DTB_LOADADDR) == FDT_MAGIC)
-		{
-			env_set( "bootcmd_update"  , CONFIG_ENG_DTB_BOOTCMD ) ;
-		}
-	}
+//	if ( blk_dread( stor_dev , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_OFFSET , CONFIG_BOOT_SYSTEM_RECOVERY_KERNEL_DTB_SIZE , (ulong *)CONFIG_DTB_LOADADDR ) )
+//	{
+//		if ( fdt_magic((const void *)CONFIG_DTB_LOADADDR) == FDT_MAGIC)
+//		{
+//			env_set( "bootcmd_update"  , CONFIG_ENG_DTB_BOOTCMD ) ;
+//		}
+//	}
 
 	printf("boot from usb\n") ;
 	env_set( "rstorage" , "usb" ) ;
@@ -760,9 +751,7 @@ run_boot_exit :
 	env_set( "bootcmd_update"  , NULL ) ;
 	return 0 ;
 }
-#endif
 
-#if 0
 static void bootsel_checkstorage_mmc( void )
 {
 #ifdef CONFIG_CMD_MMC
@@ -782,9 +771,7 @@ static void bootsel_checkstorage_mmc( void )
 	}
 #endif
 }
-#endif
 
-#if 0
 static void bootsel_checkstorage_usb( void )
 {
 #ifdef CONFIG_USB_STORAGE
@@ -799,11 +786,11 @@ static void bootsel_checkstorage_usb( void )
 		return;
 	else
 		usbid = usb_stor_scan(1) ;
-////	bootsel_load_system_from_usb( usbid ) ;
+
+	bootsel_load_system_from_usb( usbid ) ;
 	
 #endif	
 }
-#endif
 
 int bootsel_checkstorage( void )
 {
@@ -811,8 +798,8 @@ int bootsel_checkstorage( void )
 	char* s ;
 	
 	gd->flags &= ~GD_FLG_SILENT;
-	//bootsel_checkstorage_mmc( ) ;
-	//bootsel_checkstorage_usb( ) ;
+	bootsel_checkstorage_mmc( ) ;
+	bootsel_checkstorage_usb( ) ;
 	
 	s = env_get("silent") ;
 	if(s && strncmp(s, "1", 1) == 0 )
