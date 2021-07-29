@@ -232,12 +232,13 @@
 	CONFIG_BOOTARGS_UI_VAR05 "\0" \
 	"mmc_num="CONFIG_UBOOT_MMCNUM"\0"	  \
 	"storage=mmc dev ${mmc_num}\0" \
+	"set_mac1=setenv ethaddr ${mac1_val}; setenv fec_addr ${mac1_val}\0" \
 	"mac1_val="CONFIG_DEFAULT_MAC01"\0" \
 	"mmcrootpath="CONFIG_MMCROOTPATH"\0" \
 	"r_kernel=mmc read ${loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_OFFSET)" "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_SIZE)"\0" \
 	"r_dtb=mmc read ${dtb_loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_OFFSET)" "__stringify(CONFIG_BOOT_SYSTEM_KERNEL_DTB_SIZE)"\0"\
 	"r_ramdisk=mmc read ${rd_loadaddr} "__stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_OFFSET)" "__stringify(CONFIG_BOOT_SYSTEM_URAMDISK_FS_SIZE)"\0" \
-	"bootcmd_gen=run bootargs_base set_display set_mem bootargs_console bootargs_android bootargs_gen;"CONFIG_EXTRA_ENV_BOOTCMD_GEN"\0" \
+	"bootcmd_gen=run bootargs_base set_display set_mem set_mac1 bootargs_console bootargs_android bootargs_gen;"CONFIG_EXTRA_ENV_BOOTCMD_GEN"\0" \
 	"bootargs_android=setenv bootargs ${bootargs} "CONFIG_EXTRA_ENV_BOOTARGS_ANDROID"\0" \
 	"splashpos=m,m\0" \
 	"def_video="CONFIG_VGA_VIDEO"\0" \

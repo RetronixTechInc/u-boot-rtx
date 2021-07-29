@@ -89,7 +89,7 @@ CONFIG_EFI_PARTITION=y
 
 CONFIG_EXTRA_ENV_USE_DTB=y
 CONFIG_EXTRA_ENV_BOOTCMD_GEN="run loadimage; bootm ${loadaddr} - ${dtb_loadaddr}"
-CONFIG_BOOTARGS_GEN="${startinit} ${mmcrootpath};if test -n ${mac1_val};then setenv bootargs ${bootargs} fec_mac=${mac1_val};fi;if test -n ${mac2_val};then setenv bootargs ${bootargs} smsc_mac=${mac2_val};fi;"
+CONFIG_BOOTARGS_GEN="${startinit} ${mmcrootpath};if test -n ${mac2_val};then setenv bootargs ${bootargs} smsc_mac=${mac2_val};fi;"
 CONFIG_MMCROOTPATH="root=/dev/mmcblk0p1 rootwait rw"
 CONFIG_BOOTARGS_HDMI="video=mxcfb0:dev=hdmi,${def_video},if=RGB24,bpp=32 video=mxcfb1:off video=mxcfb2:off fbmem=28M"
 CONFIG_BOOTARGS_VGA="video=mxcfb0:dev=ldb,1024x768@60,if=RGB24,bpp=32 video=mxcfb1:dev=ldb,1024x768@60,if=RGB24,bpp=32 video=mxcfb2:off fbmem=18M,18M"
