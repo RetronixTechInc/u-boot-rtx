@@ -11,8 +11,8 @@
 #define BLOCK_SIZE (8 * 1024)
 #define CRC_SIZE 4
 #define ENV_SIZE ( BLOCK_SIZE - CRC_SIZE )
-const char *path_android_utf =  "/dev/block/mmcblk1";
-const char *path_utf =  "/dev/mmcblk1";
+const char *path_android_utf =  "/dev/block/mmcblk2";	//imx8mm
+const char *path_utf =  "/dev/mmcblk2";	//imx8mm
 
 static char data_buf[BLOCK_SIZE];
 static int g_mmcblk0_fd = 0;

@@ -9,6 +9,7 @@ export ARCH=arm64
 # Cross compile tools path define 
 # default path is /opt/cross if not define CROSS_COMPILE_PATH
 # =====================================
+[ -d /opt/freescale/usr/local ] && CROSS_COMPILE_PATH=/opt/freescale/usr/local
 if [ -z $CROSS_COMPILE_PATH ];then
 CROSS_COMPILE_PATH=/opt/cross
 fi

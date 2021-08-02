@@ -1,10 +1,11 @@
 #include "common.h"
 
-#define BLOCK_SKIP (2* 768 * 1024)
+//#define BLOCK_SKIP (2* 768 * 1024)
+#define BLOCK_SKIP (1536 * 1024)	//imx8mm
 #define BLOCK_SKIP1 (3 * 512)
 
-static	const char *path_android_utf =  "/dev/block/mmcblk1";
-static	const char *path_utf =  "/dev/mmcblk1";
+static	const char *path_android_utf =  "/dev/block/mmcblk2";	//imx8mm
+static	const char *path_utf =  "/dev/mmcblk2";	//imx8mm
 
 /* options args */
 static const char *short_options = "i:c:w";
