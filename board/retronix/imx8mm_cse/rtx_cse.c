@@ -555,6 +555,8 @@ static void led_init(void)
 		pca6416_reg_write(main_dev, 0x06, 0xff, 0x00);
 		/* Configure P17-P10 as outputs */
 		pca6416_reg_write(main_dev, 0x07, 0xff, 0x00);
+		/* Set Port1 the output are low */
+		pca6416_reg_write(main_dev, 0x03, 0xff, 0x00);
 		/* Set Port0 P6/P4/P2/P0 the output are high */
 		pca6416_reg_write(main_dev, 0x02, 0xff, 0x55);
 		mdelay(300);

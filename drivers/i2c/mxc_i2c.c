@@ -865,6 +865,14 @@ static int mxc_i2c_xfer(struct udevice *bus, struct i2c_msg *msg, int nmsgs)
 		return ret;
 	}
 
+	if (nmsgs ==1 && (msg->flags & I2C_M_RD)) {
+		ret = readb(base + (I2CR << reg_shift));
+		ret |= I2CR_RSTA;
+		writeb(ret, base + (I2CR << reg_shift));
+
+		ret = tx_byte(i2c_bus, (msg->addr << 1) | 1);
+	}
+
 	for (; nmsgs > 0; nmsgs--, msg++) {
 		bool next_is_read = nmsgs > 1 && (msg[1].flags & I2C_M_RD);
 		debug("i2c_xfer: chip=0x%x, len=0x%x\n", msg->addr, msg->len);

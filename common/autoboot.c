@@ -228,14 +228,19 @@ static int __abortboot(int bootdelay)
 	printf("Hit any key to stop autoboot: %2d ", bootdelay);
 #endif
 
+#if defined CONFIG_ZERO_BOOTDELAY_CHECK
 	/*
 	 * Check if key already pressed
+	 * Don't check if bootdelay < 0
 	 */
-	if (tstc()) {	/* we got a key press	*/
-		(void) getc();  /* consume input	*/
-		puts("\b\b\b 0");
-		abort = 1;	/* don't auto boot	*/
+	if (bootdelay >= 0) {
+		if (tstc()) {	/* we got a key press	*/
+			(void) getc();  /* consume input	*/
+			puts("\b\b\b 0");
+			abort = 1;	/* don't auto boot	*/
+		}
 	}
+#endif
 
 	while ((bootdelay > 0) && (!abort)) {
 		--bootdelay;
@@ -329,7 +334,7 @@ static int __abortboot(int bootdelay)
 				}
 			}
 # else
-			if (tstc()) {	/* we got a key press	*/
+			if (tstc() && getc() == '\t') {	/* we got a key press 'TAB' */
 				abort  = 1;	/* don't auto boot	*/
 				bootdelay = 0;	/* no more delay	*/
 # ifdef CONFIG_MENUKEY
