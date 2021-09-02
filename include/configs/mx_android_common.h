@@ -48,6 +48,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 	"bootcmd=run bootargs_base set_display bootargs_console set_mac1 set_mac2 set_hdmi_attr; boota ${fastboot_dev}\0"	\
 	"bootargs_base=setenv bootargs init=/init consoleblank=0 androidboot.hardware=freescale cma=320M galcore.contiguousSize=33554432 loop.max_part=7\0" \
+	"append_bootargs=androidboot.selinux=permissive\0" \
 	"set_display=run " CONFIG_GUIPORT "\0" \
 	"bootargs_console=setenv bootargs ${bootargs} console=" CONSOLE_DEV "," __stringify(CONFIG_BAUDRATE) " androidboot.console=" CONSOLE_DEV "\0"	\
 	"set_mac1=setenv ethaddr ${mac1_val}; setenv fec_addr ${mac1_val}\0" \
