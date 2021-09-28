@@ -425,6 +425,9 @@ void bootsel_init( void )
 	#endif
 	bootselnewpasswordlen     = 0 ;
 	bootselconfirmpasswordlen = 0 ;
+	#if defined(CONFIG_RTX_EFM32)
+	vBootsel_Efm32Loadconfig( ) ;
+	#endif
 	bootsel_adjust_bootargs( ) ;
 	#if defined(CONFIG_RTX_EFM32)
     	vSet_efm32_watchdog( bootselinfodata.ulMcuWatchDog ) ;
@@ -1506,4 +1509,152 @@ U_BOOT_CMD(
 	"show setting info.",
 	""
 );
+
+void vBootsel_Efm32MakeCheckSum( unsigned char *ubData )
+{
+	int iLoop , iMaxLoop ;
+	unsigned char ubCheckSum = 0 ;
+
+	iMaxLoop = ubData[0] ;
+	for ( iLoop = 0 ; iLoop < iMaxLoop-1 ; iLoop ++ )
+	{
+		ubCheckSum += ubData[iLoop] ;
+	}
+	ubData[iMaxLoop-1] = ubCheckSum ;
+
+	//printf( "[%s-%d] CheckSum %02X \n" , __FILE__ , __LINE__ , ubCheckSum ) ;
+}
+
+void vBootsel_Efm32Loadconfig( void )
+{
+	struct udevice *dev;
+	int ret;
+	unsigned char ubSentBuf[128] = { 0 } ;
+	unsigned char ubRecvBuf[128] = { 0 } ;
+	unsigned char *ubAdr ;
+	int iLoop ,iLoopMac ;
+	int iCount ;
+	int iLoadFlag ;
+	unsigned char * pMac ;
+
+	iLoadFlag = 1 ;
+
+	ubSentBuf[0] = 5 ;
+	ubSentBuf[1] = 0x91 ;
+
+	ubAdr = (unsigned char *)&ubSentBuf[2] ;
+	ubAdr[0] = (unsigned char)(10 >> (0 * 8));
+
+	vBootsel_Efm32MakeCheckSum( ubSentBuf ) ;
+
+	/* Configure EFM32: 7bit address 0x0c */
+	ret = i2c_get_chip_for_busnum(CONFIG_MCU_WDOG_BUS, 0x0c, 0, &dev);
+	if (ret) {
+		printf("Cannot find efm32: %d\n", ret);
+	}
+	else
+	{
+		iCount = 0 ;
+		while ( iCount < 100 )
+		{
+			if ( dm_i2c_write( dev, 0x00 , (uint8_t *)ubSentBuf , 5 ) )
+			{
+				if ( iCount == 0 )
+				{
+					printf("%s:i2c_write:error count = %2d\n", __func__ , iCount );
+				}
+				else
+				{
+					printf("\b\b\b%2d ", iCount );
+				}
+			}
+			else
+			{
+				if ( dm_i2c_read( dev , 0x0 , ubRecvBuf , 3 + 120 ) )
+				{
+					printf("\n%s:i2c_read:error count = %2d\n", __func__ , iCount );
+					break ;
+				}
+				else
+				{
+					//check MAC01
+					for ( iLoop = 0 ; iLoop < 6 ; iLoop ++ )
+					{
+						if(iLoop % 6 == 0)
+						{
+							iLoadFlag = 0 ;
+						}
+						if ( ubRecvBuf[2 + iLoop + 64 + 32] == 0 )
+						{
+						}
+						else
+						{
+							iLoadFlag = 1 ;
+						}
+					}
+					if ( iLoadFlag == 1 )
+					{
+						for ( iLoop = 0 ; iLoop < 6 ; iLoop ++ )
+						{
+							if ( bootselinfodata.ubMAC01[iLoop] == 0 )
+							{
+							}
+							else
+							{
+								iLoadFlag = 0 ;
+							}
+						}
+					}
+					printf( "Load MAC&Serial : %d\n" , iLoadFlag ) ;
+
+					break ;
+				}
+			}
+			iCount ++ ;
+		}
+
+		//load config
+		if ( iLoadFlag == 1 )
+		{
+			//Mac
+			pMac = 0 ;
+			for ( iLoopMac = 0 ; iLoopMac < 4 ; iLoopMac++ )
+			{
+				switch( iLoopMac )
+				{
+					case 0 : pMac = &bootselinfodata.ubMAC01[0] ; break ;
+					case 1 : pMac = &bootselinfodata.ubMAC02[0] ; break ;
+					case 2 : pMac = &bootselinfodata.ubMAC03[0] ; break ;
+					case 3 : pMac = &bootselinfodata.ubMAC04[0] ; break ;
+					default :
+						pMac = NULL ;
+				}
+				for ( iLoop = 0 ; iLoop < 6 ; iLoop ++ )
+				{
+					pMac[iLoop] = ubRecvBuf[ 2 + iLoop + iLoopMac * 6 + 64 + 32 ] ;
+				}
+				pMac[6] = 1 ;
+			}
+
+			//Product Serial
+			pMac = 0 ;
+			pMac = &bootselinfodata.ubProductSerialNO[0] ;
+			for ( iLoop = 0 ; iLoop < 64 ; iLoop ++ )
+			{
+				pMac[iLoop] = ubRecvBuf[ 2 + iLoop ] ;
+			}
+
+			//BSP Version
+			pMac = 0 ;
+			pMac = &bootselinfodata.ubBSPVersion[0] ;
+			for ( iLoop = 0 ; iLoop < 32 ; iLoop ++ )
+			{
+				pMac[iLoop] = ubRecvBuf[ 2 + iLoop + 64 ] ;
+			}
+
+			//write data
+			bootsel_write_setting_data( ) ;
+		}
+	}
+}
 #endif
