@@ -56,6 +56,7 @@
 	"set_hdmi_attr=setenv bootargs ${bootargs} ${hdmi.attr}\0" \
 	"hdmi.attr=hpddis\0"	\
 	"hdmi=setenv bootargs ${bootargs} " CONFIG_BOOTARGS_HDMI "\0" \
+	"def_video=" CONFIG_VGA_VIDEO "\0" \
 	"splashpos=m,m\0"	\
 	"fdt_high=0xffffffff\0"	\
 	"initrd_high=0xffffffff\0" \

@@ -48,7 +48,7 @@
 #define CONFIG_MMCROOT			"/dev/mmcblk2p2"  /* SDHC3 */
 
 #if defined(CONFIG_MX6Q)
-#define PHYS_SDRAM_SIZE		(1u * 1024 * 1024 * 1024)
+#define PHYS_SDRAM_SIZE		(2u * 1024 * 1024 * 1024)
 #elif defined(CONFIG_MX6DL)
 #define PHYS_SDRAM_SIZE		(1u * 1024 * 1024 * 1024)
 #elif defined(CONFIG_MX6S)
