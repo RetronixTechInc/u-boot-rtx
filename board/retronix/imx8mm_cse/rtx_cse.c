@@ -552,8 +552,8 @@ static void led_init(void)
 		pca6416_reg_write(main_dev, 0x04, 0xff, 0x00);
 		pca6416_reg_write(main_dev, 0x05, 0xff, 0x00);
 
-		/* Set Port0 the are low */
-		pca6416_reg_write(main_dev, 0x02, 0xff, 0x00);
+		/* Set Port0 the are high */
+		pca6416_reg_write(main_dev, 0x02, 0xff, 0xFF);	//led off
 		/* Set Port1 the are low */
 		pca6416_reg_write(main_dev, 0x03, 0xff, 0x00);
 
@@ -562,23 +562,62 @@ static void led_init(void)
 		/* Configure P17-P10 as outputs */
 		pca6416_reg_write(main_dev, 0x07, 0xff, 0x00);
 
-		/* Set Port0 P6/P4/P2/P0 the output are high */
-		pca6416_reg_write(main_dev, 0x02, 0xff, 0x55);	//all red
-		mdelay(300);
-		pca6416_reg_write(main_dev, 0x02, 0xff, 0xAA);	//all green
-		mdelay(300);
-		pca6416_reg_write(main_dev, 0x02, 0xff, 0x00);	//all green+red
-		mdelay(300);
-		pca6416_reg_write(main_dev, 0x02, 0xff, 0xFF);	//off
-//		mdelay(300);
-//		pca6416_reg_write(main_dev, 0x02, 0xff, 0xFE);	//power_green
-
 		printf("pca6416 init\n");
 		/* If Port is input status,read Port value */
 		//pca6416_i2c_reg_read(main_dev, 0x00, &val);
 		//printf("PCA6416 Port0 Read : 0x%x \n", val);
 		//pca6416_i2c_reg_read(main_dev, 0x01, &val);
 		//printf("PCA6416 Port1 Read : 0x%x \n", val);
+	}
+}
+
+static void late_led_init(void)
+{
+	struct udevice *main_dev;
+	int i2c_bus = 1;
+	int ret;
+
+	u64 u64LedValue = 0x00 ;
+
+	ret = i2c_get_chip_for_busnum(i2c_bus, PCA6416_ADDR, 1, &main_dev);
+	if (ret) {
+		printf("Cannot find pca6416: %d\n", ret);
+	}
+	else
+	{
+		printf("LED init value");
+		/* Set Port0 P6/P4/P2/P0 the output are high */
+		u64LedValue = env_get_hex("initled1", 0x55);	//default all red
+		printf(" %#llx", u64LedValue);
+		if ( u64LedValue <= 0xff )
+		{
+			pca6416_reg_write(main_dev, 0x02, 0xff, u64LedValue);
+			mdelay(300);
+		}
+
+		u64LedValue = env_get_hex("initled2", 0xAA);	//default all green
+		printf(" %#llx", u64LedValue);
+		if ( u64LedValue <= 0xff )
+		{
+			pca6416_reg_write(main_dev, 0x02, 0xff, u64LedValue);
+			mdelay(300);
+		}
+
+		u64LedValue = env_get_hex("initled3", 0xFF);	//default off
+		printf(" %#llx", u64LedValue);
+		if ( u64LedValue <= 0xff )
+		{
+			pca6416_reg_write(main_dev, 0x02, 0xff, u64LedValue);
+			mdelay(300);
+		}
+
+		u64LedValue = env_get_hex("initled4", 0x00);	//default all green+red
+		printf(" %#llx", u64LedValue);
+		if ( u64LedValue <= 0xff )
+		{
+			pca6416_reg_write(main_dev, 0x02, 0xff, u64LedValue);
+		}
+		printf("\n");
 	}
 }
 
@@ -856,7 +895,7 @@ size_t display_count = ARRAY_SIZE(displays);
 
 int board_late_init(void)
 {
-
+	late_led_init();
 	setup_iomux_dip();
 	setup_iomux_di();
 
