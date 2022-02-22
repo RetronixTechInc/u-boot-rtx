@@ -611,7 +611,7 @@ static void late_led_init(void)
 			mdelay(300);
 		}
 
-		u64LedValue = env_get_hex("initled4", 0x00);	//default all green+red
+		u64LedValue = env_get_hex("initled4", 0xAA);	//default all green
 		printf(" %#llx", u64LedValue);
 		if ( u64LedValue <= 0xff )
 		{
