@@ -11,9 +11,12 @@ TOP=`pwd`
 # default path is /opt/cross if not define CROSS_COMPILE_PATH
 # =====================================
 if [ -z $CROSS_COMPILE_PATH ];then
-CROSS_COMPILE_PATH=/opt/cross
+    [ -d /media/tom/ext2t/freescale/cross-compile ] && CROSS_COMPILE_PATH=/media/tom/ext2t/freescale/cross-compile
 fi
 
+if [ -z $CROSS_COMPILE_PATH ];then
+	[ -d /opt/cross ] && CROSS_COMPILE_PATH=/opt/cross
+fi
 # =====================================
 # Cross compile tools version
 # Configue file select
@@ -33,10 +36,11 @@ case "${TARGET_SOC}" in
 		U_BOOT_DEFAULT_CONFIG=rtx_pico_b21_imx6q_1g_defconfig
 		#U_BOOT_DEFAULT_CONFIG=mx6ul_14x14_evk_spl_defconfig
 	;;
-	"pico")
+	"pico")  #DDR 1G or 2G need modify include/configs/retronix/rtx_pitxP_mx6q.h #define PHYS_SDRAM_SIZE		(1u * 1024 * 1024 * 1024) for 1G ; #define PHYS_SDRAM_SIZE		(2u * 1024 * 1024 * 1024) for 2G
 		export ARCH=arm
 		export CROSS_COMPILE=${CROSS_COMPILE_PATH}/gcc-linaro-7.4.1-2019.02-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
 		U_BOOT_DEFAULT_CONFIG=rtx_pitxP_mx6q_nanya1g_dtb_rtx_all_linux_defconfig
+		#~ U_BOOT_DEFAULT_CONFIG=rtx_pitxP_mx6q_micro2g_dtb_rtx_all_linux_defconfig
 		#U_BOOT_DEFAULT_CONFIG=mx6qsabresd_optee_defconfig
 	;;
 	*)
