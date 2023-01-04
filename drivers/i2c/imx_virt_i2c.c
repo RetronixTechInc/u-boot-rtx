@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <errno.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
@@ -13,8 +14,6 @@
 #include <fdtdec.h>
 #include <i2c.h>
 #include <asm/mach-imx/imx_vservice.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define MAX_SRTM_I2C_BUF_SIZE 16
 #define SRTM_I2C_CATEGORY 0x09
@@ -222,15 +221,15 @@ static int imx_virt_i2c_probe(struct udevice *bus)
 	struct imx_virt_i2c_bus *i2c_bus = dev_get_priv(bus);
 	fdt_addr_t addr;
 
-	addr = devfdt_get_addr(bus);
+	addr = dev_read_addr(bus);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
 	i2c_bus->base = addr;
-	i2c_bus->index = bus->seq;
+	i2c_bus->index = dev_seq(bus);
 
 	debug("virt_i2c : controller bus %d at 0x%lx,  bus udev 0x%lx\n",
-	      bus->seq, i2c_bus->base, (ulong)bus);
+	      dev_seq(bus), i2c_bus->base, (ulong)bus);
 
 	i2c_bus->vservice = imx_vservice_setup(bus);
 	if (i2c_bus->vservice == NULL) {
@@ -249,7 +248,7 @@ static int imx_virt_i2c_set_flags(struct udevice *child_dev, uint flags)
 		struct imx_virt_i2c_bus *i2c_bus = dev_get_priv(bus);
 
 		if (flags == 0) {
-			i2c_bus->index = bus->seq;
+			i2c_bus->index = dev_seq(bus);
 		} else if (flags & I2C_M_SELECT_MUX_BUS) {
 			i2c_bus->index = (flags >> 24) & 0xff;
 		}
@@ -267,7 +266,7 @@ int __weak board_imx_virt_i2c_bind(struct udevice *dev)
 
 static int imx_virt_i2c_bind(struct udevice *dev)
 {
-	debug("imx_virt_i2c_bind, %s, seq %d\n", dev->name, dev->req_seq);
+	debug("imx_virt_i2c_bind, %s, seq %d\n", dev->name, dev_seq(dev));
 
 	return board_imx_virt_i2c_bind(dev);
 }
@@ -304,7 +303,7 @@ U_BOOT_DRIVER(imx_virt_i2c) = {
 	.bind = imx_virt_i2c_bind,
 	.probe = imx_virt_i2c_probe,
 	.child_post_bind = imx_virt_i2c_child_post_bind,
-	.priv_auto_alloc_size = sizeof(struct imx_virt_i2c_bus),
+	.priv_auto = sizeof(struct imx_virt_i2c_bus),
 	.ops = &imx_virt_i2c_ops,
 	.flags	= DM_FLAG_DEFAULT_PD_CTRL_OFF | DM_FLAG_IGNORE_DEFAULT_CLKS,
 };

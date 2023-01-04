@@ -5,10 +5,15 @@
  * Author: Tim Harvey <tharvey@gateworks.com>
  */
 #include <common.h>
+#include <log.h>
 #include <nand.h>
 #include <malloc.h>
 #include <mxs_nand.h>
+#include <asm/cache.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/mtd/rawnand.h>
 
 static struct mtd_info *mtd;
 static struct nand_chip nand_chip;
@@ -219,8 +224,8 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *buf)
 	unsigned int page;
 	unsigned int nand_page_per_block;
 	unsigned int sz = 0;
-	uint8_t *page_buf = NULL;
-	uint32_t page_off;
+	u8 *page_buf = NULL;
+	u32 page_off;
 
 	chip = mtd_to_nand(mtd);
 	if (!chip->numchips)
@@ -234,7 +239,7 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *buf)
 	page_off = offs & (mtd->writesize - 1);
 	nand_page_per_block = mtd->erasesize / mtd->writesize;
 
-	debug("%s offset:0x%08x len:%d page:%x\n", __func__, offs, size, page);
+	debug("%s offset:0x%08x len:%d page:0x%x\n", __func__, offs, size, page);
 
 	while (size) {
 		if (mxs_read_page_ecc(mtd, page_buf, page) < 0)
@@ -287,3 +292,8 @@ void nand_deselect(void)
 {
 }
 
+u32 nand_spl_adjust_offset(u32 sector, u32 offs)
+{
+	/* Handle the offset adjust in nand_spl_load_image,*/
+	return offs;
+}

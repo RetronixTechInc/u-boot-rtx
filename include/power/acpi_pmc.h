@@ -6,8 +6,20 @@
 #ifndef __ACPI_PMC_H
 #define __ACPI_PMC_H
 
+#ifndef __ASSEMBLY__
+
 enum {
 	GPE0_REG_MAX	= 4,
+};
+
+enum {
+	PM1_STS		= 0x00,
+	PM1_EN		= 0x02,
+	PM1_CNT		= 0x04,
+	PM1_TMR		= 0x08,
+
+	GPE0_STS	= 0x20,
+	GPE0_EN		= 0x30,
 };
 
 /**
@@ -129,7 +141,7 @@ struct acpi_pmc_ops {
  * This reads the current state of the PMC. This reads in the common registers,
  * then calls the device's init() method to read the SoC-specific registers.
  *
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int pmc_init(struct udevice *dev);
 
@@ -139,7 +151,7 @@ int pmc_init(struct udevice *dev);
  * This reads various state registers and returns the sleep state from
  * which the system woke.
  *
- * @return enum acpi_sleep_state indicating the previous sleep state
+ * Return: enum acpi_sleep_state indicating the previous sleep state
  *	(ACPI_S0, ACPI_S3 or ACPI_S5), or -ve on error
  */
 int pmc_prev_sleep_state(struct udevice *dev);
@@ -150,7 +162,7 @@ int pmc_prev_sleep_state(struct udevice *dev);
  * Disables the timer/counter in the PMC
  *
  * @dev: PMC device to use
- * @return 0
+ * Return: 0
  */
 int pmc_disable_tco(struct udevice *dev);
 
@@ -164,11 +176,11 @@ int pmc_disable_tco(struct udevice *dev);
  *
  * @dev: PMC device to use
  * @enable: true to enable global reset, false to disable
- * @return 0
+ * Return: 0
  */
 int pmc_global_reset_set_enable(struct udevice *dev, bool enable);
 
-int pmc_ofdata_to_uc_platdata(struct udevice *dev);
+int pmc_ofdata_to_uc_plat(struct udevice *dev);
 
 int pmc_disable_tco_base(ulong tco_base);
 
@@ -178,8 +190,10 @@ void pmc_dump_info(struct udevice *dev);
  * pmc_gpe_init() - Set up general-purpose events
  *
  * @dev: PMC device
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int pmc_gpe_init(struct udevice *dev);
+
+#endif /* !__ASSEMBLY__ */
 
 #endif

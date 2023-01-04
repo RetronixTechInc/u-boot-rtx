@@ -14,6 +14,7 @@
 
 #include <linux/string.h>
 #include <linux/list.h>
+#include <linux/delay.h>
 #include <gis.h>
 
 #include "mxc_vadc.h"

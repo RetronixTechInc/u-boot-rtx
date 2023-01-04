@@ -7,6 +7,9 @@
  */
 
 #include <common.h>
+#include <init.h>
+#include <asm/bitops.h>
+#include <asm/global_data.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #ifdef CONFIG_ADDR_MAP
@@ -217,7 +220,7 @@ int find_tlb_idx(void *addr, u8 tlbsel)
 }
 
 #ifdef CONFIG_ADDR_MAP
-void init_addr_map(void)
+int init_addr_map(void)
 {
 	int i;
 	unsigned int num_cam = mfspr(SPRN_TLB1CFG) & 0xfff;
@@ -233,7 +236,7 @@ void init_addr_map(void)
 			addrmap_set_entry(epn, rpn, TSIZE_TO_BYTES(tsize), i);
 	}
 
-	return ;
+	return 0;
 }
 #endif
 

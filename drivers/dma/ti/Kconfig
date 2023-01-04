@@ -8,7 +8,10 @@ config TI_K3_NAVSS_UDMA
         select DMA
         select TI_K3_NAVSS_RINGACC
         select TI_K3_NAVSS_PSILCFG
-        default n
+        select TI_K3_PSIL
         help
           Support for UDMA used in K3 devices.
 endif
+
+config TI_K3_PSIL
+	bool

@@ -5,14 +5,14 @@
 #include <linux/compiler.h>
 
 /* stdin */
-int getc(void);
+int getchar(void);
 int tstc(void);
 
 /* stdout */
 #if !defined(CONFIG_SPL_BUILD) || \
-	(defined(CONFIG_TPL_BUILD) && defined(CONFIG_TPL_SERIAL_SUPPORT)) || \
+	(defined(CONFIG_TPL_BUILD) && defined(CONFIG_TPL_SERIAL)) || \
 	(defined(CONFIG_SPL_BUILD) && !defined(CONFIG_TPL_BUILD) && \
-		defined(CONFIG_SPL_SERIAL_SUPPORT))
+		defined(CONFIG_SPL_SERIAL))
 void putc(const char c);
 void puts(const char *s);
 int __printf(1, 2) printf(const char *fmt, ...);

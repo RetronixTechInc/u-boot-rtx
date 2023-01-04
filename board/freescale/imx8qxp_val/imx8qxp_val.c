@@ -9,6 +9,8 @@
 #include <netdev.h>
 #include <fsl_ifc.h>
 #include <fdt_support.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <cpu_func.h>
 #include <env.h>
@@ -23,7 +25,6 @@
 #include <asm/arch/imx8-pins.h>
 #include <asm/arch/snvs_security_sc.h>
 #include <dm.h>
-#include <imx8_hsio.h>
 #include <usb.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/sys_proto.h>
@@ -95,7 +96,7 @@ static void imx8qxp_gpmi_nand_initialize(void)
 	int ret;
 
 	ret = sc_pm_set_resource_power_mode(-1, SC_R_NAND, SC_PM_PW_MODE_ON);
-	if (ret != SC_ERR_NONE)
+	if (ret)
 		return;
 
 	init_clk_gpmi_nand();
@@ -287,6 +288,10 @@ int board_phy_config(struct phy_device *phydev)
 		mdelay(1);
 	}
 
+	if (phydev->drv->config)
+		phydev->drv->config(phydev);
+
+#ifndef CONFIG_DM_ETH
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x8);
 
@@ -294,9 +299,7 @@ int board_phy_config(struct phy_device *phydev)
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x82ee);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
-
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
+#endif
 
 	return 0;
 }
@@ -319,7 +322,7 @@ static void board_gpio_init(void)
 	struct udevice *dev;
 
 	imx8_iomux_setup_multiple_pads(board_gpios, ARRAY_SIZE(board_gpios));
-	
+
 	/* enable i2c port expander assert reset line first */
 	/* we can't use dm_gpio_lookup_name for GPIO1_12, because the func will probe the
 	 * uclass list until find the device. The expander device is at begin of the list due to
@@ -335,6 +338,7 @@ static void board_gpio_init(void)
 
 	desc.dev = dev;
 	desc.offset = 19;
+	desc.flags = 0;
 
 	ret = dm_gpio_request(&desc, "ioexp_rst");
 	if (ret) {
@@ -343,7 +347,7 @@ static void board_gpio_init(void)
 	}
 
 	dm_gpio_set_dir_flags(&desc, GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
-	
+
 	ret = dm_gpio_lookup_name("GPIO3_23", &desc);
 	if (ret) {
 		printf("%s lookup GPIO@3_23 failed ret = %d\n", __func__, ret);
@@ -357,7 +361,7 @@ static void board_gpio_init(void)
 	}
 
 	dm_gpio_set_dir_flags(&desc, GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
-	
+
 	ret = dm_gpio_lookup_name("GPIO5_9", &desc);
 	if (ret) {
 		printf("%s lookup GPIO@5_9 failed ret = %d\n", __func__, ret);
@@ -388,51 +392,6 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_FSL_HSIO
-
-#define PCIE_PAD_CTRL	((SC_PAD_CONFIG_OD_IN << PADRING_CONFIG_SHIFT))
-static iomux_cfg_t board_pcie_pins[] = {
-	SC_P_PCIE_CTRL0_CLKREQ_B | MUX_MODE_ALT(0) | MUX_PAD_CTRL(PCIE_PAD_CTRL),
-	SC_P_PCIE_CTRL0_WAKE_B | MUX_MODE_ALT(0) | MUX_PAD_CTRL(PCIE_PAD_CTRL),
-	SC_P_PCIE_CTRL0_PERST_B | MUX_MODE_ALT(0) | MUX_PAD_CTRL(PCIE_PAD_CTRL),
-};
-
-static void imx8qxp_hsio_initialize(void)
-{
-	struct power_domain pd;
-	int ret;
-
-	if (!power_domain_lookup_name("hsio_pcie1", &pd)) {
-		ret = power_domain_on(&pd);
-		if (ret)
-			printf("hsio_pcie1 Power up failed! (error = %d)\n", ret);
-	}
-        if (!power_domain_lookup_name("hsio_gpio", &pd)) {
-		ret = power_domain_on(&pd);
-		if (ret)
-			printf("hsio_gpio Power up failed! (error = %d)\n", ret);
-	}
-
-	lpcg_all_clock_on(HSIO_PCIE_X1_LPCG);
-	lpcg_all_clock_on(HSIO_PHY_X1_LPCG);
-	lpcg_all_clock_on(HSIO_PHY_X1_CRR1_LPCG);
-	lpcg_all_clock_on(HSIO_PCIE_X1_CRR3_LPCG);
-	lpcg_all_clock_on(HSIO_MISC_LPCG);
-	lpcg_all_clock_on(HSIO_GPIO_LPCG);
-
-	imx8_iomux_setup_multiple_pads(board_pcie_pins, ARRAY_SIZE(board_pcie_pins));
-}
-
-void pci_init_board(void)
-{
-	imx8qxp_hsio_initialize();
-
-	/* test the 1 lane mode of the PCIe A controller */
-	mx8qxp_pcie_init();
-}
-
-#endif
-
 int board_usb_init(int index, enum usb_init_type init)
 {
 	int ret = 0;
@@ -441,11 +400,11 @@ int board_usb_init(int index, enum usb_init_type init)
 		if (init == USB_INIT_DEVICE) {
 #if !CONFIG_IS_ENABLED(DM_USB_GADGET) && !CONFIG_IS_ENABLED(DM_USB)
 			ret = sc_pm_set_resource_power_mode(-1, SC_R_USB_0, SC_PM_PW_MODE_ON);
-			if (ret != SC_ERR_NONE)
+			if (ret)
 				printf("conn_usb0 Power up failed! (error = %d)\n", ret);
 
 			ret = sc_pm_set_resource_power_mode(-1, SC_R_USB_0_PHY, SC_PM_PW_MODE_ON);
-			if (ret != SC_ERR_NONE)
+			if (ret)
 				printf("conn_usb0_phy Power up failed! (error = %d)\n", ret);
 #endif
 		}
@@ -461,11 +420,11 @@ int board_usb_cleanup(int index, enum usb_init_type init)
 		if (init == USB_INIT_DEVICE) {
 #if !CONFIG_IS_ENABLED(DM_USB_GADGET) && !CONFIG_IS_ENABLED(DM_USB)
 			ret = sc_pm_set_resource_power_mode(-1, SC_R_USB_0, SC_PM_PW_MODE_OFF);
-			if (ret != SC_ERR_NONE)
+			if (ret)
 				printf("conn_usb0 Power down failed! (error = %d)\n", ret);
 
 			ret = sc_pm_set_resource_power_mode(-1, SC_R_USB_0_PHY, SC_PM_PW_MODE_OFF);
-			if (ret != SC_ERR_NONE)
+			if (ret)
 				printf("conn_usb0_phy Power down failed! (error = %d)\n", ret);
 #endif
 		}
@@ -477,7 +436,7 @@ int board_init(void)
 {
 	board_gpio_init();
 
-#ifdef CONFIG_SNVS_SEC_SC_AUTO
+#ifdef CONFIG_IMX_SNVS_SEC_SC_AUTO
 	{
 		int ret = snvs_security_sc_init();
 
@@ -499,19 +458,19 @@ void board_quiesce_devices(void)
 		"audio_ocram",
 	};
 
-	power_off_pd_devices(power_on_devices, ARRAY_SIZE(power_on_devices));
+	imx8_power_off_pd_devices(power_on_devices, ARRAY_SIZE(power_on_devices));
 }
 
 /*
  * Board specific reset that is system reset.
  */
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	/* TODO */
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	return 0;
 }

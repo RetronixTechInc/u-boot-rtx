@@ -8,6 +8,7 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/io.h>
 #include <asm/mach-imx/boot_mode.h>
+#include <env.h>
 
 __weak int board_mmc_get_env_dev(int devno)
 {

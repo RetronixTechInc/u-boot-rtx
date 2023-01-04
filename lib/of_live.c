@@ -9,6 +9,7 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <linux/libfdt.h>
 #include <of_live.h>
 #include <malloc.h>
@@ -256,7 +257,7 @@ static void *unflatten_dt_node(const void *blob, void *mem, int *poffset,
  * can be used.
  * @blob: The blob to expand
  * @mynodes: The device_node tree created by the call
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 static int unflatten_device_tree(const void *blob,
 				 struct device_node **mynodes)

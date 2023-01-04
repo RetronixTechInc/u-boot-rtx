@@ -7,6 +7,7 @@
 #include <common.h>
 #include <backlight.h>
 #include <dm.h>
+#include <log.h>
 #include <panel.h>
 #include <asm/gpio.h>
 #include <power/regulator.h>
@@ -22,12 +23,14 @@ static int simple_panel_enable_backlight(struct udevice *dev)
 	struct simple_panel_priv *priv = dev_get_priv(dev);
 	int ret;
 
-	debug("%s: start, backlight = '%s'\n", __func__, priv->backlight->name);
 	dm_gpio_set_value(&priv->enable, 1);
-	ret = backlight_enable(priv->backlight);
-	debug("%s: done, ret = %d\n", __func__, ret);
-	if (ret)
-		return ret;
+	if (priv->backlight) {
+		debug("%s: start, backlight = '%s'\n", __func__, priv->backlight->name);
+		ret = backlight_enable(priv->backlight);
+		debug("%s: done, ret = %d\n", __func__, ret);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
@@ -39,15 +42,17 @@ static int simple_panel_set_backlight(struct udevice *dev, int percent)
 
 	debug("%s: start, backlight = '%s'\n", __func__, priv->backlight->name);
 	dm_gpio_set_value(&priv->enable, 1);
-	ret = backlight_set_brightness(priv->backlight, percent);
-	debug("%s: done, ret = %d\n", __func__, ret);
-	if (ret)
-		return ret;
+	if (priv->backlight) {
+		ret = backlight_set_brightness(priv->backlight, percent);
+		debug("%s: done, ret = %d\n", __func__, ret);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
 
-static int simple_panel_ofdata_to_platdata(struct udevice *dev)
+static int simple_panel_of_to_plat(struct udevice *dev)
 {
 	struct simple_panel_priv *priv = dev_get_priv(dev);
 	int ret;
@@ -65,9 +70,10 @@ static int simple_panel_ofdata_to_platdata(struct udevice *dev)
 	ret = uclass_get_device_by_phandle(UCLASS_PANEL_BACKLIGHT, dev,
 					   "backlight", &priv->backlight);
 	if (ret) {
-		debug("%s: Cannot get backlight: ret=%d\n", __func__, ret);
-		return log_ret(ret);
+		printf("%s: Cannot get backlight: ret=%d\n", __func__, ret);
+		priv->backlight = NULL;
 	}
+
 	ret = gpio_request_by_name(dev, "enable-gpios", 0, &priv->enable,
 				   GPIOD_IS_OUT);
 	if (ret) {
@@ -105,7 +111,10 @@ static const struct udevice_id simple_panel_ids[] = {
 	{ .compatible = "auo,b133xtn01" },
 	{ .compatible = "auo,b116xw03" },
 	{ .compatible = "auo,b133htn01" },
+	{ .compatible = "boe,nv140fhmn49" },
 	{ .compatible = "lg,lb070wv8" },
+	{ .compatible = "sharp,lq123p1jx31" },
+	{ .compatible = "boe,nv101wxmn51" },
 	{ }
 };
 
@@ -114,7 +123,7 @@ U_BOOT_DRIVER(simple_panel) = {
 	.id	= UCLASS_PANEL,
 	.of_match = simple_panel_ids,
 	.ops	= &simple_panel_ops,
-	.ofdata_to_platdata	= simple_panel_ofdata_to_platdata,
+	.of_to_plat	= simple_panel_of_to_plat,
 	.probe		= simple_panel_probe,
-	.priv_auto_alloc_size	= sizeof(struct simple_panel_priv),
+	.priv_auto	= sizeof(struct simple_panel_priv),
 };

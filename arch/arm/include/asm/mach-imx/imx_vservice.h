@@ -8,7 +8,6 @@
 #define __IMX_VSERVICE_H__
 
 #include <common.h>
-#include <dm.h>
 #include <linux/list.h>
 
 struct imx_vservice_channel

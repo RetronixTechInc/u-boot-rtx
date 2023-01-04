@@ -18,6 +18,8 @@
 #include <linux/fb.h>
 #include <gis.h>
 #include <mxsfb.h>
+#include <env.h>
+#include <log.h>
 
 #include "mxc_gis.h"
 #include "mxc_csi.h"
@@ -306,19 +308,19 @@ void mxc_enable_gis(void)
 	u32 csimemsize, pxpmemsize;
 	char const *gis_input = env_get("gis");
 
-#ifdef CONFIG_MX6
-	if (check_module_fused(MX6_MODULE_CSI)) {
-		printf("CSI@0x%x is fused, disable it\n", CSI1_BASE_ADDR);
-		return;
+	if (CONFIG_IS_ENABLED(IMX_MODULE_FUSE)) {
+		if (check_module_fused(MODULE_CSI)) {
+			printf("CSI@0x%x is fused, disable it\n", CSI1_BASE_ADDR);
+			return;
+		}
 	}
-#endif
 
-#ifdef CONFIG_MX6
-	if (check_module_fused(MX6_MODULE_PXP)) {
-		printf("PXP@0x%x is fused, disable it\n", PXP_BASE_ADDR);
-		return;
+	if (CONFIG_IS_ENABLED(IMX_MODULE_FUSE)) {
+		if (check_module_fused(MODULE_PXP)) {
+			printf("PXP@0x%x is fused, disable it\n", PXP_BASE_ADDR);
+			return;
+		}
 	}
-#endif
 
 	gis_regs = (struct mxs_gis_regs *)GIS_BASE_ADDR;
 	pxp_regs = (struct mxs_pxp_regs *)PXP_BASE_ADDR;

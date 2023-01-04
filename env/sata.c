@@ -129,7 +129,7 @@ static int env_sata_load(void)
 		return -EIO;
 	}
 
-	return env_import(buf, 1);
+	return env_import(buf, 1, H_EXTERNAL);
 }
 
 U_BOOT_ENV_LOCATION(sata) = {

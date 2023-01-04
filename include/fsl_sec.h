@@ -3,7 +3,7 @@
  * Common internal memory map for some Freescale SoCs
  *
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2018 NXP
+ * Copyright 2018, 2021 NXP
  */
 
 #ifndef __FSL_SEC_H
@@ -28,12 +28,22 @@
 #error Neither CONFIG_SYS_FSL_SEC_LE nor CONFIG_SYS_FSL_SEC_BE is defined
 #endif
 
+#define BLOB_OVERHEAD		(32 + 16)
 #define BLOB_SIZE(x)		((x) + 32 + 16) /* Blob buffer size */
+#define AES256_KEY_SZ		32
+
+#define NONCE_SIZE		6
+#define ICV_SIZE		6
+#define CCM_OVERHEAD		(NONCE_SIZE + ICV_SIZE)
+#define TAG_SIZE		20
+#define MAX_BLOB_SIZE		(AES256_KEY_SZ + CCM_OVERHEAD +\
+				BLOB_OVERHEAD + TAG_SIZE)
 
 /* Security Engine Block (MS = Most Sig., LS = Least Sig.) */
 #if CONFIG_SYS_FSL_SEC_COMPAT >= 4
 /* RNG4 TRNG test registers */
 struct rng4tst {
+#define RTMCTL_ACC  0x20
 #define RTMCTL_PRGM 0x00010000	/* 1 -> program mode, 0 -> run mode */
 #define RTMCTL_SAMP_MODE_VON_NEUMANN_ES_SC     0 /* use von Neumann data in
 						    both entropy shifter and
@@ -48,7 +58,11 @@ struct rng4tst {
 	u32 rtmctl;		/* misc. control register */
 	u32 rtscmisc;		/* statistical check misc. register */
 	u32 rtpkrrng;		/* poker range register */
-#define RTSDCTL_ENT_DLY_MIN	3200
+#ifdef CONFIG_MX6SX
+#define RTSDCTL_ENT_DLY		12000
+#else
+#define RTSDCTL_ENT_DLY		3200
+#endif
 #define RTSDCTL_ENT_DLY_MAX	12800
 	union {
 		u32 rtpkrmax;	/* PRGM=1: poker max. limit register */
@@ -68,13 +82,48 @@ struct rng4tst {
 		u32 rtfreqcnt;	/* PRGM=0: freq. count register */
 	};
 	u32 rsvd1[40];
-#define RNG_STATE0_HANDLE_INSTANTIATED	0x00000001
-#define RNG_STATE1_HANDLE_INSTANTIATED	0x00000002
-#define RNG_STATE_HANDLE_MASK	\
-	(RNG_STATE0_HANDLE_INSTANTIATED | RNG_STATE1_HANDLE_INSTANTIATED)
+#define RDSTA_IF(idx) (0x00000001 << (idx))
+#define RDSTA_PR(idx) (0x00000010 << (idx))
+#define RDSTA_MASK (RDSTA_PR(1) | RDSTA_PR(0) | RDSTA_IF(1) | RDSTA_IF(0))
+#define RDSTA_SKVN 0x40000000
 	u32 rdsta;		/*RNG DRNG Status Register*/
 	u32 rsvd2[15];
 };
+
+/* Version registers (Era 10+) */
+struct version_regs {
+	u32 crca;	/* CRCA_VERSION */
+	u32 afha;	/* AFHA_VERSION */
+	u32 kfha;	/* KFHA_VERSION */
+	u32 pkha;	/* PKHA_VERSION */
+	u32 aesa;	/* AESA_VERSION */
+	u32 mdha;	/* MDHA_VERSION */
+	u32 desa;	/* DESA_VERSION */
+	u32 snw8a;	/* SNW8A_VERSION */
+	u32 snw9a;	/* SNW9A_VERSION */
+	u32 zuce;	/* ZUCE_VERSION */
+	u32 zuca;	/* ZUCA_VERSION */
+	u32 ccha;	/* CCHA_VERSION */
+	u32 ptha;	/* PTHA_VERSION */
+	u32 rng;	/* RNG_VERSION */
+	u32 trng;	/* TRNG_VERSION */
+	u32 aaha;	/* AAHA_VERSION */
+	u32 rsvd[10];
+	u32 sr;		/* SR_VERSION */
+	u32 dma;	/* DMA_VERSION */
+	u32 ai;		/* AI_VERSION */
+	u32 qi;		/* QI_VERSION */
+	u32 jr;		/* JR_VERSION */
+	u32 deco;	/* DECO_VERSION */
+};
+
+#define CHA_VER_NUM_MASK	0x000000ff
+#define CHA_VER_MISC_SHIFT	8
+#define CHA_VER_MISC_MASK	0x0000ff00
+#define CHA_VER_REV_SHIFT	16
+#define CHA_VER_REV_MASK	0x00ff0000
+#define CHA_VER_VID_SHIFT	24
+#define CHA_VER_VID_MASK	0xff000000
 
 typedef struct ccsr_sec {
 	u32	res0;
@@ -101,17 +150,19 @@ typedef struct ccsr_sec {
 	u32	drr;		/* DECO Reset Register */
 	u8	res5[0x4d8];
 	struct rng4tst rng;	/* RNG Registers */
-	u8	res6[0x8a0];
+	u8	res6[0x780];
+	struct version_regs vreg; /* version registers since era 10 */
+	u8	res7[0xa0];
 	u32	crnr_ms;	/* CHA Revision Number Register, MS */
 	u32	crnr_ls;	/* CHA Revision Number Register, LS */
 	u32	ctpr_ms;	/* Compile Time Parameters Register, MS */
 	u32	ctpr_ls;	/* Compile Time Parameters Register, LS */
-	u8	res7[0x10];
+	u8	res8[0x10];
 	u32	far_ms;		/* Fault Address Register, MS */
 	u32	far_ls;		/* Fault Address Register, LS */
 	u32	falr;		/* Fault Address LIODN Register */
 	u32	fadr;		/* Fault Address Detail Register */
-	u8	res8[0x4];
+	u8	res9[0x4];
 	u32	csta;		/* CAAM Status Register */
 	u32	smpart;		/* Secure Memory Partition Parameters */
 	u32	smvid;		/* Secure Memory Version ID */
@@ -124,16 +175,16 @@ typedef struct ccsr_sec {
 	u32	secvid_ms;	/* SEC Version ID Register, MS */
 	u32	secvid_ls;	/* SEC Version ID Register, LS */
 #if defined(CONFIG_FSL_LSCH2) || defined(CONFIG_FSL_LSCH3)
-	u8	res9[0x6f020];
+	u8	res10[0x6f020];
 #else
-	u8	res9[0x6020];
+	u8	res10[0x6020];
 #endif
 	u32	qilcr_ms;	/* Queue Interface LIODN CFG Register, MS */
 	u32	qilcr_ls;	/* Queue Interface LIODN CFG Register, LS */
 #if defined(CONFIG_FSL_LSCH2) || defined(CONFIG_FSL_LSCH3)
-	u8	res10[0x8ffd8];
+	u8	res11[0x8ffd8];
 #else
-	u8	res10[0x8fd8];
+	u8	res11[0x8fd8];
 #endif
 } ccsr_sec_t;
 
@@ -157,12 +208,11 @@ typedef struct ccsr_sec {
 #define SEC_CHAVID_LS_RNG_SHIFT		16
 #define SEC_CHAVID_RNG_LS_MASK		0x000f0000
 
-#define CONFIG_JRSTARTR_JR0		0x00000001
-
 struct jr_regs {
 #if defined(CONFIG_SYS_FSL_SEC_LE) && \
 	!(defined(CONFIG_MX6) || defined(CONFIG_MX7) || \
-	  defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M))
+	  defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M) || defined(CONFIG_IMX8) || \
+	  defined(CONFIG_IMX8ULP))
 	u32 irba_l;
 	u32 irba_h;
 #else
@@ -177,7 +227,8 @@ struct jr_regs {
 	u32 irja;
 #if defined(CONFIG_SYS_FSL_SEC_LE) && \
 	!(defined(CONFIG_MX6) || defined(CONFIG_MX7) || \
-	  defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M))
+	  defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M) || defined(CONFIG_IMX8) || \
+	  defined(CONFIG_IMX8ULP))
 	u32 orba_l;
 	u32 orba_h;
 #else
@@ -211,7 +262,8 @@ struct jr_regs {
 struct sg_entry {
 #if defined(CONFIG_SYS_FSL_SEC_LE) && \
 	!(defined(CONFIG_MX6) || defined(CONFIG_MX7) || \
-	  defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M))
+	  defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M) || defined(CONFIG_IMX8) || \
+	  defined(CONFIG_IMX8ULP))
 	uint32_t addr_lo;	/* Memory Address - lo */
 	uint32_t addr_hi;	/* Memory Address of start of buffer - hi */
 #else
@@ -231,7 +283,8 @@ struct sg_entry {
 };
 
 #if defined(CONFIG_MX6) || defined(CONFIG_MX7) || \
-	defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M)
+	 defined(CONFIG_MX7ULP) || defined(CONFIG_IMX8M) || defined(CONFIG_IMX8) || \
+	 defined(CONFIG_IMX8ULP)
 /* Job Ring Base Address */
 #define JR_BASE_ADDR(x) (CONFIG_SYS_FSL_SEC_ADDR + 0x1000 * (x + 1))
 /* Secure Memory Offset varies accross versions */
@@ -340,6 +393,48 @@ int sign_mppubk(const u8 *m, int data_size, u8 *dgst, u8 *c, u8 *d);
 int sec_init_idx(uint8_t);
 #endif
 int sec_init(void);
+
+u8 caam_get_era(void);
+
+/**
+ * blob_decap() - Decapsulate the data from a blob
+ * @key_mod:    - Key modifier address
+ * @src:        - Source address (blob)
+ * @dst:        - Destination address (data)
+ * @len:        - Size of decapsulated data
+ * @keycolor    - Determines if the source data is covered (black key) or
+ *                plaintext.
+ *
+ * Note: Start and end of the key_mod, src and dst buffers have to be aligned to
+ * the cache line size (ARCH_DMA_MINALIGN) for the CAAM operation to succeed.
+ *
+ * Returns zero on success, negative on error.
+ */
+int blob_decap(u8 *key_mod, u8 *src, u8 *dst, u32 len, u8 keycolor);
+
+/**
+ * blob_encap() - Encapsulate the data as a blob
+ * @key_mod:    - Key modifier address
+ * @src:        - Source address (data)
+ * @dst:        - Destination address (blob)
+ * @len:        - Size of data to be encapsulated
+ * @keycolor    - Determines if the source data is covered (black key) or
+ *                plaintext.
+ *
+ * Note: Start and end of the key_mod, src and dst buffers have to be aligned to
+ * the cache line size (ARCH_DMA_MINALIGN) for the CAAM operation to succeed.
+ *
+ * Returns zero on success, negative on error.
+ */
+int blob_encap(u8 *key_mod, u8 *src, u8 *dst, u32 len, u8 keycolor);
+
+int derive_blob_kek(u8 *bkek_buf, u8 *key_mod, u32 key_sz);
+
+int hwrng_generate(u8 *dst, u32 len);
+
+int aesecb_decrypt(u8 *key, u32 key_len, u8 *src, u8 *dst, u32 len);
+
+int tag_black_obj(u8 *black_obj, size_t black_obj_len, size_t key_len, size_t black_max_len);
 #endif
 
 #endif /* __FSL_SEC_H */

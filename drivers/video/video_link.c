@@ -5,6 +5,7 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <linux/errno.h>
 
 #include <dm.h>
@@ -14,6 +15,7 @@
 #include <dm/read.h>
 #include <video.h>
 #include <panel.h>
+#include <env.h>
 
 struct of_endpoint {
 	unsigned int port;
@@ -454,7 +456,7 @@ static void list_videolink(bool current_only)
 	}
 }
 
-static int do_videolink(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+static int do_videolink(struct cmd_tbl * cmdtp, int flag, int argc, char * const argv[])
 {
 	char cmd = 'l';
 	int ret = 0;

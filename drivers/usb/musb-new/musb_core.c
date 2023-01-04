@@ -65,6 +65,7 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
 #include <dm/device_compat.h>
 #include <dm/devres.h>
 #include <linux/module.h>
@@ -79,7 +80,11 @@
 #include <linux/io.h>
 #else
 #include <common.h>
+#include <dm.h>
+#include <dm/device_compat.h>
 #include <usb.h>
+#include <linux/bitops.h>
+#include <linux/bug.h>
 #include <linux/errno.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -1521,7 +1526,7 @@ static int __devinit musb_core_init(u16 musb_type, struct musb *musb)
 /*-------------------------------------------------------------------------*/
 
 #if defined(CONFIG_SOC_OMAP2430) || defined(CONFIG_SOC_OMAP3430) || \
-	defined(CONFIG_ARCH_OMAP4)
+	defined(CONFIG_ARCH_OMAP4) || defined(CONFIG_ARCH_U8500)
 
 static irqreturn_t generic_interrupt(int irq, void *__hci)
 {

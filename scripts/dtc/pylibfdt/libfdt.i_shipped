@@ -786,7 +786,8 @@ class FdtSw(FdtRo):
             Fdt object allowing access to the newly created device tree
         """
         fdtsw = bytearray(self._fdt)
-        check_err(fdt_finish(fdtsw))
+        while self.check_space(fdt_finish(fdtsw)):
+            fdtsw = bytearray(self._fdt)
         return Fdt(fdtsw)
 
     def check_space(self, val):
@@ -1009,7 +1010,7 @@ typedef uint32_t fdt32_t;
 	}
 	$1 = (void *)PyByteArray_AsString($input);
         fdt = $1;
-        fdt = fdt; /* avoid unused variable warning */
+        (void)fdt; /* avoid unused variable warning */
 }
 
 /* Some functions do change the device tree, so use void * */
@@ -1020,7 +1021,7 @@ typedef uint32_t fdt32_t;
 	}
 	$1 = PyByteArray_AsString($input);
         fdt = $1;
-        fdt = fdt; /* avoid unused variable warning */
+        (void)fdt; /* avoid unused variable warning */
 }
 
 /* typemap used for fdt_get_property_by_offset() */

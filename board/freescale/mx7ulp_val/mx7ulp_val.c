@@ -12,6 +12,7 @@
 #include <asm/arch/iomux.h>
 #include <asm/gpio.h>
 #include <usb.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

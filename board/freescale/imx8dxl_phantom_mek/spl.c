@@ -6,6 +6,9 @@
 
 #include <common.h>
 #include <dm.h>
+#include <image.h>
+#include <init.h>
+#include <log.h>
 #include <spl.h>
 #include <dm/uclass.h>
 #include <dm/device.h>
@@ -19,6 +22,8 @@ DECLARE_GLOBAL_DATA_PTR;
 void spl_board_init(void)
 {
 	struct udevice *dev;
+
+	uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(imx8_scu), &dev);
 
 	uclass_find_first_device(UCLASS_MISC, &dev);
 

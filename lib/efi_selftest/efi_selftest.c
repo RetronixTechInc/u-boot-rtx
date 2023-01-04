@@ -5,6 +5,7 @@
  * Copyright (c) 2017 Heinrich Schuchardt <xypron.glpk@gmx.de>
  */
 
+#include <command.h>
 #include <efi_selftest.h>
 #include <vsprintf.h>
 
@@ -17,7 +18,7 @@ static const struct efi_system_table *systable;
 static const struct efi_boot_services *boottime;
 static const struct efi_runtime_services *runtime;
 static efi_handle_t handle;
-static u16 reset_message[] = L"Selftest completed";
+static u16 reset_message[] = u"Selftest completed";
 static int *setup_status;
 
 /*
@@ -36,6 +37,9 @@ void efi_st_exit_boot_services(void)
 	u32 desc_version;
 	efi_status_t ret;
 	struct efi_mem_desc *memory_map;
+
+	/* Do not detach devices in ExitBootServices. We need the console. */
+	efi_st_keep_devices = true;
 
 	ret = boottime->get_memory_map(&map_size, NULL, &map_key, &desc_size,
 				       &desc_version);
@@ -71,7 +75,7 @@ void efi_st_exit_boot_services(void)
  *
  * @test	the test to be executed
  * @failures	counter that will be incremented if a failure occurs
- * @return	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(struct efi_unit_test *test, unsigned int *failures)
 {
@@ -96,7 +100,7 @@ static int setup(struct efi_unit_test *test, unsigned int *failures)
  *
  * @test	the test to be executed
  * @failures	counter that will be incremented if a failure occurs
- * @return	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int execute(struct efi_unit_test *test, unsigned int *failures)
 {
@@ -121,7 +125,7 @@ static int execute(struct efi_unit_test *test, unsigned int *failures)
  *
  * @test	the test to be torn down
  * @failures	counter that will be incremented if a failure occurs
- * @return	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int teardown(struct efi_unit_test *test, unsigned int *failures)
 {
@@ -142,10 +146,31 @@ static int teardown(struct efi_unit_test *test, unsigned int *failures)
 }
 
 /*
+ * Check that a test requiring reset exists.
+ *
+ * @testname:	name of the test
+ * Return:	test, or NULL if not found
+ */
+static bool need_reset(const u16 *testname)
+{
+	struct efi_unit_test *test;
+
+	for (test = ll_entry_start(struct efi_unit_test, efi_unit_test);
+	     test < ll_entry_end(struct efi_unit_test, efi_unit_test); ++test) {
+		if (testname && efi_st_strcmp_16_8(testname, test->name))
+			continue;
+		if (test->phase == EFI_SETUP_BEFORE_BOOTTIME_EXIT ||
+		    test->phase == EFI_SETTING_VIRTUAL_ADDRESS_MAP)
+			return true;
+	}
+	return false;
+}
+
+/*
  * Check that a test exists.
  *
  * @testname:	name of the test
- * @return:	test, or NULL if not found
+ * Return:	test, or NULL if not found
  */
 static struct efi_unit_test *find_test(const u16 *testname)
 {
@@ -289,18 +314,29 @@ efi_status_t EFIAPI efi_selftest(efi_handle_t image_handle,
 			EFI_ST_SETUP | EFI_ST_EXECUTE | EFI_ST_TEARDOWN,
 			&failures);
 
+	if (!need_reset(testname)) {
+		if (failures)
+			ret = EFI_PROTOCOL_ERROR;
+
+		/* Give feedback */
+		efi_st_printc(EFI_WHITE, "\nSummary: %u failures\n\n",
+			      failures);
+		return ret;
+	}
+
 	/* Execute mixed tests */
 	efi_st_do_tests(testname, EFI_SETUP_BEFORE_BOOTTIME_EXIT,
+			EFI_ST_SETUP, &failures);
+	efi_st_do_tests(testname, EFI_SETTING_VIRTUAL_ADDRESS_MAP,
 			EFI_ST_SETUP, &failures);
 
 	efi_st_exit_boot_services();
 
 	efi_st_do_tests(testname, EFI_SETUP_BEFORE_BOOTTIME_EXIT,
 			EFI_ST_EXECUTE | EFI_ST_TEARDOWN, &failures);
-
-	/* Execute runtime tests */
-	efi_st_do_tests(testname, EFI_SETUP_AFTER_BOOTTIME_EXIT,
-			EFI_ST_SETUP | EFI_ST_EXECUTE | EFI_ST_TEARDOWN,
+	/* Execute test setting the virtual address map */
+	efi_st_do_tests(testname, EFI_SETTING_VIRTUAL_ADDRESS_MAP,
+			EFI_ST_EXECUTE | EFI_ST_TEARDOWN,
 			&failures);
 
 	/* Give feedback */
@@ -309,8 +345,15 @@ efi_status_t EFIAPI efi_selftest(efi_handle_t image_handle,
 	/* Reset system */
 	efi_st_printf("Preparing for reset. Press any key...\n");
 	efi_st_get_key();
-	runtime->reset_system(EFI_RESET_WARM, EFI_NOT_READY,
-			      sizeof(reset_message), reset_message);
+
+	if (IS_ENABLED(CONFIG_EFI_HAVE_RUNTIME_RESET)) {
+		runtime->reset_system(EFI_RESET_WARM, EFI_NOT_READY,
+				      sizeof(reset_message), reset_message);
+	} else {
+		efi_restore_gd();
+		do_reset(NULL, 0, 0, NULL);
+	}
+
 	efi_st_printf("\n");
 	efi_st_error("Reset failed\n");
 

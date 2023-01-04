@@ -4,8 +4,10 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/arch/sci/sci.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/mach-imx/optee.h>
 #include <dm/ofnode.h>
 #include <fdt_support.h>
@@ -454,7 +456,7 @@ static int config_smmu_resource_sid(int rsrc, int sid)
 
 	err = sc_rm_set_master_sid(-1, rsrc, sid);
 	debug("set_master_sid rsrc=%d sid=0x%x err=%d\n", rsrc, sid, err);
-	if (err != SC_ERR_NONE) {
+	if (err) {
 		if (!check_owned_resource(rsrc)) {
 			printf("%s rsrc[%d] not owned\n", __func__, rsrc);
 			return -1;
@@ -573,24 +575,24 @@ static int config_smmu_fdt(void *blob)
 	return 0;
 }
 
-int ft_system_setup(void *blob, bd_t *bd)
+int ft_system_setup(void *blob, struct bd_info *bd)
 {
 	int ret;
-
-#if (CONFIG_BOOTAUX_RESERVED_MEM_SIZE != 0x00)
 	int off;
-	off = fdt_add_mem_rsv(blob, CONFIG_BOOTAUX_RESERVED_MEM_BASE,
+
+	if (CONFIG_BOOTAUX_RESERVED_MEM_BASE) {
+		off = fdt_add_mem_rsv(blob, CONFIG_BOOTAUX_RESERVED_MEM_BASE,
 				      CONFIG_BOOTAUX_RESERVED_MEM_SIZE);
-	if (off < 0)
-		printf("Failed	to reserve memory for bootaux: %s\n",
-			   fdt_strerror(off));
-#endif
+		if (off < 0)
+			printf("Failed	to reserve memory for bootaux: %s\n",
+			       fdt_strerror(off));
+	}
 
 #ifndef CONFIG_SKIP_RESOURCE_CHECKING
 	update_fdt_with_owned_resources(blob);
-	update_fdt_edma_nodes(blob);
 #endif
 
+	update_fdt_edma_nodes(blob);
 	if (is_imx8qm()) {
 		ret = config_smmu_fdt(blob);
 		if (ret)

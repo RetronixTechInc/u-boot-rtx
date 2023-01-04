@@ -81,7 +81,15 @@ struct bb_miiphy_bus {
 extern struct bb_miiphy_bus bb_miiphy_buses[];
 extern int bb_miiphy_buses_num;
 
-void bb_miiphy_init(void);
+/**
+ * bb_miiphy_init() - Initialize bit-banged MII bus driver
+ *
+ * It is called during the generic post-relocation init sequence.
+ *
+ * Return: 0 if OK
+ */
+int bb_miiphy_init(void);
+
 int bb_miiphy_read(struct mii_dev *miidev, int addr, int devad, int reg);
 int bb_miiphy_write(struct mii_dev *miidev, int addr, int devad, int reg,
 		    u16 value);
@@ -117,8 +125,6 @@ int bb_miiphy_write(struct mii_dev *miidev, int addr, int devad, int reg,
 /* phy EXSR */
 #define ESTATUS_1000XF		0x8000
 #define ESTATUS_1000XH		0x4000
-
-#ifdef CONFIG_DM_MDIO
 
 /**
  * struct mdio_perdev_priv - Per-device class data for MDIO DM
@@ -159,7 +165,7 @@ void dm_mdio_probe_devices(void);
  * @ethdev: ethernet device to connect to the PHY
  * @interface: MAC-PHY protocol
  *
- * @return pointer to phy_device, or 0 on error
+ * Return: pointer to phy_device, or 0 on error
  */
 struct phy_device *dm_mdio_phy_connect(struct udevice *mdiodev, int phyaddr,
 				       struct udevice *ethdev,
@@ -173,13 +179,22 @@ struct phy_device *dm_mdio_phy_connect(struct udevice *mdiodev, int phyaddr,
  *
  * @ethdev: ethernet device
  *
- * @return pointer to phy_device, or 0 on error
+ * Return: pointer to phy_device, or 0 on error
  */
 struct phy_device *dm_eth_phy_connect(struct udevice *ethdev);
 
-#endif
-
-#ifdef CONFIG_DM_MDIO_MUX
+/**
+ * dm_eth_phy_connect_index - Connect an Eth device to the #phy_index PHY based on device tree
+ * This means that the phy-handle reference can now hold multiple PHYs.
+ *
+ * Picks up the DT phy-handle and phy-mode from ethernet device node and
+ * connects the ethernet device to the linked PHY.
+ *
+ * @ethdev: ethernet device
+ *
+ * @return pointer to phy_device, or 0 on error
+ */
+struct phy_device *dm_eth_phy_connect_index(struct udevice *ethdev, int phy_index);
 
 /* indicates none of the child buses is selected */
 #define MDIO_MUX_SELECT_NONE	-1
@@ -196,7 +211,5 @@ struct mdio_mux_ops {
 };
 
 #define mdio_mux_get_ops(dev) ((struct mdio_mux_ops *)(dev)->driver->ops)
-
-#endif
 
 #endif

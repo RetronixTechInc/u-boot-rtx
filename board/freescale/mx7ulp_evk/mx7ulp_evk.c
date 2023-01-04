@@ -5,6 +5,8 @@
 
 #include <common.h>
 #include <fdt_support.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mx7ulp-pins.h>
@@ -13,6 +15,7 @@
 #include <asm/gpio.h>
 #include <usb.h>
 #include <dm.h>
+#include <env.h>
 
 #ifdef CONFIG_BOOTLOADER_MENU
 #include "video.h"
@@ -106,7 +109,7 @@ int board_init(void)
 }
 
 #if IS_ENABLED(CONFIG_OF_BOARD_SETUP)
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	const char *path;
 	int rc, nodeoff;
@@ -182,15 +185,6 @@ int board_late_init(void)
 
 	return 0;
 }
-
-#ifdef CONFIG_FSL_FASTBOOT
-#ifdef CONFIG_ANDROID_RECOVERY
-int is_recovery_key_pressing(void)
-{
-	return 0; /*TODO*/
-}
-#endif /*CONFIG_ANDROID_RECOVERY*/
-#endif /*CONFIG_FSL_FASTBOOT*/
 
 #ifdef CONFIG_ANDROID_SUPPORT
 bool is_power_key_pressed(void) {

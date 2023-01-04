@@ -7,10 +7,12 @@
 #include <clk-uclass.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch-rockchip/clock.h>
 #include <asm/arch-rockchip/hardware.h>
 #include <div64.h>
+#include <linux/delay.h>
 
 static struct rockchip_pll_rate_table rockchip_auto_table;
 
@@ -357,4 +359,3 @@ rockchip_get_cpu_settings(struct rockchip_cpu_rate_table *cpu_table,
 	else
 		return ps;
 }
-

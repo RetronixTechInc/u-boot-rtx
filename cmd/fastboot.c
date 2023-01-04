@@ -14,6 +14,7 @@
 #include <net.h>
 #include <usb.h>
 #include <watchdog.h>
+#include <linux/stringify.h>
 
 static int do_fastboot_udp(int argc, char *const argv[],
 			   uintptr_t buf_addr, size_t buf_size)
@@ -105,7 +106,8 @@ exit:
 #endif
 }
 
-static int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+static int do_fastboot(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	uintptr_t buf_addr = (uintptr_t)NULL;
 	size_t buf_size = 0;
@@ -122,13 +124,13 @@ static int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
 			case 'l':
 				if (--argc <= 0)
 					return CMD_RET_USAGE;
-				buf_addr = simple_strtoul(*++argv, NULL, 16);
+				buf_addr = hextoul(*++argv, NULL);
 				goto NXTARG;
 
 			case 's':
 				if (--argc <= 0)
 					return CMD_RET_USAGE;
-				buf_size = simple_strtoul(*++argv, NULL, 16);
+				buf_size = hextoul(*++argv, NULL);
 				goto NXTARG;
 
 			default:

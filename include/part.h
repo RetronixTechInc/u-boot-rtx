@@ -9,6 +9,7 @@
 #include <blk.h>
 #include <ide.h>
 #include <uuid.h>
+#include <linker_lists.h>
 #include <linux/list.h>
 
 struct block_drvr {
@@ -49,15 +50,24 @@ struct block_drvr {
 
 #define PART_NAME_LEN 32
 #define PART_TYPE_LEN 32
-#define MAX_SEARCH_PARTITIONS 64
+#define MAX_SEARCH_PARTITIONS 128
 
-typedef struct disk_partition {
+#define PART_BOOTABLE			((int)BIT(0))
+#define PART_EFI_SYSTEM_PARTITION	((int)BIT(1))
+
+struct disk_partition {
 	lbaint_t	start;	/* # of first block in partition	*/
 	lbaint_t	size;	/* number of blocks in partition	*/
 	ulong	blksz;		/* block size in bytes			*/
 	uchar	name[PART_NAME_LEN];	/* partition name			*/
 	uchar	type[PART_TYPE_LEN];	/* string type description		*/
-	int	bootable;	/* Active/Bootable flag is set		*/
+	/*
+	 * The bootable is a bitmask with the following fields:
+	 *
+	 * PART_BOOTABLE		the MBR bootable flag is set
+	 * PART_EFI_SYSTEM_PARTITION	the partition is an EFI system partition
+	 */
+	int	bootable;
 #if CONFIG_IS_ENABLED(PARTITION_UUIDS)
 	char	uuid[UUID_STR_LEN + 1];	/* filesystem UUID as string, if exists	*/
 #endif
@@ -65,13 +75,13 @@ typedef struct disk_partition {
 	char	type_guid[UUID_STR_LEN + 1];	/* type GUID as string, if exists	*/
 #endif
 #ifdef CONFIG_DOS_PARTITION
-	uchar	sys_ind;	/* partition type 			*/
+	uchar	sys_ind;	/* partition type			*/
 #endif
-} disk_partition_t;
+};
 
 struct disk_part {
 	int partnum;
-	disk_partition_t gpt_part_info;
+	struct disk_partition gpt_part_info;
 	struct list_head list;
 };
 
@@ -87,7 +97,7 @@ struct disk_part {
  * @ifname:	Interface name (e.g. "ide", "scsi")
  * @dev:	Device number (0 for first device on that interface, 1 for
  *		second, etc.
- * @return pointer to the block device, or NULL if not available, or an
+ * Return: pointer to the block device, or NULL if not available, or an
  *	   error occurred.
  */
 struct blk_desc *blk_get_dev(const char *ifname, int dev);
@@ -97,12 +107,14 @@ struct blk_desc *sata_get_dev(int dev);
 int host_get_dev_err(int dev, struct blk_desc **blk_devp);
 
 /* disk/part.c */
-int part_get_info(struct blk_desc *dev_desc, int part, disk_partition_t *info);
+int part_get_info(struct blk_desc *dev_desc, int part,
+		  struct disk_partition *info);
 /**
  * part_get_info_whole_disk() - get partition info for the special case of
  * a partition occupying the entire disk.
  */
-int part_get_info_whole_disk(struct blk_desc *dev_desc, disk_partition_t *info);
+int part_get_info_whole_disk(struct blk_desc *dev_desc,
+			     struct disk_partition *info);
 
 void part_print(struct blk_desc *dev_desc);
 void part_init(struct blk_desc *dev_desc);
@@ -131,7 +143,7 @@ void dev_print(struct blk_desc *dev_desc);
  *		and hardware partition number (e.g. "2.4") for devices that
  *		support it (currently only MMC).
  * @dev_desc:	Returns a pointer to the block device on success
- * @return block device number (local to the interface), or -1 on error
+ * Return: block device number (local to the interface), or -1 on error
  */
 int blk_get_device_by_str(const char *ifname, const char *dev_str,
 			  struct blk_desc **dev_desc);
@@ -166,12 +178,12 @@ int blk_get_device_by_str(const char *ifname, const char *dev_str,
  * @allow_whole_dev:	true to allow the user to select partition 0
  *		(which means the whole device), false to require a valid
  *		partition number >= 1
- * @return partition number, or -1 on error
+ * Return: partition number, or -1 on error
  *
  */
 int blk_get_device_part_str(const char *ifname, const char *dev_part_str,
 			    struct blk_desc **dev_desc,
-			    disk_partition_t *info, int allow_whole_dev);
+			    struct disk_partition *info, int allow_whole_dev);
 
 /**
  * part_get_info_by_name_type() - Search for a partition by name
@@ -182,11 +194,11 @@ int blk_get_device_part_str(const char *ifname, const char *dev_part_str,
  * @param info - returns the disk partition info
  * @param part_type - only search in partitions of this type
  *
- * @return - the partition number on match (starting on 1), -1 on no match,
+ * Return: - the partition number on match (starting on 1), -1 on no match,
  * otherwise error
  */
 int part_get_info_by_name_type(struct blk_desc *dev_desc, const char *name,
-			       disk_partition_t *info, int part_type);
+			       struct disk_partition *info, int part_type);
 
 /**
  * part_get_info_by_name() - Search for a partition by name
@@ -196,11 +208,11 @@ int part_get_info_by_name_type(struct blk_desc *dev_desc, const char *name,
  * @param gpt_name - the specified table entry name
  * @param info - returns the disk partition info
  *
- * @return - the partition number on match (starting on 1), -1 on no match,
+ * Return: - the partition number on match (starting on 1), -1 on no match,
  * otherwise error
  */
 int part_get_info_by_name(struct blk_desc *dev_desc,
-			      const char *name, disk_partition_t *info);
+			      const char *name, struct disk_partition *info);
 
 /**
  * Get partition info from dev number + part name, or dev number + part number.
@@ -216,12 +228,16 @@ int part_get_info_by_name(struct blk_desc *dev_desc,
  * @param[in] dev_part_str Input partition description, like "0#misc" or "0:1"
  * @param[out] dev_desc	Place to store the device description pointer
  * @param[out] part_info Place to store the partition information
- * @return 0 on success, or a negative on error
+ * @param[in] allow_whole_dev true to allow the user to select partition 0
+ *		(which means the whole device), false to require a valid
+ *		partition number >= 1
+ * Return: the partition number on success, or negative errno on error
  */
 int part_get_info_by_dev_and_name_or_num(const char *dev_iface,
 					 const char *dev_part_str,
 					 struct blk_desc **dev_desc,
-					 disk_partition_t *part_info);
+					 struct disk_partition *part_info,
+					 int allow_whole_dev);
 
 /**
  * part_set_generic_name() - create generic partition like hda1 or sdb2
@@ -245,9 +261,9 @@ static inline struct blk_desc *mg_disk_get_dev(int dev) { return NULL; }
 static inline struct blk_desc *sata_get_dev(int dev) { return NULL; }
 
 static inline int part_get_info(struct blk_desc *dev_desc, int part,
-				disk_partition_t *info) { return -1; }
+				struct disk_partition *info) { return -1; }
 static inline int part_get_info_whole_disk(struct blk_desc *dev_desc,
-					   disk_partition_t *info)
+					   struct disk_partition *info)
 { return -1; }
 static inline void part_print(struct blk_desc *dev_desc) {}
 static inline void part_init(struct blk_desc *dev_desc) {}
@@ -256,11 +272,21 @@ static inline int blk_get_device_by_str(const char *ifname, const char *dev_str,
 					struct blk_desc **dev_desc)
 { return -1; }
 static inline int blk_get_device_part_str(const char *ifname,
-					   const char *dev_part_str,
-					   struct blk_desc **dev_desc,
-					   disk_partition_t *info,
-					   int allow_whole_dev)
+					  const char *dev_part_str,
+					  struct blk_desc **dev_desc,
+					  struct disk_partition *info,
+					  int allow_whole_dev)
 { *dev_desc = NULL; return -1; }
+static inline int
+part_get_info_by_dev_and_name_or_num(const char *dev_iface,
+				     const char *dev_part_str,
+				     struct blk_desc **dev_desc,
+				     struct disk_partition *part_info,
+				     int allow_whole_dev)
+{
+	*dev_desc = NULL;
+	return -ENOSYS;
+}
 #endif
 
 /*
@@ -271,7 +297,7 @@ static inline int blk_get_device_part_str(const char *ifname,
 # define part_print_ptr(x)	NULL
 # if defined(CONFIG_SPL_FS_EXT4) || defined(CONFIG_SPL_FS_FAT) || \
 	defined(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION) || \
-	defined(CONFIG_DUAL_BOOTLOADER)
+	defined(CONFIG_DUAL_BOOTLOADER) || defined(CONFIG_IMX_TRUSTY_OS)
 #  define part_get_info_ptr(x)	x
 # else
 #  define part_get_info_ptr(x)	NULL
@@ -295,7 +321,7 @@ struct part_driver {
 	 * @info:	Returns partition information
 	 */
 	int (*get_info)(struct blk_desc *dev_desc, int part,
-			disk_partition_t *info);
+			struct disk_partition *info);
 
 	/**
 	 * print() - Print partition information
@@ -329,7 +355,7 @@ struct part_driver {
  * @param gpt_h - pointer to GPT header representation
  * @param gpt_e - pointer to GPT partition table entries
  *
- * @return - zero on success, otherwise error
+ * Return: - zero on success, otherwise error
  */
 int write_gpt_table(struct blk_desc *dev_desc,
 		  gpt_header *gpt_h, gpt_entry *gpt_e);
@@ -343,11 +369,11 @@ int write_gpt_table(struct blk_desc *dev_desc,
  * @param partitions - list of partitions
  * @param parts - number of partitions
  *
- * @return zero on success
+ * Return: zero on success
  */
 int gpt_fill_pte(struct blk_desc *dev_desc,
 		 gpt_header *gpt_h, gpt_entry *gpt_e,
-		 disk_partition_t *partitions, int parts);
+		 struct disk_partition *partitions, int parts);
 
 /**
  * gpt_fill_header(): Fill the GPT header
@@ -357,7 +383,7 @@ int gpt_fill_pte(struct blk_desc *dev_desc,
  * @param str_guid - disk guid string representation
  * @param parts_count - number of partitions
  *
- * @return - error on str_guid conversion error
+ * Return: - error on str_guid conversion error
  */
 int gpt_fill_header(struct blk_desc *dev_desc, gpt_header *gpt_h,
 		char *str_guid, int parts_count);
@@ -370,10 +396,10 @@ int gpt_fill_header(struct blk_desc *dev_desc, gpt_header *gpt_h,
  * @param partitions - list of partitions
  * @param parts - number of partitions
  *
- * @return zero on success
+ * Return: zero on success
  */
 int gpt_restore(struct blk_desc *dev_desc, char *str_disk_guid,
-		disk_partition_t *partitions, const int parts_count);
+		struct disk_partition *partitions, const int parts_count);
 
 /**
  * is_valid_gpt_buf() - Ensure that the Primary GPT information is valid
@@ -381,7 +407,7 @@ int gpt_restore(struct blk_desc *dev_desc, char *str_disk_guid,
  * @param dev_desc - block device descriptor
  * @param buf - buffer which contains the MBR and Primary GPT info
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
 int is_valid_gpt_buf(struct blk_desc *dev_desc, void *buf);
 
@@ -391,7 +417,7 @@ int is_valid_gpt_buf(struct blk_desc *dev_desc, void *buf);
  * @param dev_desc - block device descriptor
  * @param buf - buffer which contains the MBR and Primary GPT info
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
 int write_mbr_and_gpt_partitions(struct blk_desc *dev_desc, void *buf);
 
@@ -414,7 +440,7 @@ int write_backup_gpt_partitions(struct blk_desc *dev_desc, void *buf);
  * @param gpt_head - pointer to GPT header data read from medium
  * @param gpt_pte - pointer to GPT partition table enties read from medium
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
 int gpt_verify_headers(struct blk_desc *dev_desc, gpt_header *gpt_head,
 		       gpt_entry **gpt_pte);
@@ -433,10 +459,10 @@ int gpt_verify_headers(struct blk_desc *dev_desc, gpt_header *gpt_head,
  * @param gpt_head - pointer to GPT header data read from medium
  * @param gpt_pte - pointer to GPT partition table enties read from medium
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
 int gpt_verify_partitions(struct blk_desc *dev_desc,
-			  disk_partition_t *partitions, int parts,
+			  struct disk_partition *partitions, int parts,
 			  gpt_header *gpt_head, gpt_entry **gpt_pte);
 
 
@@ -449,9 +475,14 @@ int gpt_verify_partitions(struct blk_desc *dev_desc,
  * @param dev_desc - block device descriptor
  * @param guid - pre-allocated string in which to return the GUID
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
 int get_disk_guid(struct blk_desc *dev_desc, char *guid);
+
+#if (defined(CONFIG_DUAL_BOOTLOADER) || defined(CONFIG_IMX_TRUSTY_OS)) && defined(CONFIG_SPL_BUILD)
+int part_get_info_efi_by_name(struct blk_desc *dev_desc, const char *name,
+		      struct disk_partition *info);
+#endif
 
 #endif
 
@@ -461,21 +492,54 @@ int get_disk_guid(struct blk_desc *dev_desc, char *guid);
  *
  * @param buf - buffer which contains the MBR
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
 int is_valid_dos_buf(void *buf);
 
 /**
- * write_mbr_partition() - write DOS MBR
+ * write_mbr_sector() - write DOS MBR
  *
  * @param dev_desc - block device descriptor
  * @param buf - buffer which contains the MBR
  *
- * @return - '0' on success, otherwise error
+ * Return: - '0' on success, otherwise error
  */
-int write_mbr_partition(struct blk_desc *dev_desc, void *buf);
+int write_mbr_sector(struct blk_desc *dev_desc, void *buf);
+
+int write_mbr_partitions(struct blk_desc *dev,
+		struct disk_partition *p, int count, unsigned int disksig);
+int layout_mbr_partitions(struct disk_partition *p, int count,
+			  lbaint_t total_sectors);
 
 #endif
 
+#ifdef CONFIG_PARTITIONS
+/**
+ * part_driver_get_count() - get partition driver count
+ *
+ * Return: - number of partition drivers
+ */
+static inline int part_driver_get_count(void)
+{
+	return ll_entry_count(struct part_driver, part_driver);
+}
+
+/**
+ * part_driver_get_first() - get first partition driver
+ *
+ * Return: - pointer to first partition driver on success, otherwise NULL
+ */
+static inline struct part_driver *part_driver_get_first(void)
+{
+	return ll_entry_start(struct part_driver, part_driver);
+}
+
+#else
+static inline int part_driver_get_count(void)
+{ return 0; }
+
+static inline struct part_driver *part_driver_get_first(void)
+{ return NULL; }
+#endif /* CONFIG_PARTITIONS */
 
 #endif /* _PART_H */

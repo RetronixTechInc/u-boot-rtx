@@ -10,6 +10,7 @@
 
 #include <common.h>
 #include <command.h>
+#include <dm.h>
 #include <miiphy.h>
 
 typedef struct _MII_field_desc_t {
@@ -266,10 +267,10 @@ static void extract_range(
 	unsigned char * phi)
 {
 	char * end;
-	*plo = simple_strtoul(input, &end, 16);
+	*plo = hextoul(input, &end);
 	if (*end == '-') {
 		end++;
-		*phi = simple_strtoul(end, NULL, 16);
+		*phi = hextoul(end, NULL);
 	}
 	else {
 		*phi = *plo;
@@ -277,7 +278,7 @@ static void extract_range(
 }
 
 /* ---------------------------------------------------------------- */
-static int do_mii(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_mii(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char		op[2];
 	unsigned char	addrlo, addrhi, reglo, reghi;
@@ -318,9 +319,9 @@ static int do_mii(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (argc >= 4)
 			extract_range(argv[3], &reglo, &reghi);
 		if (argc >= 5)
-			data = simple_strtoul(argv[4], NULL, 16);
+			data = hextoul(argv[4], NULL);
 		if (argc >= 6)
-			mask = simple_strtoul(argv[5], NULL, 16);
+			mask = hextoul(argv[5], NULL);
 	}
 
 	if (addrhi > 31 && strncmp(op, "de", 2)) {

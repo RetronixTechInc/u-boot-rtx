@@ -7,7 +7,9 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <lcd.h>
+#include <log.h>
 #include <serial.h>
 #include <video_font.h>		/* Get font data, width and height */
 #if defined(CONFIG_LCD_LOGO)
@@ -236,7 +238,7 @@ void lcd_printf(const char *fmt, ...)
 	lcd_puts(buf);
 }
 
-static int do_lcd_setcursor(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_lcd_setcursor(struct cmd_tbl *cmdtp, int flag, int argc,
 			    char *const argv[])
 {
 	unsigned int col, row;
@@ -244,14 +246,14 @@ static int do_lcd_setcursor(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != 3)
 		return CMD_RET_USAGE;
 
-	col = simple_strtoul(argv[1], NULL, 10);
-	row = simple_strtoul(argv[2], NULL, 10);
+	col = dectoul(argv[1], NULL);
+	row = dectoul(argv[2], NULL);
 	lcd_position_cursor(col, row);
 
 	return 0;
 }
 
-static int do_lcd_puts(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_lcd_puts(struct cmd_tbl *cmdtp, int flag, int argc,
 		       char *const argv[])
 {
 	if (argc != 2)
@@ -273,4 +275,3 @@ U_BOOT_CMD(
 	"print string on lcd-framebuffer",
 	"    <string>"
 );
-

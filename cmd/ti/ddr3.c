@@ -6,12 +6,15 @@
  */
 
 #include <cpu_func.h>
+#include <env.h>
 #include <init.h>
+#include <log.h>
 #include <asm/arch/hardware.h>
 #include <asm/cache.h>
 #include <asm/emif.h>
 #include <common.h>
 #include <command.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -276,8 +279,8 @@ static int is_ecc_enabled(void)
 		(ecc_ctrl & EMIF_ECC_REG_RMW_EN_MASK);
 }
 
-static int do_ddr_test(cmd_tbl_t *cmdtp,
-		       int flag, int argc, char * const argv[])
+static int do_ddr_test(struct cmd_tbl *cmdtp,
+		       int flag, int argc, char *const argv[])
 {
 	u32 start_addr, end_addr, size, ecc_err;
 
@@ -287,8 +290,8 @@ static int do_ddr_test(cmd_tbl_t *cmdtp,
 			return CMD_RET_FAILURE;
 		}
 
-		start_addr = simple_strtoul(argv[2], NULL, 16);
-		ecc_err = simple_strtoul(argv[3], NULL, 16);
+		start_addr = hextoul(argv[2], NULL);
+		ecc_err = hextoul(argv[3], NULL);
 
 		if (!is_addr_valid(start_addr)) {
 			puts("Invalid address. Please enter ECC supported address!\n");
@@ -303,8 +306,8 @@ static int do_ddr_test(cmd_tbl_t *cmdtp,
 	      ((argc == 5) && (strncmp(argv[1], "compare", 8) == 0))))
 		return cmd_usage(cmdtp);
 
-	start_addr = simple_strtoul(argv[2], NULL, 16);
-	end_addr = simple_strtoul(argv[3], NULL, 16);
+	start_addr = hextoul(argv[2], NULL);
+	end_addr = hextoul(argv[3], NULL);
 
 	if ((start_addr < CONFIG_SYS_SDRAM_BASE) ||
 	    (start_addr > (CONFIG_SYS_SDRAM_BASE +
@@ -318,7 +321,7 @@ static int do_ddr_test(cmd_tbl_t *cmdtp,
 
 	puts("Please wait ...\n");
 	if (argc == 5) {
-		size = simple_strtoul(argv[4], NULL, 16);
+		size = hextoul(argv[4], NULL);
 		ddr_memory_compare(start_addr, end_addr, size);
 	} else {
 		ddr_memory_test(start_addr, end_addr, 0);

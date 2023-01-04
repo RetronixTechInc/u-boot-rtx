@@ -7,10 +7,10 @@
 
 #ifdef CONFIG_ROM_UNIFIED_SECTIONS
 #define ROM_API_TABLE_BASE_ADDR_LEGACY		0x180
-#define ROM_VERSION_OFFSET               	0x80
+#define ROM_VERSION_OFFSET			0x80
 #else
 #define ROM_API_TABLE_BASE_ADDR_LEGACY		0xC0
-#define ROM_VERSION_OFFSET               	0x48
+#define ROM_VERSION_OFFSET			0x48
 #endif
 #define ROM_API_TABLE_BASE_ADDR_MX6DQ_TO15	0xC4
 #define ROM_API_TABLE_BASE_ADDR_MX6DL_TO12	0xC4
@@ -68,7 +68,7 @@ before_calling_rom___pu_irom_hwcnfg_setup:
 	cmp r4, r3
 	ldrge r3, =ROM_API_TABLE_BASE_ADDR_MX6DL_TO12
 	ldrlt r3, =ROM_API_TABLE_BASE_ADDR_LEGACY
-#elif defined(CONFIG_MX6Q)
+#elif defined(CONFIG_MX6Q) || defined(CONFIG_MX6QP)
 	ldr r3, =ROM_VERSION_TO15
 	cmp r4, r3
 	ldrge r3, =ROM_API_TABLE_BASE_ADDR_MX6DQ_TO15

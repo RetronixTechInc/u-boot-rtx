@@ -3,6 +3,8 @@
  * Copyright 2016 Freescale Semiconductor, Inc.
  */
 #include <common.h>
+#include <fdt_support.h>
+#include <net.h>
 #include <asm/io.h>
 #include <netdev.h>
 #include <fm_eth.h>
@@ -12,7 +14,7 @@
 
 #include "../common/fman.h"
 
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 #ifdef CONFIG_FMAN_ENET
 	int i;
@@ -65,7 +67,7 @@ int board_eth_init(bd_t *bis)
 	for (i = FM1_DTSEC1; i < FM1_DTSEC1 + CONFIG_SYS_NUM_FM1_DTSEC; i++)
 		fm_info_set_mdio(i, dev);
 
-	/* XFI on lane A, MAC 9 */
+	/* 10GBase-R on lane A, MAC 9 */
 	dev = miiphy_get_dev_by_name(DEFAULT_FM_TGEC_MDIO_NAME);
 	fm_info_set_mdio(FM1_10GEC1, dev);
 

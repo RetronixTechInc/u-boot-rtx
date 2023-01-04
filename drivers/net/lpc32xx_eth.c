@@ -7,10 +7,12 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <net.h>
 #include <malloc.h>
 #include <miiphy.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/types.h>
 #include <asm/system.h>
@@ -595,7 +597,7 @@ int lpc32xx_eth_phylib_init(struct eth_device *dev, int phyid)
 }
 #endif
 
-int lpc32xx_eth_initialize(bd_t *bis)
+int lpc32xx_eth_initialize(struct bd_info *bis)
 {
 	struct eth_device *dev = &lpc32xx_eth.dev;
 	struct lpc32xx_eth_registers *regs = lpc32xx_eth.regs;
@@ -636,7 +638,7 @@ int lpc32xx_eth_initialize(bd_t *bis)
 	struct mii_dev *mdiodev = mdio_alloc();
 	if (!mdiodev)
 		return -ENOMEM;
-	strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+	strlcpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
 	mdiodev->read = mii_reg_read;
 	mdiodev->write = mii_reg_write;
 

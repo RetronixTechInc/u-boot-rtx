@@ -6,12 +6,30 @@
 #include <common.h>
 #include <dm.h>
 #include <hang.h>
+#include <init.h>
+#include <log.h>
 #include <os.h>
 #include <spl.h>
+#include <asm/global_data.h>
 #include <asm/spl.h>
 #include <asm/state.h>
+#include <test/ut.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+int sandbox_find_next_phase(char *fname, int maxlen, bool use_img)
+{
+	const char *cur_prefix, *next_prefix;
+	int ret;
+
+	cur_prefix = spl_phase_prefix(spl_phase());
+	next_prefix = spl_phase_prefix(spl_next_phase());
+	ret = os_find_u_boot(fname, maxlen, use_img, cur_prefix, next_prefix);
+	if (ret)
+		return log_msg_ret("find", ret);
+
+	return 0;
+}
 
 /* SPL / TPL init function */
 void board_init_f(ulong flag)
@@ -33,16 +51,20 @@ static int spl_board_load_image(struct spl_image_info *spl_image,
 	char fname[256];
 	int ret;
 
-	ret = os_find_u_boot(fname, sizeof(fname));
+	ret = sandbox_find_next_phase(fname, sizeof(fname), false);
 	if (ret) {
 		printf("(%s not found, error %d)\n", fname, ret);
 		return ret;
 	}
 
-	/* Set up spl_image to boot from jump_to_image_no_args() */
-	spl_image->arg = strdup(fname);
+	/*
+	 * Set up spl_image to boot from jump_to_image_no_args(). Allocate this
+	 * outsdide the RAM buffer (i.e. don't use strdup()).
+	 */
+	spl_image->arg = os_malloc(strlen(fname) + 1);
 	if (!spl_image->arg)
-		return log_msg_ret("Setup exec filename", -ENOMEM);
+		return log_msg_ret("exec", -ENOMEM);
+	strcpy(spl_image->arg, fname);
 
 	return 0;
 }
@@ -51,19 +73,17 @@ SPL_LOAD_IMAGE_METHOD("sandbox", 9, BOOT_DEVICE_BOARD, spl_board_load_image);
 void spl_board_init(void)
 {
 	struct sandbox_state *state = state_get_current();
-	struct udevice *dev;
 
 	preloader_console_init();
-	if (state->show_of_platdata) {
-		/*
-		 * Scan all the devices so that we can output their platform
-		 * data. See sandbox_spl_probe().
-		 */
-		printf("Scanning misc devices\n");
-		for (uclass_first_device(UCLASS_MISC, &dev);
-		     dev;
-		     uclass_next_device(&dev))
-			;
+
+	if (state->run_unittests) {
+		struct unit_test *tests = UNIT_TEST_ALL_START();
+		const int count = UNIT_TEST_ALL_COUNT();
+		int ret;
+
+		ret = ut_run_list("spl", NULL, tests, count,
+				  state->select_unittests);
+		/* continue execution into U-Boot */
 	}
 }
 

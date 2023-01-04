@@ -10,7 +10,9 @@
 #include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <asm/byteorder.h>
+#include <asm/cache.h>
 #include <asm/unaligned.h>
 #include <usb.h>
 #include <asm/io.h>
@@ -19,6 +21,7 @@
 #include <watchdog.h>
 #include <dm/device_compat.h>
 #include <linux/compiler.h>
+#include <linux/delay.h>
 
 #include "ehci.h"
 
@@ -105,7 +108,7 @@ static struct descriptor {
 	},
 };
 
-#if defined(CONFIG_EHCI_IS_TDI)
+#if defined(CONFIG_USB_EHCI_IS_TDI)
 #define ehci_is_TDI()	(1)
 #else
 #define ehci_is_TDI()	(0)
@@ -339,6 +342,28 @@ static int ehci_disable_async(struct ehci_ctrl *ctrl)
 			100 * 1000);
 	if (ret < 0)
 		printf("EHCI fail timeout STS_ASS reset\n");
+
+	return ret;
+}
+
+static int ehci_iaa_cycle(struct ehci_ctrl *ctrl)
+{
+	u32 cmd, status;
+	int ret;
+
+	/* Enable Interrupt on Async Advance Doorbell. */
+	cmd = ehci_readl(&ctrl->hcor->or_usbcmd);
+	cmd |= CMD_IAAD;
+	ehci_writel(&ctrl->hcor->or_usbcmd, cmd);
+
+	ret = handshake(&ctrl->hcor->or_usbsts, STS_IAA, STS_IAA,
+			10 * 1000); /* 10ms timeout */
+	if (ret < 0)
+		printf("EHCI fail timeout STS_IAA set\n");
+
+	status = ehci_readl(&ctrl->hcor->or_usbsts);
+	if (status & STS_IAA)
+		ehci_writel(&ctrl->hcor->or_usbsts, STS_IAA);
 
 	return ret;
 }
@@ -627,6 +652,11 @@ ehci_submit_async(struct usb_device *dev, unsigned long pipe, void *buffer,
 	ctrl->qh_list.qh_link = cpu_to_hc32(virt_to_phys(&ctrl->qh_list) | QH_LINK_TYPE_QH);
 	flush_dcache_range((unsigned long)&ctrl->qh_list,
 		ALIGN_END_ADDR(struct QH, &ctrl->qh_list, 1));
+
+	/* Set IAAD, poll IAA */
+	ret = ehci_iaa_cycle(ctrl);
+	if (ret)
+		goto fail;
 
 	/*
 	 * Invalidate the memory area occupied by buffer
@@ -1413,13 +1443,10 @@ static struct int_queue *_ehci_create_int_queue(struct usb_device *dev,
 	debug("Exit create_int_queue\n");
 	return result;
 fail3:
-	if (result->tds)
-		free(result->tds);
+	free(result->tds);
 fail2:
-	if (result->first)
-		free(result->first);
-	if (result)
-		free(result);
+	free(result->first);
+	free(result);
 fail1:
 	return NULL;
 }
@@ -1762,13 +1789,13 @@ int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index)
 	} else {
 		ret = generic_phy_init(phy);
 		if (ret) {
-			dev_err(dev, "failed to init usb phy\n");
+			dev_dbg(dev, "failed to init usb phy\n");
 			return ret;
 		}
 
 		ret = generic_phy_power_on(phy);
 		if (ret) {
-			dev_err(dev, "failed to power on usb phy\n");
+			dev_dbg(dev, "failed to power on usb phy\n");
 			return generic_phy_exit(phy);
 		}
 	}
@@ -1786,13 +1813,13 @@ int ehci_shutdown_phy(struct udevice *dev, struct phy *phy)
 	if (generic_phy_valid(phy)) {
 		ret = generic_phy_power_off(phy);
 		if (ret) {
-			dev_err(dev, "failed to power off usb phy\n");
+			dev_dbg(dev, "failed to power off usb phy\n");
 			return ret;
 		}
 
 		ret = generic_phy_exit(phy);
 		if (ret) {
-			dev_err(dev, "failed to power off usb phy\n");
+			dev_dbg(dev, "failed to power off usb phy\n");
 			return ret;
 		}
 	}

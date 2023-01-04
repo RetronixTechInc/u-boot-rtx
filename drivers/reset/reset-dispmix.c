@@ -286,5 +286,5 @@ U_BOOT_DRIVER(dispmix_reset) = {
 	.of_match = dispmix_reset_dt_ids,
 	.ops = &dispmix_reset_ops,
 	.probe = dispmix_reset_probe,
-	.priv_auto_alloc_size = sizeof(struct dispmix_reset_priv),
+	.priv_auto = sizeof(struct dispmix_reset_priv),
 };

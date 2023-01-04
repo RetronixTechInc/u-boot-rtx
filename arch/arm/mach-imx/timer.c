@@ -3,14 +3,15 @@
  * (C) Copyright 2007
  * Sascha Hauer, Pengutronix
  *
- * (C) Copyright 2009-2016 Freescale Semiconductor, Inc.
- * Copyright 2018 NXP
+ * (C) Copyright 2009 Freescale Semiconductor, Inc.
  */
 
 #include <common.h>
+#include <init.h>
 #include <time.h>
 #include <asm/io.h>
 #include <div64.h>
+#include <asm/global_data.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>

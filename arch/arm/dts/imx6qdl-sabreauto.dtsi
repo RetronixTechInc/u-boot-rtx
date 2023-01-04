@@ -470,10 +470,21 @@
 &fec {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet>;
-	phy-mode = "rgmii";
+	phy-mode = "rgmii-id";
+	phy-handle = <&phy>;
 	fsl,magic-packet;
 	fsl,err006687-workaround-present;
 	status = "okay";
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy: ethernet-phy@1 {
+			reg = <1>;
+			qca,clk-out-frequency = <125000000>;
+		};
+	};
 };
 
 &can1 {
@@ -496,6 +507,7 @@
 	pinctrl-0 = <&pinctrl_gpmi_nand>;
 	status = "disabled"; /* pin conflict with uart3 */
 	nand-on-flash-bbt;
+	fsl,use-minimum-ecc;
 };
 
 &hdmi_audio {
@@ -864,7 +876,7 @@
 				MX6QDL_PAD_EIM_D18__I2C3_SDA 0x4001b8b1
 			>;
 		};
-		
+
 		pinctrl_i2c3_gpio: i2c3grp_gpio {
 			fsl,pins = <
 				MX6QDL_PAD_GPIO_3__GPIO1_IO03  0x1b8b1

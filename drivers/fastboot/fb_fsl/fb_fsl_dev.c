@@ -171,7 +171,7 @@ static void process_flash_blkdev(const char *cmdbuf, void *download_buffer,
 				int dev_no = 0;
 				struct mmc *mmc;
 				struct blk_desc *dev_desc;
-				disk_partition_t info;
+				struct disk_partition info;
 				struct sparse_storage sparse;
 				int err;
 
@@ -293,7 +293,7 @@ static void process_erase_blkdev(const char *cmdbuf, char *response)
 	struct mmc *mmc;
 	struct blk_desc *dev_desc;
 	struct fastboot_ptentry *ptn;
-	disk_partition_t info;
+	struct disk_partition info;
 
 	ptn = fastboot_flash_find_ptn(cmdbuf);
 	if ((ptn == NULL) || (ptn->flags & FASTBOOT_PTENTRY_FLAGS_UNERASEABLE)) {
@@ -501,7 +501,7 @@ void process_erase_mmc(const char *cmdbuf, char *response)
 	struct mmc *mmc;
 	struct blk_desc *dev_desc;
 	struct fastboot_ptentry *ptn;
-	disk_partition_t info;
+	struct disk_partition info;
 
 	ptn = fastboot_flash_find_ptn(cmdbuf);
 	if ((ptn == NULL) || (ptn->flags & FASTBOOT_PTENTRY_FLAGS_UNERASEABLE)) {

@@ -10,6 +10,7 @@
 #include <video_bridge.h>
 #include <asm/gpio.h>
 #include <i2c.h>
+#include <linux/delay.h>
 
 struct it6263_priv {
 	unsigned int addr;
@@ -210,5 +211,5 @@ U_BOOT_DRIVER(it6263_bridge) = {
 	.ops			  = &it6263_ops,
 	.bind			= dm_scan_fdt_dev,
 	.probe			  = it6263_probe,
-	.priv_auto_alloc_size	= sizeof(struct it6263_priv),
+	.priv_auto	= sizeof(struct it6263_priv),
 };

@@ -54,7 +54,6 @@
 #   error "is set"
 #  endif
 extern unsigned long nand_env_oob_offset;
-#  define CONFIG_ENV_OFFSET nand_env_oob_offset
 # endif /* CONFIG_ENV_OFFSET_OOB */
 #endif /* CONFIG_ENV_IS_IN_NAND */
 
@@ -111,7 +110,11 @@ typedef struct environment_s {
 extern env_t embedded_environment;
 #endif /* ENV_IS_EMBEDDED */
 
-extern const unsigned char default_environment[];
+#ifdef DEFAULT_ENV_IS_RW
+extern char default_environment[];
+#else
+extern const char default_environment[];
+#endif
 
 #ifndef DO_DEPS_ONLY
 
@@ -155,8 +158,7 @@ struct env_driver {
 	/**
 	 * load() - Load the environment from storage
 	 *
-	 * This method is optional. If not provided, no environment will be
-	 * loaded.
+	 * This method is required for loading environment
 	 *
 	 * @return 0 if OK, -ve on error
 	 */
@@ -208,8 +210,42 @@ struct env_driver {
 #define env_save_ptr(x) NULL
 #endif
 
+#define ENV_SAVE_PTR(x) (CONFIG_IS_ENABLED(SAVEENV) ? (x) : NULL)
+#define ENV_ERASE_PTR(x) (CONFIG_IS_ENABLED(CMD_ERASEENV) ? (x) : NULL)
+
 extern struct hsearch_data env_htab;
 
+/**
+ * env_ext4_get_intf() - Provide the interface for env in EXT4
+ *
+ * It is a weak function allowing board to overidde the default interface for
+ * U-Boot env in EXT4: CONFIG_ENV_EXT4_INTERFACE
+ *
+ * Return: string of interface, empty if not supported
+ */
+const char *env_ext4_get_intf(void);
+
+/**
+ * env_ext4_get_dev_part() - Provide the device and partition for env in EXT4
+ *
+ * It is a weak function allowing board to overidde the default device and
+ * partition used for U-Boot env in EXT4: CONFIG_ENV_EXT4_DEVICE_AND_PART
+ *
+ * Return: string of device and partition
+ */
+const char *env_ext4_get_dev_part(void);
+
+/**
+ * env_get_location()- Provide the best location for the U-Boot environment
+ *
+ * It is a weak function allowing board to overidde the environment location
+ *
+ * @op: operations performed on the environment
+ * @prio: priority between the multiple environments, 0 being the
+ *        highest priority
+ * Return:  an enum env_location value on success, or -ve error code.
+ */
+enum env_location env_get_location(enum env_operation op, int prio);
 #endif /* DO_DEPS_ONLY */
 
 #endif /* _ENV_INTERNAL_H_ */

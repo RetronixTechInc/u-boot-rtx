@@ -144,7 +144,8 @@ static int xhci_imx8_probe(struct udevice *dev)
 					   "cdns3,usb");
 	if (usbotg_off < 0)
 		return -EINVAL;
-	usbotg_dev.node = offset_to_ofnode(usbotg_off);
+
+	dev_set_ofnode(&usbotg_dev, offset_to_ofnode(usbotg_off));
 	usbotg_dev.parent = dev->parent;
 	xhci_imx8_get_reg_addr(&usbotg_dev);
 
@@ -162,7 +163,7 @@ static int xhci_imx8_probe(struct udevice *dev)
 		return ret;
 	}
 
-	ret = board_usb_init(dev->req_seq, USB_INIT_HOST);
+	ret = board_usb_init(dev_seq(dev), USB_INIT_HOST);
 	if (ret != 0) {
 		printf("Failed to initialize board for USB\n");
 		return ret;
@@ -171,7 +172,7 @@ static int xhci_imx8_probe(struct udevice *dev)
 #if CONFIG_IS_ENABLED(CLK)
 	xhci_imx8_clk_init(&usbotg_dev);
 #else
-	init_clk_usb3(dev->req_seq);
+	init_clk_usb3(dev_seq(dev));
 #endif
 
 	imx8_xhci_init();
@@ -199,7 +200,7 @@ static int xhci_imx8_remove(struct udevice *dev)
 	if (generic_phy_valid(&imx8_data.phy))
 		device_remove(imx8_data.phy.dev, DM_REMOVE_NORMAL);
 
-	board_usb_cleanup(dev->req_seq, USB_INIT_HOST);
+	board_usb_cleanup(dev_seq(dev), USB_INIT_HOST);
 
 	return ret;
 }
@@ -216,7 +217,7 @@ U_BOOT_DRIVER(xhci_imx8) = {
 	.probe = xhci_imx8_probe,
 	.remove = xhci_imx8_remove,
 	.ops	= &xhci_usb_ops,
-	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
-	.priv_auto_alloc_size = sizeof(struct xhci_ctrl),
+	.plat_auto = sizeof(struct usb_plat),
+	.priv_auto = sizeof(struct xhci_ctrl),
 	.flags	= DM_FLAG_ALLOC_PRIV_DMA | DM_FLAG_OS_PREPARE,
 };

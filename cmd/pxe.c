@@ -24,15 +24,21 @@ const char *pxe_default_paths[] = {
 	NULL
 };
 
-static int do_get_tftp(cmd_tbl_t *cmdtp, const char *file_path, char *file_addr)
+static int do_get_tftp(struct pxe_context *ctx, const char *file_path,
+		       char *file_addr, ulong *sizep)
 {
 	char *tftp_argv[] = {"tftp", NULL, NULL, NULL};
+	int ret;
 
 	tftp_argv[1] = file_addr;
 	tftp_argv[2] = (void *)file_path;
 
-	if (do_tftpb(cmdtp, 0, 3, tftp_argv))
+	if (do_tftpb(ctx->cmdtp, 0, 3, tftp_argv))
 		return -ENOENT;
+	ret = pxe_get_file_size(sizep);
+	if (ret)
+		return log_msg_ret("tftp", ret);
+	ctx->pxe_file_size = *sizep;
 
 	return 1;
 }
@@ -42,7 +48,7 @@ static int do_get_tftp(cmd_tbl_t *cmdtp, const char *file_path, char *file_addr)
  *
  * Returns 1 on success or < 0 on error.
  */
-static int pxe_uuid_path(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
+static int pxe_uuid_path(struct pxe_context *ctx, unsigned long pxefile_addr_r)
 {
 	char *uuid_str;
 
@@ -51,7 +57,7 @@ static int pxe_uuid_path(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
 	if (!uuid_str)
 		return -ENOENT;
 
-	return get_pxelinux_path(cmdtp, uuid_str, pxefile_addr_r);
+	return get_pxelinux_path(ctx, uuid_str, pxefile_addr_r);
 }
 
 /*
@@ -60,7 +66,7 @@ static int pxe_uuid_path(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
  *
  * Returns 1 on success or < 0 on error.
  */
-static int pxe_mac_path(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
+static int pxe_mac_path(struct pxe_context *ctx, unsigned long pxefile_addr_r)
 {
 	char mac_str[21];
 	int err;
@@ -70,7 +76,7 @@ static int pxe_mac_path(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
 	if (err < 0)
 		return err;
 
-	return get_pxelinux_path(cmdtp, mac_str, pxefile_addr_r);
+	return get_pxelinux_path(ctx, mac_str, pxefile_addr_r);
 }
 
 /*
@@ -80,7 +86,7 @@ static int pxe_mac_path(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
  *
  * Returns 1 on success or < 0 on error.
  */
-static int pxe_ipaddr_paths(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
+static int pxe_ipaddr_paths(struct pxe_context *ctx, unsigned long pxefile_addr_r)
 {
 	char ip_addr[9];
 	int mask_pos, err;
@@ -88,7 +94,7 @@ static int pxe_ipaddr_paths(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
 	sprintf(ip_addr, "%08X", ntohl(net_ip.s_addr));
 
 	for (mask_pos = 7; mask_pos >= 0;  mask_pos--) {
-		err = get_pxelinux_path(cmdtp, ip_addr, pxefile_addr_r);
+		err = get_pxelinux_path(ctx, ip_addr, pxefile_addr_r);
 
 		if (err > 0)
 			return err;
@@ -98,6 +104,49 @@ static int pxe_ipaddr_paths(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
 
 	return -ENOENT;
 }
+
+int pxe_get(ulong pxefile_addr_r, char **bootdirp, ulong *sizep)
+{
+	struct cmd_tbl cmdtp[] = {};	/* dummy */
+	struct pxe_context ctx;
+	int i;
+
+	if (pxe_setup_ctx(&ctx, cmdtp, do_get_tftp, NULL, false,
+			  env_get("bootfile")))
+		return -ENOMEM;
+	/*
+	 * Keep trying paths until we successfully get a file we're looking
+	 * for.
+	 */
+	if (pxe_uuid_path(&ctx, pxefile_addr_r) > 0 ||
+	    pxe_mac_path(&ctx, pxefile_addr_r) > 0 ||
+	    pxe_ipaddr_paths(&ctx, pxefile_addr_r) > 0)
+		goto done;
+
+	i = 0;
+	while (pxe_default_paths[i]) {
+		if (get_pxelinux_path(&ctx, pxe_default_paths[i],
+				      pxefile_addr_r) > 0)
+			goto done;
+		i++;
+	}
+
+	pxe_destroy_ctx(&ctx);
+
+	return -ENOENT;
+done:
+	*bootdirp = env_get("bootfile");
+
+	/*
+	 * The PXE file size is returned but not the name. It is probably not
+	 * that useful.
+	 */
+	*sizep = ctx.pxe_file_size;
+	pxe_destroy_ctx(&ctx);
+
+	return 0;
+}
+
 /*
  * Entry point for the 'pxe get' command.
  * This Follows pxelinux's rules to download a config file from a tftp server.
@@ -113,13 +162,13 @@ static int pxe_ipaddr_paths(cmd_tbl_t *cmdtp, unsigned long pxefile_addr_r)
  * Returns 0 on success or 1 on error.
  */
 static int
-do_pxe_get(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_pxe_get(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char *pxefile_addr_str;
-	unsigned long pxefile_addr_r;
-	int err, i = 0;
-
-	do_getfile = do_get_tftp;
+	ulong pxefile_addr_r;
+	char *fname;
+	ulong size;
+	int ret;
 
 	if (argc != 1)
 		return CMD_RET_USAGE;
@@ -129,35 +178,25 @@ do_pxe_get(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (!pxefile_addr_str)
 		return 1;
 
-	err = strict_strtoul(pxefile_addr_str, 16,
+	ret = strict_strtoul(pxefile_addr_str, 16,
 			     (unsigned long *)&pxefile_addr_r);
-	if (err < 0)
+	if (ret < 0)
 		return 1;
 
-	/*
-	 * Keep trying paths until we successfully get a file we're looking
-	 * for.
-	 */
-	if (pxe_uuid_path(cmdtp, pxefile_addr_r) > 0 ||
-	    pxe_mac_path(cmdtp, pxefile_addr_r) > 0 ||
-	    pxe_ipaddr_paths(cmdtp, pxefile_addr_r) > 0) {
-		printf("Config file found\n");
-
-		return 0;
+	ret = pxe_get(pxefile_addr_r, &fname, &size);
+	switch (ret) {
+	case 0:
+		printf("Config file '%s' found\n", fname);
+		break;
+	case -ENOMEM:
+		printf("Out of memory\n");
+		return CMD_RET_FAILURE;
+	default:
+		printf("Config file not found\n");
+		return CMD_RET_FAILURE;
 	}
 
-	while (pxe_default_paths[i]) {
-		if (get_pxelinux_path(cmdtp, pxe_default_paths[i],
-				      pxefile_addr_r) > 0) {
-			printf("Config file found\n");
-			return 0;
-		}
-		i++;
-	}
-
-	printf("Config file not found\n");
-
-	return 1;
+	return 0;
 }
 
 /*
@@ -166,13 +205,12 @@ do_pxe_get(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
  * Returns 0 on success, 1 on error.
  */
 static int
-do_pxe_boot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+do_pxe_boot(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	unsigned long pxefile_addr_r;
-	struct pxe_menu *cfg;
 	char *pxefile_addr_str;
-
-	do_getfile = do_get_tftp;
+	struct pxe_context ctx;
+	int ret;
 
 	if (argc == 1) {
 		pxefile_addr_str = from_env("pxefile_addr_r");
@@ -190,35 +228,46 @@ do_pxe_boot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 1;
 	}
 
-	cfg = parse_pxefile(cmdtp, pxefile_addr_r);
-
-	if (!cfg) {
-		printf("Error parsing config file\n");
-		return 1;
+	if (pxe_setup_ctx(&ctx, cmdtp, do_get_tftp, NULL, false,
+			  env_get("bootfile"))) {
+		printf("Out of memory\n");
+		return CMD_RET_FAILURE;
 	}
-
-	handle_pxe_menu(cmdtp, cfg);
-
-	destroy_pxe_menu(cfg);
+	ret = pxe_process(&ctx, pxefile_addr_r, false);
+	pxe_destroy_ctx(&ctx);
+	if (ret)
+		return CMD_RET_FAILURE;
 
 	copy_filename(net_boot_file_name, "", sizeof(net_boot_file_name));
 
 	return 0;
 }
 
-static cmd_tbl_t cmd_pxe_sub[] = {
+static struct cmd_tbl cmd_pxe_sub[] = {
 	U_BOOT_CMD_MKENT(get, 1, 1, do_pxe_get, "", ""),
 	U_BOOT_CMD_MKENT(boot, 2, 1, do_pxe_boot, "", "")
 };
 
-static int do_pxe(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static void __maybe_unused pxe_reloc(void)
 {
-	cmd_tbl_t *cp;
+	static int relocated_pxe;
+
+	if (!relocated_pxe) {
+		fixup_cmdtable(cmd_pxe_sub, ARRAY_SIZE(cmd_pxe_sub));
+		relocated_pxe = 1;
+	}
+}
+
+static int do_pxe(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	struct cmd_tbl *cp;
+
+#if defined(CONFIG_NEEDS_MANUAL_RELOC)
+	pxe_reloc();
+#endif
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
-
-	is_pxe = true;
 
 	/* drop initial "pxe" arg */
 	argc--;

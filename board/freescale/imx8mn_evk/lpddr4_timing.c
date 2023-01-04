@@ -825,7 +825,6 @@ struct dram_cfg_param ddr_fsp1_cfg[] = {
 	{0x000d0000, 0x00000001},
 };
 
-
 /* P2 message block paremeter for training firmware */
 struct dram_cfg_param ddr_fsp2_cfg[] = {
 	{0x000d0000, 0x00000000},

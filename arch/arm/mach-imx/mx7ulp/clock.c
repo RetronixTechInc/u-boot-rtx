@@ -6,7 +6,9 @@
 
 #include <common.h>
 #include <clock_legacy.h>
+#include <command.h>
 #include <div64.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <errno.h>
 #include <asm/arch/clock.h>
@@ -258,6 +260,11 @@ void enable_usboh3_clk(unsigned char enable)
 	}
 }
 
+int enable_usb_pll(ulong usb_phy_base)
+{
+	return scg_enable_usb_pll(true);
+}
+
 static void lpuart_set_clk(uint32_t index, enum scg_clk clk)
 {
 	const enum pcc_clk lpuart_pcc_clks[] = {
@@ -450,9 +457,10 @@ void mxs_set_lcdclk(uint32_t base_addr, uint32_t freq_in_khz)
 /*
  * Dump some core clockes.
  */
-int do_mx7_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mx7_showclocks(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
-	u32 addr = 0;
+
 	u32 freq;
 	freq = decode_pll(PLL_A7_SPLL);
 	printf("PLL_A7_SPLL    %8d MHz\n", freq / 1000000);
@@ -461,7 +469,7 @@ int do_mx7_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	printf("PLL_A7_APLL    %8d MHz\n", freq / 1000000);
 
 	freq = decode_pll(PLL_USB);
-	printf("PLL_USB    %8d MHz\n", freq / 1000000);
+	printf("PLL_USB        %8d MHz\n", freq / 1000000);
 
 	printf("\n");
 
@@ -475,8 +483,6 @@ int do_mx7_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	printf("USDHC2     %8d kHz\n", mxc_get_clock(MXC_ESDHC2_CLK) / 1000);
 	printf("I2C4       %8d kHz\n", mxc_get_clock(MXC_I2C_CLK) / 1000);
 
-	addr = (u32) clock_init;
-	printf("[%s] addr = 0x%08X\r\n", __func__, addr);
 	scg_a7_info();
 
 	return 0;

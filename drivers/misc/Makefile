@@ -18,7 +18,7 @@ obj-$(CONFIG_SANDBOX) += swap_case.o
 obj-$(CONFIG_IMX_M4_MU) += imx_m4_mu.o
 endif
 
-ifdef CONFIG_DM_I2C
+ifdef CONFIG_$(SPL_)DM_I2C
 ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_SANDBOX) += i2c_eeprom_emul.o
 endif
@@ -38,28 +38,35 @@ obj-$(CONFIG_FSL_IFC) += fsl_ifc.o
 obj-$(CONFIG_FSL_IIM) += fsl_iim.o
 obj-$(CONFIG_FSL_MC9SDZ60) += mc9sdz60.o
 obj-$(CONFIG_FSL_SEC_MON) += fsl_sec_mon.o
-obj-$(CONFIG_FS_LOADER) += fs_loader.o
+obj-$(CONFIG_$(SPL_)FS_LOADER) += fs_loader.o
 obj-$(CONFIG_GDSYS_IOEP) += gdsys_ioep.o
 obj-$(CONFIG_GDSYS_RXAUI_CTRL) += gdsys_rxaui_ctrl.o
 obj-$(CONFIG_GDSYS_SOC) += gdsys_soc.o
 obj-$(CONFIG_IRQ) += irq-uclass.o
-obj-$(CONFIG_SANDBOX) += irq_sandbox.o
+obj-$(CONFIG_SANDBOX) += irq_sandbox.o irq_sandbox_test.o
 obj-$(CONFIG_$(SPL_)I2C_EEPROM) += i2c_eeprom.o
 obj-$(CONFIG_IHS_FPGA) += ihs_fpga.o
 obj-$(CONFIG_IMX8) += imx8/
+obj-$(CONFIG_IMX_SENTINEL) += sentinel/
 obj-$(CONFIG_LED_STATUS) += status_led.o
 obj-$(CONFIG_LED_STATUS_GPIO) += gpio_led.o
 obj-$(CONFIG_MPC83XX_SERDES) += mpc83xx_serdes.o
-obj-$(CONFIG_MXC_OCOTP) += mxc_ocotp.o
+obj-$(CONFIG_$(SPL_)MXC_OCOTP) += mxc_ocotp.o
 obj-$(CONFIG_MXS_OCOTP) += mxs_ocotp.o
 obj-$(CONFIG_NUVOTON_NCT6102D) += nuvoton_nct6102d.o
 obj-$(CONFIG_P2SB) += p2sb-uclass.o
 obj-$(CONFIG_PCA9551_LED) += pca9551_led.o
 obj-$(CONFIG_$(SPL_)PWRSEQ) += pwrseq-uclass.o
-obj-$(CONFIG_QFW) += qfw.o
+ifdef CONFIG_QFW
+obj-y += qfw.o
+obj-$(CONFIG_QFW_PIO) += qfw_pio.o
+obj-$(CONFIG_QFW_MMIO) += qfw_mmio.o
+obj-$(CONFIG_SANDBOX) += qfw_sandbox.o
+endif
 obj-$(CONFIG_ROCKCHIP_EFUSE) += rockchip-efuse.o
 obj-$(CONFIG_ROCKCHIP_OTP) += rockchip-otp.o
 obj-$(CONFIG_SANDBOX) += syscon_sandbox.o misc_sandbox.o
+obj-$(CONFIG_SIFIVE_OTP) += sifive-otp.o
 obj-$(CONFIG_SMSC_LPC47M) += smsc_lpc47m.o
 obj-$(CONFIG_SMSC_SIO1007) += smsc_sio1007.o
 obj-$(CONFIG_STM32MP_FUSE) += stm32mp_fuse.o
@@ -67,9 +74,13 @@ obj-$(CONFIG_STM32_RCC) += stm32_rcc.o
 obj-$(CONFIG_SYS_DPAA_QBMAN) += fsl_portals.o
 obj-$(CONFIG_TEGRA186_BPMP) += tegra186_bpmp.o
 obj-$(CONFIG_TEGRA_CAR) += tegra_car.o
+obj-$(CONFIG_TEST_DRV) += test_drv.o
 obj-$(CONFIG_TWL4030_LED) += twl4030_led.o
 obj-$(CONFIG_VEXPRESS_CONFIG) += vexpress_config.o
 obj-$(CONFIG_WINBOND_W83627) += winbond_w83627.o
 obj-$(CONFIG_JZ4780_EFUSE) += jz4780_efuse.o
 obj-$(CONFIG_MICROCHIP_FLEXCOM) += microchip_flexcom.o
 obj-$(CONFIG_K3_AVS0) += k3_avs.o
+obj-$(CONFIG_ESM_K3) += k3_esm.o
+obj-$(CONFIG_ESM_PMIC) += esm_pmic.o
+obj-$(CONFIG_SL28CPLD) += sl28cpld.o

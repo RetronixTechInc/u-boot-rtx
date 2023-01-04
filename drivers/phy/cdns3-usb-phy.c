@@ -12,6 +12,7 @@
 #include <dm.h>
 #include <generic-phy.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 
 /* PHY registers */
 #define PHY_PMA_CMN_CTRL1			(0xC800 * 4)
@@ -237,5 +238,5 @@ U_BOOT_DRIVER(cdns3_usb_phy) = {
 	.probe = cdns3_usb_phy_probe,
 	.remove = cdns3_usb_phy_remove,
 	.ops = &cdns3_usb_phy_ops,
-	.priv_auto_alloc_size = sizeof(struct cdns3_usb_phy),
+	.priv_auto = sizeof(struct cdns3_usb_phy),
 };

@@ -11,6 +11,7 @@
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/boot_mode.h>
@@ -22,7 +23,9 @@
 #include <i2c.h>
 #include <miiphy.h>
 #include <linux/sizes.h>
+#include <linux/delay.h>
 #include <mmc.h>
+#include <miiphy.h>
 #include <power/pmic.h>
 #include <power/pfuze3000_pmic.h>
 #include "../common/pfuze.h"
@@ -221,7 +224,7 @@ static int setup_fec(void)
 	 * Use 50M anatop loopback REF_CLK2 for ENET2,
 	 * clear gpr1[14], set gpr1[18].
 	 */
-	if (!check_module_fused(MX6_MODULE_ENET2)) {
+	if (!check_module_fused(MODULE_ENET2)) {
 		clrsetbits_le32(&iomuxc_regs->gpr[1], IOMUX_GPR1_FEC2_MASK,
 				IOMUX_GPR1_FEC2_CLOCK_MUX1_SEL_MASK);
 	}
@@ -230,7 +233,7 @@ static int setup_fec(void)
 	if (ret)
 		return ret;
 
-	if (!check_module_fused(MX6_MODULE_ENET2)) {
+	if (!check_module_fused(MODULE_ENET2)) {
 		ret = enable_fec_anatop_clock(1, ENET_50MHZ);
 		if (ret)
 			return ret;
@@ -363,4 +366,11 @@ int checkboard(void)
 		puts("Board: MX6ULL 14x14 EVK\n");
 
 	return 0;
+}
+
+void board_quiesce_devices(void)
+{
+#if defined(CONFIG_VIDEO_MXS)
+	enable_lcdif_clock(LCDIF1_BASE_ADDR, 0);
+#endif
 }

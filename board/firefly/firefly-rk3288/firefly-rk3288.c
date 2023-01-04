@@ -5,6 +5,10 @@
 
 #include <common.h>
 #include <hang.h>
+#include <led.h>
+#include <log.h>
+#include <asm/global_data.h>
+#include <dm/ofnode.h>
 
 #ifdef CONFIG_SPL_BUILD
 static int setup_led(void)
@@ -14,7 +18,7 @@ static int setup_led(void)
 	char *led_name;
 	int ret;
 
-	led_name = fdtdec_get_config_string(gd->fdt_blob, "u-boot,boot-led");
+	led_name = ofnode_conf_read_str("u-boot,boot-led");
 	if (!led_name)
 		return 0;
 	ret = led_get_by_label(led_name, &dev);
@@ -22,7 +26,7 @@ static int setup_led(void)
 		debug("%s: get=%d\n", __func__, ret);
 		return ret;
 	}
-	ret = led_set_on(dev, 1);
+	ret = led_set_state(dev, LEDST_ON);
 	if (ret)
 		return ret;
 #endif

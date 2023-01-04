@@ -28,6 +28,7 @@
 #include <asm/io.h>
 #include <dm/device_compat.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <linux/bitops.h>
 
 #define PCA953X_INPUT           0
 #define PCA953X_OUTPUT          1
@@ -36,6 +37,8 @@
 
 #define PCA_GPIO_MASK           0x00FF
 #define PCA_INT                 0x0100
+#define PCA_PCAL		BIT(9)
+#define PCA_LATCH_INT		(PCA_PCAL | PCA_INT)
 #define PCA953X_TYPE            0x1000
 #define PCA957X_TYPE            0x2000
 #define PCA_TYPE_MASK           0xF000
@@ -75,7 +78,7 @@ struct pca953x_info {
 static int pca953x_write_single(struct udevice *dev, int reg, u8 val,
 				int offset)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	int bank_shift = fls((info->gpio_count - 1) / BANK_SZ);
 	int off = offset / BANK_SZ;
 	int ret = 0;
@@ -92,7 +95,7 @@ static int pca953x_write_single(struct udevice *dev, int reg, u8 val,
 static int pca953x_read_single(struct udevice *dev, int reg, u8 *val,
 			       int offset)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	int bank_shift = fls((info->gpio_count - 1) / BANK_SZ);
 	int off = offset / BANK_SZ;
 	int ret;
@@ -111,7 +114,7 @@ static int pca953x_read_single(struct udevice *dev, int reg, u8 *val,
 
 static int pca953x_read_regs(struct udevice *dev, int reg, u8 *val)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	int ret = 0;
 
 	if (info->gpio_count <= 8) {
@@ -136,7 +139,7 @@ static int pca953x_read_regs(struct udevice *dev, int reg, u8 *val)
 
 static int pca953x_write_regs(struct udevice *dev, int reg, u8 *val)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	int ret = 0;
 
 	if (info->gpio_count <= 8) {
@@ -159,7 +162,7 @@ static int pca953x_write_regs(struct udevice *dev, int reg, u8 *val)
 
 static int pca953x_is_output(struct udevice *dev, int offset)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 
 	int bank = offset / BANK_SZ;
 	int off = offset % BANK_SZ;
@@ -184,7 +187,7 @@ static int pca953x_get_value(struct udevice *dev, uint offset)
 
 static int pca953x_set_value(struct udevice *dev, uint offset, int value)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	int bank = offset / BANK_SZ;
 	int off = offset % BANK_SZ;
 	u8 val;
@@ -206,7 +209,7 @@ static int pca953x_set_value(struct udevice *dev, uint offset, int value)
 
 static int pca953x_set_direction(struct udevice *dev, uint offset, int dir)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	int bank = offset / BANK_SZ;
 	int off = offset % BANK_SZ;
 	u8 val;
@@ -270,7 +273,7 @@ static const struct dm_gpio_ops pca953x_ops = {
 
 static int pca953x_probe(struct udevice *dev)
 {
-	struct pca953x_info *info = dev_get_platdata(dev);
+	struct pca953x_info *info = dev_get_plat(dev);
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 	char name[32], label[8], *str;
 	int addr;
@@ -362,6 +365,8 @@ static const struct udevice_id pca953x_ids[] = {
 	{ .compatible = "nxp,pca9575", .data = OF_957X(16, PCA_INT), },
 	{ .compatible = "nxp,pca9698", .data = OF_953X(40, 0), },
 
+	{ .compatible = "nxp,pcal6524", .data = OF_953X(24, PCA_LATCH_INT), },
+
 	{ .compatible = "maxim,max7310", .data = OF_953X(8, 0), },
 	{ .compatible = "maxim,max7312", .data = OF_953X(16, PCA_INT), },
 	{ .compatible = "maxim,max7313", .data = OF_953X(16, PCA_INT), },
@@ -384,6 +389,6 @@ U_BOOT_DRIVER(pca953x) = {
 	.id		= UCLASS_GPIO,
 	.ops		= &pca953x_ops,
 	.probe		= pca953x_probe,
-	.platdata_auto_alloc_size = sizeof(struct pca953x_info),
+	.plat_auto	= sizeof(struct pca953x_info),
 	.of_match	= pca953x_ids,
 };

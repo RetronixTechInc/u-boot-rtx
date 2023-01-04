@@ -8,6 +8,8 @@
 #include <env.h>
 #include <errno.h>
 #include <init.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <fsl_esdhc_imx.h>
 #include <fdt_support.h>
@@ -67,8 +69,8 @@ static iomux_cfg_t gpmi_nand_pads[] = {
 	SC_P_EMMC0_STROBE | MUX_MODE_ALT(1) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
 	SC_P_EMMC0_RESET_B | MUX_MODE_ALT(1) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
 	SC_P_EMMC0_CLK | MUX_MODE_ALT(1) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
-	SC_P_EMMC0_CMD | MUX_MODE_ALT(1) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
 
+	SC_P_USDHC1_CD_B | MUX_MODE_ALT(3) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
 	SC_P_USDHC1_RESET_B | MUX_MODE_ALT(3) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
 	SC_P_USDHC1_WP | MUX_MODE_ALT(3) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
 	SC_P_USDHC1_VSELECT | MUX_MODE_ALT(3) | MUX_PAD_CTRL(GPMI_NAND_PAD_CTRL),
@@ -85,7 +87,7 @@ static void imx8dxl_gpmi_nand_initialize(void)
 	int ret;
 
 	ret = sc_pm_set_resource_power_mode(-1, SC_R_NAND, SC_PM_PW_MODE_ON);
-	if (ret != SC_ERR_NONE)
+	if (ret)
 		return;
 
 	init_clk_gpmi_nand();
@@ -232,33 +234,9 @@ static void board_gpio_init(void)
 static inline void board_gpio_init(void) {}
 #endif
 
-#if IS_ENABLED(CONFIG_NET)
-#include <miiphy.h>
-
-int board_phy_config(struct phy_device *phydev)
-{
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x8);
-
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x00);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x82ee);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
-	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
-
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-
-	return 0;
-}
-#endif
-
 int checkboard(void)
 {
-#if defined(CONFIG_TARGET_IMX8DXL_DDR3_EVK)
-	puts("Board: iMX8DXL DDR3 EVK\n");
-#else
 	puts("Board: iMX8DXL EVK\n");
-#endif
 
 	print_bootinfo();
 
@@ -268,19 +246,19 @@ int checkboard(void)
 #ifdef CONFIG_DWC_ETH_QOS
 static int setup_eqos(void)
 {
-	sc_err_t err;
+	int err;
 
-	/* set GPR14:12 to b’001: RGMII mode */
+	/* set GPR14:12 to b'001: RGMII mode */
 	err = sc_misc_set_control(-1, SC_R_ENET_1, SC_C_INTF_SEL, 0x1);
-	if (err != SC_ERR_NONE)
+	if (err)
 		printf("SC_R_ENET_1 INTF_SEL failed! (error = %d)\n", err);
 
-	/* enable GPR11：CLK_GEN_EN */
+	/* enable GPR11: CLK_GEN_EN */
 	err = sc_misc_set_control(-1, SC_R_ENET_1, SC_C_CLK_GEN_EN, 1);
-	if (err != SC_ERR_NONE)
+	if (err)
 		printf("SC_R_ENET_1 CLK_GEN_EN failed! (error = %d)\n", err);
 
-    return 0;
+	return 0;
 }
 #endif
 
@@ -292,7 +270,7 @@ int board_init(void)
 	setup_eqos();
 #endif
 
-#ifdef CONFIG_SNVS_SEC_SC_AUTO
+#ifdef CONFIG_IMX_SNVS_SEC_SC_AUTO
 	{
 		int ret = snvs_security_sc_init();
 
@@ -310,19 +288,19 @@ void board_quiesce_devices(void)
 		"dma_lpuart0",
 	};
 
-	power_off_pd_devices(power_on_devices, ARRAY_SIZE(power_on_devices));
+	imx8_power_off_pd_devices(power_on_devices, ARRAY_SIZE(power_on_devices));
 }
 
 /*
  * Board specific reset that is system reset.
  */
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	/* TODO */
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	return 0;
 }
@@ -331,7 +309,7 @@ int ft_board_setup(void *blob, bd_t *bd)
 int board_late_init(void)
 {
 	char *fdt_file;
-	bool __maybe_unused m4_boot;
+	bool __maybe_unused m4_booted;
 
 	build_info();
 
@@ -346,13 +324,16 @@ int board_late_init(void)
 #endif
 
 	fdt_file = env_get("fdt_file");
-	m4_boot = check_m4_parts_boot();
+	m4_booted = m4_parts_booted();
 
 	if (fdt_file && !strcmp(fdt_file, "undefined")) {
 #if defined(CONFIG_TARGET_IMX8DXL_DDR3_EVK)
-		env_set("fdt_file", "imx8dxl-ddr3-evk.dtb");
+		if (m4_booted)
+			env_set("fdt_file", "imx8dxl-ddr3l-evk-rpmsg.dtb");
+		else
+			env_set("fdt_file", "imx8dxl-ddr3l-evk.dtb");
 #else
-		if (m4_boot)
+		if (m4_booted)
 			env_set("fdt_file", "imx8dxl-evk-rpmsg.dtb");
 		else
 			env_set("fdt_file", "imx8dxl-evk.dtb");

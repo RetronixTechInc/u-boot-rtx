@@ -10,6 +10,10 @@
  */
 
 #include <common.h>
+#include <env.h>
+#include <log.h>
+#include <net.h>
+#include <linux/delay.h>
 
 #include "arp.h"
 
@@ -192,13 +196,12 @@ void arp_receive(struct ethernet_hdr *et, struct ip_udp_hdr *ip, int len)
 		if (!arp_is_waiting())
 			break;
 
-#ifdef CONFIG_KEEP_SERVERADDR
-		if (net_server_ip.s_addr == net_arp_wait_packet_ip.s_addr) {
+		if (IS_ENABLED(CONFIG_KEEP_SERVERADDR) &&
+		    net_server_ip.s_addr == net_arp_wait_packet_ip.s_addr) {
 			char buf[20];
 			sprintf(buf, "%pM", &arp->ar_sha);
 			env_set("serveraddr", buf);
 		}
-#endif
 
 		reply_ip_addr = net_read_ip(&arp->ar_spa);
 

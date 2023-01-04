@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2008-2014 Freescale Semiconductor, Inc.
+ * Copyright 2021 NXP
  */
 
 /*
@@ -14,6 +15,9 @@
 #include <i2c.h>
 #include <fsl_ddr_sdram.h>
 #include <fsl_ddr.h>
+#include <init.h>
+#include <log.h>
+#include <asm/bitops.h>
 
 /*
  * CONFIG_SYS_FSL_DDR_SDRAM_BASE_PHY is the physical address from the view
@@ -83,7 +87,7 @@ u8 spd_i2c_addr[CONFIG_SYS_NUM_DDR_CTLRS][CONFIG_DIMM_SLOTS_PER_CTLR] = {
 
 #endif
 
-#if defined(CONFIG_DM_I2C)
+#if CONFIG_IS_ENABLED(DM_I2C)
 #define DEV_TYPE struct udevice
 #else
 /* Local udevice */
@@ -103,7 +107,7 @@ static int ddr_i2c_read(DEV_TYPE *dev, unsigned int addr,
 {
 	int ret;
 
-#ifdef CONFIG_DM_I2C
+#if CONFIG_IS_ENABLED(DM_I2C)
 	ret = dm_i2c_read(dev, 0, buf, len);
 #else
 	ret = i2c_read(dev->chip, addr, alen, buf, len);
@@ -117,7 +121,7 @@ static int ddr_i2c_dummy_write(unsigned int chip_addr)
 {
 	uint8_t buf = 0;
 
-#ifdef CONFIG_DM_I2C
+#if CONFIG_IS_ENABLED(DM_I2C)
 	struct udevice *dev;
 	int ret;
 
@@ -143,7 +147,7 @@ static void __get_spd(generic_spd_eeprom_t *spd, u8 i2c_address)
 	int ret;
 	DEV_TYPE *dev;
 
-#if defined(CONFIG_DM_I2C)
+#if CONFIG_IS_ENABLED(DM_I2C)
 	ret = i2c_get_chip_for_busnum(CONFIG_SYS_SPD_BUS_NUM, i2c_address,
 				      1, &dev);
 	if (ret) {
@@ -294,9 +298,13 @@ const char * step_to_string(unsigned int step) {
 
 	unsigned int s = __ilog2(step);
 
-	if ((1 << s) != step)
-		return step_string_tbl[7];
-
+	if (s <= 31) {
+		if ((1 << s) != step)
+			return step_string_tbl[7];
+	} else {
+		if ((1 << (s - 32)) != step)
+			return step_string_tbl[7];
+	}
 	if (s >= ARRAY_SIZE(step_string_tbl)) {
 		printf("Error for the step in %s\n", __func__);
 		s = 0;
@@ -702,7 +710,7 @@ phys_size_t __fsl_ddr_sdram(fsl_ddr_info_t *pinfo)
 
 	/* Compute it once normally. */
 #ifdef CONFIG_FSL_DDR_INTERACTIVE
-	if (tstc() && (getc() == 'd')) {	/* we got a key press of 'd' */
+	if (tstc() && (getchar() == 'd')) {	/* we got a key press of 'd' */
 		total_memory = fsl_ddr_interactive(pinfo, 0);
 	} else if (fsl_ddr_interactive_env_var_exists()) {
 		total_memory = fsl_ddr_interactive(pinfo, 1);

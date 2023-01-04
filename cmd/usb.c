@@ -11,6 +11,8 @@
  */
 
 #include <common.h>
+#include <blk.h>
+#include <bootstage.h>
 #include <command.h>
 #include <console.h>
 #include <dm.h>
@@ -554,7 +556,8 @@ static int usb_test(struct usb_device *dev, int port, char* arg)
  * usb boot command intepreter. Derived from diskboot
  */
 #ifdef CONFIG_USB_STORAGE
-static int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_usbboot(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	return common_diskboot(cmdtp, "usb", argc, argv);
 }
@@ -623,7 +626,7 @@ static void usb_show_info(struct usb_device *udev)
 /******************************************************************************
  * usb command intepreter
  */
-static int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_usb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	struct usb_device *udev = NULL;
 	int i;
@@ -687,7 +690,7 @@ static int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			 * have multiple controllers and the device numbering
 			 * starts at 1 on each bus.
 			 */
-			i = simple_strtoul(argv[2], NULL, 10);
+			i = dectoul(argv[2], NULL);
 			printf("config for device %d\n", i);
 			udev = usb_find_device(i);
 			if (udev == NULL) {
@@ -703,13 +706,13 @@ static int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (strncmp(argv[1], "test", 4) == 0) {
 		if (argc < 5)
 			return CMD_RET_USAGE;
-		i = simple_strtoul(argv[2], NULL, 10);
+		i = dectoul(argv[2], NULL);
 		udev = usb_find_device(i);
 		if (udev == NULL) {
 			printf("Device %d does not exist.\n", i);
 			return 1;
 		}
-		i = simple_strtoul(argv[3], NULL, 10);
+		i = dectoul(argv[3], NULL);
 		return usb_test(udev, i, argv[4]);
 	}
 #ifdef CONFIG_USB_STORAGE

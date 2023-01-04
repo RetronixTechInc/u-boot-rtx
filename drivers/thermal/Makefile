@@ -7,4 +7,6 @@ obj-$(CONFIG_DM_THERMAL) += thermal-uclass.o
 obj-$(CONFIG_IMX_THERMAL) += imx_thermal.o
 obj-$(CONFIG_IMX_SCU_THERMAL) += imx_scu_thermal.o
 obj-$(CONFIG_TI_DRA7_THERMAL) += ti-bandgap.o
-obj-$(CONFIG_NXP_TMU) += nxp_tmu.o
+obj-$(CONFIG_IMX_TMU) += imx_tmu.o
+obj-$(CONFIG_IMX_PMC_TEMPERATURE) += imx_pmc_temperature.o
+obj-$(CONFIG_SCMI_THERMAL) += scmi_thermal.o

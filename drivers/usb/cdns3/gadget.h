@@ -13,7 +13,6 @@
 #endif
 
 #include <clk.h>
-#include <dm.h>
 #include <generic-phy.h>
 
 #define gadget_to_usb_ss(g)  \

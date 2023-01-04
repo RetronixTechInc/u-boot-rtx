@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2017-2020 NXP
+ * Copyright 2017-2021 NXP
  */
 
 #include <common.h>
@@ -9,14 +9,15 @@
 #include <cpu_func.h>
 #include <dm.h>
 #include <init.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <dm/device-internal.h>
+#include <dm/uclass-internal.h>
 #include <dm/lists.h>
 #include <dm/uclass.h>
 #include <errno.h>
 #include <asm/arch/clock.h>
-#include <power-domain.h>
-#include <dm/device.h>
-#include <dm/uclass-internal.h>
 #include <thermal.h>
 #include <asm/arch/sci/sci.h>
 #include <power-domain.h>
@@ -27,8 +28,9 @@
 #include <asm/armv8/mmu.h>
 #include <asm/setup.h>
 #include <asm/mach-imx/boot_mode.h>
-#include <asm/mach-imx/imx_vservice.h>
 #include <spl.h>
+#include <env.h>
+#include <asm/mach-imx/imx_vservice.h>
 #include <usb/ci_udc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -46,31 +48,10 @@ struct pass_over_info_t *get_pass_over_info(void)
 	return p;
 }
 
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_RECOVER_SPL_DATA_SECTION)
-char __data_save_start[0] __attribute__((section(".__data_save_start")));
-char __data_save_end[0] __attribute__((section(".__data_save_end")));
-
-u32 cold_reboot_flag = 1;
-
-static void save_restore_data(void)
-{
-	u32 data_size = __data_save_end - __data_save_start;
-
-	if (cold_reboot_flag == 1) {
-		/* Save data section to data_save section */
-		memcpy(__data_save_start, __data_save_start - data_size, data_size);
-	} else {
-		/* Restore the data_save section to data section */
-		memcpy(__data_save_start - data_size, __data_save_start, data_size);
-	}
-	cold_reboot_flag++;
-}
-#endif
-
 int arch_cpu_init(void)
 {
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_RECOVER_SPL_DATA_SECTION)
-	save_restore_data();
+#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_RECOVER_DATA_SECTION)
+	spl_save_restore_data();
 #endif
 
 	return 0;
@@ -107,17 +88,37 @@ int arch_cpu_init_dm(void)
 		}
 	}
 
+#if !defined(CONFIG_TARGET_IMX8QM_MEK_A72_ONLY) && !defined(CONFIG_TARGET_IMX8QM_MEK_A53_ONLY)
 	if (is_imx8qm()) {
 		ret = sc_pm_set_resource_power_mode(-1, SC_R_SMMU,
 						    SC_PM_PW_MODE_ON);
 		if (ret)
 			return ret;
 	}
+#endif
 
 	power_off_all_usb();
 
 	return 0;
 }
+
+#if defined(CONFIG_ARCH_MISC_INIT)
+int arch_misc_init(void)
+{
+#if !defined(CONFIG_ANDROID_SUPPORT) && !defined(CONFIG_ANDROID_AUTO_SUPPORT)
+	if (IS_ENABLED(CONFIG_FSL_CAAM)) {
+		struct udevice *dev;
+		int ret;
+
+		ret = uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(caam_jr), &dev);
+		if (ret)
+			printf("Failed to initialize caam_jr: %d\n", ret);
+	}
+#endif
+
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_IMX_BOOTAUX
 
@@ -156,10 +157,10 @@ int arch_auxiliary_core_up(u32 core_id, ulong boot_private_data)
 
 	printf("Power on M4 and MU\n");
 
-	if (sc_pm_set_resource_power_mode(-1, core_rsrc, SC_PM_PW_MODE_ON) != SC_ERR_NONE)
+	if (sc_pm_set_resource_power_mode(-1, core_rsrc, SC_PM_PW_MODE_ON))
 		return -EIO;
 
-	if (sc_pm_set_resource_power_mode(-1, mu_rsrc, SC_PM_PW_MODE_ON) != SC_ERR_NONE)
+	if (sc_pm_set_resource_power_mode(-1, mu_rsrc, SC_PM_PW_MODE_ON))
 		return -EIO;
 
 	printf("Copy M4 image from 0x%lx to TCML 0x%lx\n", addr, (ulong)tcml_addr);
@@ -168,7 +169,7 @@ int arch_auxiliary_core_up(u32 core_id, ulong boot_private_data)
 		memcpy((void *)tcml_addr, (void *)addr, tcm_size);
 
 	printf("Start M4 %u\n", core_id);
-	if (sc_pm_cpu_start(-1, core_rsrc, true, tcml_addr) != SC_ERR_NONE)
+	if (sc_pm_cpu_start(-1, core_rsrc, true, tcml_addr))
 		return -EIO;
 
 	printf("bootaux complete\n");
@@ -177,55 +178,6 @@ int arch_auxiliary_core_up(u32 core_id, ulong boot_private_data)
 #endif
 
 #if defined(CONFIG_IMX8QXP) || defined(CONFIG_IMX8DXL)
-static unsigned long load_elf_image_shdr(unsigned long addr)
-{
-	Elf32_Ehdr *ehdr; /* Elf header structure pointer */
-	Elf32_Shdr *shdr; /* Section header structure pointer */
-	unsigned char *strtab = 0; /* String table pointer */
-	unsigned char *image; /* Binary image pointer */
-	int i; /* Loop counter */
-
-	ehdr = (Elf32_Ehdr *)addr;
-
-	/* Find the section header string table for output info */
-	shdr = (Elf32_Shdr *)(addr + ehdr->e_shoff +
-			     (ehdr->e_shstrndx * sizeof(Elf32_Shdr)));
-
-	if (shdr->sh_type == SHT_STRTAB)
-		strtab = (unsigned char *)(addr + shdr->sh_offset);
-
-	/* Load each appropriate section */
-	for (i = 0; i < ehdr->e_shnum; ++i) {
-		shdr = (Elf32_Shdr *)(addr + ehdr->e_shoff +
-				     (i * sizeof(Elf32_Shdr)));
-
-		if (!(shdr->sh_flags & SHF_ALLOC) ||
-		    shdr->sh_addr == 0 || shdr->sh_size == 0) {
-			continue;
-		}
-
-		if (strtab) {
-			debug("%sing %s @ 0x%08lx (%ld bytes)\n",
-			      (shdr->sh_type == SHT_NOBITS) ? "Clear" : "Load",
-			       &strtab[shdr->sh_name],
-			       (unsigned long)shdr->sh_addr,
-			       (long)shdr->sh_size);
-		}
-
-		if (shdr->sh_type == SHT_NOBITS) {
-			memset((void *)(uintptr_t)shdr->sh_addr, 0,
-			       shdr->sh_size);
-		} else {
-			image = (unsigned char *)addr + shdr->sh_offset;
-			memcpy((void *)(uintptr_t)shdr->sh_addr,
-			       (const void *)image, shdr->sh_size);
-		}
-		flush_cache(shdr->sh_addr, shdr->sh_size);
-	}
-
-	return ehdr->e_entry;
-}
-
 int arch_auxiliary_core_up(u32 core_id, ulong boot_private_data)
 {
 	sc_rsrc_t core_rsrc, mu_rsrc = SC_R_NONE;
@@ -260,18 +212,18 @@ int arch_auxiliary_core_up(u32 core_id, ulong boot_private_data)
 
 	printf("Power on aux core %d\n", core_id);
 
-	if (sc_pm_set_resource_power_mode(-1, core_rsrc, SC_PM_PW_MODE_ON) != SC_ERR_NONE)
+	if (sc_pm_set_resource_power_mode(-1, core_rsrc, SC_PM_PW_MODE_ON))
 		return -EIO;
 
 	if (mu_rsrc != SC_R_NONE) {
-		if (sc_pm_set_resource_power_mode(-1, mu_rsrc, SC_PM_PW_MODE_ON) != SC_ERR_NONE)
+		if (sc_pm_set_resource_power_mode(-1, mu_rsrc, SC_PM_PW_MODE_ON))
 			return -EIO;
 	}
 
 	if (core_id == 1) {
 		struct power_domain pd;
 
-		if (sc_pm_clock_enable(-1, core_rsrc, SC_PM_CLK_PER, true, false) != SC_ERR_NONE) {
+		if (sc_pm_clock_enable(-1, core_rsrc, SC_PM_CLK_PER, true, false)) {
 			printf("Error enable clock\n");
 			return -EIO;
 		}
@@ -304,7 +256,7 @@ int arch_auxiliary_core_up(u32 core_id, ulong boot_private_data)
 
 	printf("Start %s\n", core_id == 0 ? "M4" : "HIFI");
 
-	if (sc_pm_cpu_start(-1, core_rsrc, true, aux_core_ram) != SC_ERR_NONE)
+	if (sc_pm_cpu_start(-1, core_rsrc, true, aux_core_ram))
 		return -EIO;
 
 	printf("bootaux complete\n");
@@ -331,7 +283,7 @@ int arch_auxiliary_core_check_up(u32 core_id)
 		return 0;
 	}
 
-	if (sc_pm_get_resource_power_mode(-1, core_rsrc, &power_mode) != SC_ERR_NONE)
+	if (sc_pm_get_resource_power_mode(-1, core_rsrc, &power_mode))
 		return 0;
 
 	if (power_mode != SC_PM_PW_MODE_OFF)
@@ -391,6 +343,11 @@ enum boot_device get_boot_device(void)
 
 	sc_rsrc_t dev_rsrc;
 
+#if defined(CONFIG_TARGET_IMX8QM_MEK_A72_ONLY)
+	return MMC1_BOOT;
+#elif defined(CONFIG_TARGET_IMX8QM_MEK_A53_ONLY)
+	return SD2_BOOT;
+#endif
 	/* Note we only support android in EMMC SDHC0 */
 	if (IS_ENABLED(CONFIG_XEN))
 		return MMC1_BOOT;
@@ -433,33 +390,36 @@ bool is_usb_boot(void)
 	return get_boot_device() == USB_BOOT;
 }
 
-#ifdef CONFIG_SERIAL_TAG
+#if defined(CONFIG_SERIAL_TAG) || defined(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)
 #define FUSE_UNIQUE_ID_WORD0 16
 #define FUSE_UNIQUE_ID_WORD1 17
 void get_board_serial(struct tag_serialnr *serialnr)
 {
-	sc_err_t err;
-	uint32_t val1 = 0, val2 = 0;
-	uint32_t word1, word2;
+	int err;
+	u32 val1 = 0, val2 = 0;
+	u32 word1, word2;
+
+	if (!serialnr)
+		return;
 
 	word1 = FUSE_UNIQUE_ID_WORD0;
 	word2 = FUSE_UNIQUE_ID_WORD1;
 
 	err = sc_misc_otp_fuse_read(-1, word1, &val1);
-	if (err != SC_ERR_NONE) {
-		printf("%s fuse %d read error: %d\n", __func__,word1, err);
+	if (err) {
+		printf("%s fuse %d read error: %d\n", __func__, word1, err);
 		return;
 	}
 
 	err = sc_misc_otp_fuse_read(-1, word2, &val2);
-	if (err != SC_ERR_NONE) {
+	if (err) {
 		printf("%s fuse %d read error: %d\n", __func__, word2, err);
 		return;
 	}
 	serialnr->low = val1;
 	serialnr->high = val2;
 }
-#endif /*CONFIG_SERIAL_TAG*/
+#endif /*CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG*/
 
 __weak int board_mmc_get_env_dev(int devno)
 {
@@ -471,7 +431,11 @@ int mmc_get_env_dev(void)
 	sc_rsrc_t dev_rsrc;
 	int devno;
 
+#if defined(CONFIG_TARGET_IMX8QM_MEK_A72_ONLY)
+	dev_rsrc = SC_R_SDHC_0;
+#else
 	sc_misc_get_boot_dev(-1, &dev_rsrc);
+#endif
 
 	switch (dev_rsrc) {
 	case SC_R_SDHC_0:
@@ -538,16 +502,34 @@ static int get_owned_memreg(sc_rm_mr_t mr, sc_faddr_t *addr_start,
 	return -EINVAL;
 }
 
+__weak void board_mem_get_layout(u64 *phys_sdram_1_start,
+				 u64 *phys_sdram_1_size,
+				 u64 *phys_sdram_2_start,
+				 u64 *phys_sdram_2_size)
+{
+	*phys_sdram_1_start = PHYS_SDRAM_1;
+	*phys_sdram_1_size = PHYS_SDRAM_1_SIZE;
+	*phys_sdram_2_start = PHYS_SDRAM_2;
+	*phys_sdram_2_size = PHYS_SDRAM_2_SIZE;
+}
+
 phys_size_t get_effective_memsize(void)
 {
 	sc_rm_mr_t mr;
 	sc_faddr_t start, end, end1, start_aligned;
+	u64 phys_sdram_1_start, phys_sdram_1_size;
+	u64 phys_sdram_2_start, phys_sdram_2_size;
 	int err;
+
+	board_mem_get_layout(&phys_sdram_1_start, &phys_sdram_1_size,
+			     &phys_sdram_2_start, &phys_sdram_2_size);
+
+
+	end1 = (sc_faddr_t)phys_sdram_1_start + phys_sdram_1_size;
 
 	if (IS_ENABLED(CONFIG_XEN))
 		return PHYS_SDRAM_1_SIZE;
 
-	end1 = (sc_faddr_t)PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE;
 	for (mr = 0; mr < 64; mr++) {
 		err = get_owned_memreg(mr, &start, &end);
 		if (!err) {
@@ -557,26 +539,35 @@ phys_size_t get_effective_memsize(void)
 				continue;
 
 			/* Find the memory region runs the U-Boot */
-			if (start >= PHYS_SDRAM_1 && start <= end1 &&
+			if (start >= phys_sdram_1_start && start <= end1 &&
 			    (start <= CONFIG_SYS_TEXT_BASE &&
 			    end >= CONFIG_SYS_TEXT_BASE)) {
-				if ((end + 1) <= ((sc_faddr_t)PHYS_SDRAM_1 +
-				    PHYS_SDRAM_1_SIZE))
-					return (end - PHYS_SDRAM_1 + 1);
+				if ((end + 1) <=
+				    ((sc_faddr_t)phys_sdram_1_start +
+				    phys_sdram_1_size))
+					return (end - phys_sdram_1_start + 1);
 				else
-					return PHYS_SDRAM_1_SIZE;
+					return phys_sdram_1_size;
 			}
 		}
 	}
 
-	return PHYS_SDRAM_1_SIZE;
+	return phys_sdram_1_size;
 }
 
 int dram_init(void)
 {
 	sc_rm_mr_t mr;
 	sc_faddr_t start, end, end1, end2;
+	u64 phys_sdram_1_start, phys_sdram_1_size;
+	u64 phys_sdram_2_start, phys_sdram_2_size;
 	int err;
+
+	board_mem_get_layout(&phys_sdram_1_start, &phys_sdram_1_size,
+			     &phys_sdram_2_start, &phys_sdram_2_size);
+
+	end1 = (sc_faddr_t)phys_sdram_1_start + phys_sdram_1_size;
+	end2 = (sc_faddr_t)phys_sdram_2_start + phys_sdram_2_size;
 
 	if (IS_ENABLED(CONFIG_XEN)) {
 		gd->ram_size = PHYS_SDRAM_1_SIZE;
@@ -585,8 +576,6 @@ int dram_init(void)
 		return 0;
 	}
 
-	end1 = (sc_faddr_t)PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE;
-	end2 = (sc_faddr_t)PHYS_SDRAM_2 + PHYS_SDRAM_2_SIZE;
 	for (mr = 0; mr < 64; mr++) {
 		err = get_owned_memreg(mr, &start, &end);
 		if (!err) {
@@ -595,12 +584,13 @@ int dram_init(void)
 			if (start > end)
 				continue;
 
-			if (start >= PHYS_SDRAM_1 && start <= end1) {
+			if (start >= phys_sdram_1_start && start <= end1) {
 				if ((end + 1) <= end1)
 					gd->ram_size += end - start + 1;
 				else
 					gd->ram_size += end1 - start;
-			} else if (start >= PHYS_SDRAM_2 && start <= end2) {
+			} else if (start >= phys_sdram_2_start &&
+				   start <= end2) {
 				if ((end + 1) <= end2)
 					gd->ram_size += end - start + 1;
 				else
@@ -611,8 +601,8 @@ int dram_init(void)
 
 	/* If error, set to the default value */
 	if (!gd->ram_size) {
-		gd->ram_size = PHYS_SDRAM_1_SIZE;
-		gd->ram_size += PHYS_SDRAM_2_SIZE;
+		gd->ram_size = phys_sdram_1_size;
+		gd->ram_size += phys_sdram_2_size;
 	}
 	return 0;
 }
@@ -645,7 +635,15 @@ int dram_init_banksize(void)
 	sc_rm_mr_t mr;
 	sc_faddr_t start, end, end1, end2;
 	int i = 0;
+	u64 phys_sdram_1_start, phys_sdram_1_size;
+	u64 phys_sdram_2_start, phys_sdram_2_size;
 	int err;
+
+	board_mem_get_layout(&phys_sdram_1_start, &phys_sdram_1_size,
+			     &phys_sdram_2_start, &phys_sdram_2_size);
+
+	end1 = (sc_faddr_t)phys_sdram_1_start + phys_sdram_1_size;
+	end2 = (sc_faddr_t)phys_sdram_2_start + phys_sdram_2_size;
 
 	if (IS_ENABLED(CONFIG_XEN)) {
 		gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
@@ -656,8 +654,6 @@ int dram_init_banksize(void)
 		return 0;
 	}
 
-	end1 = (sc_faddr_t)PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE;
-	end2 = (sc_faddr_t)PHYS_SDRAM_2 + PHYS_SDRAM_2_SIZE;
 	for (mr = 0; mr < 64 && i < CONFIG_NR_DRAM_BANKS; mr++) {
 		err = get_owned_memreg(mr, &start, &end);
 		if (!err) {
@@ -665,7 +661,7 @@ int dram_init_banksize(void)
 			if (start > end) /* Small memory region, no use it */
 				continue;
 
-			if (start >= PHYS_SDRAM_1 && start <= end1) {
+			if (start >= phys_sdram_1_start && start <= end1) {
 				gd->bd->bi_dram[i].start = start;
 
 				if ((end + 1) <= end1)
@@ -676,7 +672,7 @@ int dram_init_banksize(void)
 
 				dram_bank_sort(i);
 				i++;
-			} else if (start >= PHYS_SDRAM_2 && start <= end2) {
+			} else if (start >= phys_sdram_2_start && start <= end2) {
 				gd->bd->bi_dram[i].start = start;
 
 				if ((end + 1) <= end2)
@@ -693,10 +689,10 @@ int dram_init_banksize(void)
 
 	/* If error, set to the default value */
 	if (!i) {
-		gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-		gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
-		gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
-		gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
+		gd->bd->bi_dram[0].start = phys_sdram_1_start;
+		gd->bd->bi_dram[0].size = phys_sdram_1_size;
+		gd->bd->bi_dram[1].start = phys_sdram_2_start;
+		gd->bd->bi_dram[1].size = phys_sdram_2_size;
 	}
 
 	return 0;
@@ -706,11 +702,16 @@ static u64 get_block_attrs(sc_faddr_t addr_start)
 {
 	u64 attr = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) | PTE_BLOCK_NON_SHARE |
 		PTE_BLOCK_PXN | PTE_BLOCK_UXN;
+	u64 phys_sdram_1_start, phys_sdram_1_size;
+	u64 phys_sdram_2_start, phys_sdram_2_size;
 
-	if ((addr_start >= PHYS_SDRAM_1 &&
-	     addr_start <= ((sc_faddr_t)PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE)) ||
-	    (addr_start >= PHYS_SDRAM_2 &&
-	     addr_start <= ((sc_faddr_t)PHYS_SDRAM_2 + PHYS_SDRAM_2_SIZE)))
+	board_mem_get_layout(&phys_sdram_1_start, &phys_sdram_1_size,
+			     &phys_sdram_2_start, &phys_sdram_2_size);
+
+	if ((addr_start >= phys_sdram_1_start &&
+	     addr_start <= ((sc_faddr_t)phys_sdram_1_start + phys_sdram_1_size)) ||
+	    (addr_start >= phys_sdram_2_start &&
+	     addr_start <= ((sc_faddr_t)phys_sdram_2_start + phys_sdram_2_size)))
 #ifdef CONFIG_IMX_TRUSTY_OS
 		return (PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_INNER_SHARE);
 #else
@@ -723,14 +724,20 @@ static u64 get_block_attrs(sc_faddr_t addr_start)
 static u64 get_block_size(sc_faddr_t addr_start, sc_faddr_t addr_end)
 {
 	sc_faddr_t end1, end2;
+	u64 phys_sdram_1_start, phys_sdram_1_size;
+	u64 phys_sdram_2_start, phys_sdram_2_size;
 
-	end1 = (sc_faddr_t)PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE;
-	end2 = (sc_faddr_t)PHYS_SDRAM_2 + PHYS_SDRAM_2_SIZE;
+	board_mem_get_layout(&phys_sdram_1_start, &phys_sdram_1_size,
+			     &phys_sdram_2_start, &phys_sdram_2_size);
 
-	if (addr_start >= PHYS_SDRAM_1 && addr_start <= end1) {
+
+	end1 = (sc_faddr_t)phys_sdram_1_start + phys_sdram_1_size;
+	end2 = (sc_faddr_t)phys_sdram_2_start + phys_sdram_2_size;
+
+	if (addr_start >= phys_sdram_1_start && addr_start <= end1) {
 		if ((addr_end + 1) > end1)
 			return end1 - addr_start;
-	} else if (addr_start >= PHYS_SDRAM_2 && addr_start <= end2) {
+	} else if (addr_start >= phys_sdram_2_start && addr_start <= end2) {
 		if ((addr_end + 1) > end2)
 			return end2 - addr_start;
 	}
@@ -910,49 +917,66 @@ u32 get_cpu_rev(void)
 	u32 id = 0, rev = 0;
 	int ret;
 
+	/* returns ID - chip id [4:0], chip revision [9:5]*/
 	ret = sc_misc_get_control(-1, SC_R_SYSTEM, SC_C_ID, &id);
 	if (ret)
 		return 0;
 
+	/* Extract silicon version */
 	rev = (id >> 5)  & 0xf;
+	/* Extract chip ID and add dummy */
 	id = (id & 0x1f) + MXC_SOC_IMX8;  /* Dummy ID for chip */
 
-	/* 8DXL uses A1/A2, so generate dummy rev to differentiate with B/C */
-	if (id == MXC_CPU_IMX8DXL && rev != 0)
-		rev = 0x10 + rev;
+	/* 8DXL A1: use dummy rev to differentiate from B */
+	if (id == MXC_CPU_IMX8DXL && rev == CHIP_REV_B)
+		rev = CHIP_REV_A1;
+	/* 8DXL B0: detect as B instead of C */
+	else if (id == MXC_CPU_IMX8DXL && rev == CHIP_REV_C)
+		rev = CHIP_REV_B;
 
-	return (id << 12) | rev;
+	/* return Chip ID in [31:12] and silicon ver in [11:0]*/
+	return (id << 12) | (rev & 0xfff);
 }
 
-static bool check_device_power_off(struct udevice *dev,
-	const char* permanent_on_devices[], int size)
+void board_boot_order(u32 *spl_boot_list)
 {
-	int i;
+	spl_boot_list[0] = spl_boot_device();
 
-	for (i = 0; i < size; i++) {
-		if (!strcmp(dev->name, permanent_on_devices[i]))
+	if (spl_boot_list[0] == BOOT_DEVICE_SPI) {
+		/* Check whether we own the flexspi0, if not, use NOR boot */
+		if (!sc_rm_is_resource_owned(-1, SC_R_FSPI_0))
+			spl_boot_list[0] = BOOT_DEVICE_NOR;
+	}
+}
+
+bool m4_parts_booted(void)
+{
+	sc_rm_pt_t m4_parts[2];
+	int err;
+
+	err = sc_rm_get_resource_owner(-1, SC_R_M4_0_PID0, &m4_parts[0]);
+	if (err) {
+		printf("%s get resource [%d] owner error: %d\n", __func__,
+		       SC_R_M4_0_PID0, err);
+		return false;
+	}
+
+	if (sc_pm_is_partition_started(-1, m4_parts[0]))
+		return true;
+
+	if (is_imx8qm()) {
+		err = sc_rm_get_resource_owner(-1, SC_R_M4_1_PID0, &m4_parts[1]);
+		if (err) {
+			printf("%s get resource [%d] owner error: %d\n",
+			       __func__, SC_R_M4_1_PID0, err);
 			return false;
-	}
-
-	return true;
-}
-
-void power_off_pd_devices(const char* permanent_on_devices[], int size)
-{
-	struct udevice *dev;
-	struct power_domain pd;
-
-	for (uclass_find_first_device(UCLASS_POWER_DOMAIN, &dev); dev;
-		uclass_find_next_device(&dev)) {
-
-		if (device_active(dev)) {
-			/* Power off active pd devices except the permanent power on devices */
-			if (check_device_power_off(dev, permanent_on_devices, size)) {
-				pd.dev = dev;
-				power_domain_off(&pd);
-			}
 		}
+
+		if (sc_pm_is_partition_started(-1, m4_parts[1]))
+			return true;
 	}
+
+	return false;
 }
 
 void disconnect_from_pc(void)
@@ -1006,34 +1030,6 @@ bool check_owned_udevice(struct udevice *dev)
 	return sc_rm_is_resource_owned(-1, resource_id);
 }
 
-bool check_m4_parts_boot(void)
-{
-	sc_rm_pt_t m4_parts[2];
-	int err;
-
-	err = sc_rm_get_resource_owner(-1, SC_R_M4_0_PID0, &m4_parts[0]);
-	if (err != SC_ERR_NONE) {
-		printf("%s get resource [%d] owner error: %d\n", __func__, SC_R_M4_0_PID0, err);
-		return false;
-	}
-
-	if (sc_pm_is_partition_started(-1, m4_parts[0]))
-		return true;
-
-	if (is_imx8qm()) {
-		err = sc_rm_get_resource_owner(-1, SC_R_M4_1_PID0, &m4_parts[1]);
-		if (err != SC_ERR_NONE) {
-			printf("%s get resource [%d] owner error: %d\n", __func__, SC_R_M4_1_PID0, err);
-			return false;
-		}
-
-		if (sc_pm_is_partition_started(-1, m4_parts[1]))
-			return true;
-	}
-
-	return false;
-}
-
 #ifdef CONFIG_IMX_VSERVICE
 struct udevice * board_imx_vservice_find_mu(struct udevice *dev)
 {
@@ -1065,7 +1061,7 @@ struct udevice * board_imx_vservice_find_mu(struct udevice *dev)
 	}
 
 	err = sc_rm_get_resource_owner(-1, resource_id, &resource_part);
-	if (err != SC_ERR_NONE) {
+	if (err) {
 		printf("%s get resource [%d] owner error: %d\n", __func__, resource_id, err);
 		return NULL;
 	}
@@ -1074,7 +1070,7 @@ struct udevice * board_imx_vservice_find_mu(struct udevice *dev)
 
 	/* MU8 for communication between M4_0 and u-boot, MU9 for M4_1 and u-boot */
 	err = sc_rm_get_resource_owner(-1, SC_R_M4_0_PID0, &m4_parts[0]);
-	if (err != SC_ERR_NONE) {
+	if (err) {
 		printf("%s get resource [%d] owner error: %d\n", __func__, SC_R_M4_0_PID0, err);
 		return NULL;
 	}
@@ -1088,7 +1084,7 @@ struct udevice * board_imx_vservice_find_mu(struct udevice *dev)
 
 	if (is_imx8qm()) {
 		err = sc_rm_get_resource_owner(-1, SC_R_M4_1_PID0, &m4_parts[1]);
-		if (err != SC_ERR_NONE) {
+		if (err) {
 			printf("%s get resource [%d] owner error: %d\n", __func__, SC_R_M4_1_PID0, err);
 			return NULL;
 		}
@@ -1145,17 +1141,6 @@ int board_imx_lpi2c_bind(struct udevice *dev)
 	return -ENODEV;
 }
 
-void board_boot_order(u32 *spl_boot_list)
-{
-	spl_boot_list[0] = spl_boot_device();
-
-	if (spl_boot_list[0] == BOOT_DEVICE_SPI) {
-		/* Check whether we own the flexspi0, if not, use NOR boot */
-		if (!sc_rm_is_resource_owned(-1, SC_R_FSPI_0))
-			spl_boot_list[0] = BOOT_DEVICE_NOR;
-	}
-}
-
 #ifdef CONFIG_USB_PORT_AUTO
 static int usb_port_auto_check(void)
 {
@@ -1163,6 +1148,7 @@ static int usb_port_auto_check(void)
 	u32 usb2_data;
 	struct power_domain pd;
 	struct power_domain phy_pd;
+	struct ehci_mx6_phy_data phy_data;
 
 	if (!power_domain_lookup_name("conn_usb0", &pd)) {
 		ret = power_domain_on(&pd);
@@ -1181,8 +1167,12 @@ static int usb_port_auto_check(void)
 			return -1;
 		}
 
+		phy_data.phy_addr = (void __iomem *)(ulong)USB_PHY0_BASE_ADDR;
+		phy_data.misc_addr = (void __iomem *)(ulong)(USB_BASE_ADDR + 0x200);
+		phy_data.anatop_addr = NULL;
+
 		enable_usboh3_clk(1);
-		usb2_data = ci_udc_check_bus_active(USB_BASE_ADDR, USB_PHY0_BASE_ADDR, 0);
+		usb2_data = ci_udc_check_bus_active(USB_BASE_ADDR, &phy_data, 0);
 
 		ret = power_domain_off(&phy_pd);
 		if (ret) {

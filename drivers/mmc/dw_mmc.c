@@ -9,11 +9,14 @@
 #include <common.h>
 #include <cpu_func.h>
 #include <errno.h>
+#include <log.h>
 #include <malloc.h>
 #include <memalign.h>
 #include <mmc.h>
 #include <dwmmc.h>
 #include <wait_bit.h>
+#include <asm/cache.h>
+#include <linux/delay.h>
 #include <power/regulator.h>
 
 #define PAGE_SIZE 4096
@@ -163,7 +166,9 @@ static int dwmci_data_transfer(struct dwmci_host *host, struct mmc_data *data)
 		if (host->fifo_mode && size) {
 			len = 0;
 			if (data->flags == MMC_DATA_READ &&
-			    (mask & DWMCI_INTMSK_RXDR)) {
+			    (mask & (DWMCI_INTMSK_RXDR | DWMCI_INTMSK_DTO))) {
+				dwmci_writel(host, DWMCI_RINTSTS,
+					     DWMCI_INTMSK_RXDR | DWMCI_INTMSK_DTO);
 				while (size) {
 					ret = dwmci_fifo_ready(host,
 							DWMCI_FIFO_EMPTY,
@@ -179,8 +184,6 @@ static int dwmci_data_transfer(struct dwmci_host *host, struct mmc_data *data)
 						dwmci_readl(host, DWMCI_DATA);
 					size = size > len ? (size - len) : 0;
 				}
-				dwmci_writel(host, DWMCI_RINTSTS,
-					     DWMCI_INTMSK_RXDR);
 			} else if (data->flags == MMC_DATA_WRITE &&
 				   (mask & DWMCI_INTMSK_TXDR)) {
 				while (size) {
@@ -298,7 +301,7 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 		flags = dwmci_set_transfer_mode(host, data);
 
 	if ((cmd->resp_type & MMC_RSP_136) && (cmd->resp_type & MMC_RSP_BUSY))
-		return -1;
+		return -EBUSY;
 
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
 		flags |= DWMCI_CMD_ABORT_STOP;
@@ -493,8 +496,13 @@ static int dwmci_set_ios(struct mmc *mmc)
 
 	dwmci_writel(host, DWMCI_UHS_REG, regs);
 
-	if (host->clksel)
-		host->clksel(host);
+	if (host->clksel) {
+		int ret;
+
+		ret = host->clksel(host);
+		if (ret)
+			return ret;
+	}
 
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
 	if (mmc->vqmmc_supply) {

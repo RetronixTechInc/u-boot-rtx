@@ -7,11 +7,10 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
+#include <log.h>
 #include <i2c.h>
 
 #include <asm-generic/gpio.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define I2C_M_SELECT_MUX_BUS	0x010000
 
@@ -51,13 +50,13 @@ static int imx_virt_i2c_mux_probe(struct udevice *dev)
 {
 	struct imx_virt_i2c_mux_priv *priv = dev_get_priv(dev);
 
-	priv->addr = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "reg", 0);
+	priv->addr = dev_read_u32_default(dev, "reg", 0);
 	if (!priv->addr) {
 		debug("MUX not found\n");
 		return -ENODEV;
 	}
 
-	priv->i2c_bus_alias_off = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "virtual-bus-seq", 0);
+	priv->i2c_bus_alias_off = dev_read_u32_default(dev, "virtual-bus-seq", 0);
 
 	debug("Device %s at 0x%x with i2c_bus_alias_off %d\n",
 	      dev->name, priv->addr, priv->i2c_bus_alias_off);
@@ -70,5 +69,5 @@ U_BOOT_DRIVER(imx_virt_i2c_mux) = {
 	.of_match = imx_virt_i2c_mux_ids,
 	.probe = imx_virt_i2c_mux_probe,
 	.ops = &imx_virt_i2c_mux_ops,
-	.priv_auto_alloc_size = sizeof(struct imx_virt_i2c_mux_priv),
+	.priv_auto = sizeof(struct imx_virt_i2c_mux_priv),
 };

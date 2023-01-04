@@ -4,23 +4,29 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <init.h>
+#include <net.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/mxc_i2c.h>
 #include <asm/io.h>
 #include <common.h>
+#include <env.h>
 #include <fsl_esdhc_imx.h>
 #include <i2c.h>
 #include <linux/sizes.h>
 #include <linux/fb.h>
 #include <miiphy.h>
+#include <linux/delay.h>
+#include <linux/sizes.h>
 #include <mmc.h>
 #include <mxsfb.h>
 #include <netdev.h>
@@ -80,7 +86,7 @@ DECLARE_GLOBAL_DATA_PTR;
 	PAD_CTL_PUS_47K_UP  | PAD_CTL_SPEED_LOW |		\
 	PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
 
-#ifdef CONFIG_SYS_I2C
+#ifdef CONFIG_SYS_I2C_LEGACY
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
 /* I2C1 for PMIC and EEPROM */
 struct i2c_pads_info i2c_pad_info1 = {
@@ -111,6 +117,7 @@ static iomux_v3_cfg_t const uart1_pads[] = {
 	MX6_PAD_UART1_RX_DATA__UART1_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#ifdef CONFIG_FSL_ESDHC_IMX
 #ifdef CONFIG_MX6UL_DDR3_VAL_EMMC_REWORK
 static iomux_v3_cfg_t const usdhc1_emmc_pads[] = {
 	MX6_PAD_SD1_CLK__USDHC1_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -184,6 +191,7 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	 */
 	MX6_PAD_NAND_ALE__GPIO4_IO10 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
+#endif
 #endif
 
 #ifdef CONFIG_NAND_MXS
@@ -318,7 +326,7 @@ static void eimnor_cs_setup(void)
 
 static void setup_eimnor(void)
 {
-	if (check_module_fused(MX6_MODULE_EIM)) {
+	if (check_module_fused(MODULE_EIM)) {
 		printf("WEIM@0x%x is fused, disable it\n", WEIM_BASE_ADDR);
 		return;
 	}
@@ -330,7 +338,7 @@ static void setup_eimnor(void)
 
 int board_flash_wp_on(void)
 {
-	if (check_module_fused(MX6_MODULE_EIM))
+	if (check_module_fused(MODULE_EIM))
 		return 1; /* Skip flash init */
 
 	return 0;
@@ -447,7 +455,7 @@ int board_qspi_init(void)
 }
 #endif
 
-#ifdef CONFIG_FSL_ESDHC
+#ifdef CONFIG_FSL_ESDHC_IMX
 static struct fsl_esdhc_cfg usdhc_cfg[2] = {
 #ifdef CONFIG_MX6UL_DDR3_VAL_EMMC_REWORK
 	/* If want to use qspi, should change to 4 bit width */
@@ -489,7 +497,7 @@ int board_mmc_getcd(struct mmc *mmc)
 	return ret;
 }
 
-int board_mmc_init(bd_t *bis)
+int board_mmc_init(struct bd_info *bis)
 {
 	int i;
 
@@ -623,7 +631,7 @@ size_t display_count = ARRAY_SIZE(displays);
 #endif
 
 #ifdef CONFIG_FEC_MXC
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int ret;
 
@@ -644,7 +652,7 @@ static int setup_fec(int fec_id)
 	int ret;
 
 	if (0 == fec_id) {
-		if (check_module_fused(MX6_MODULE_ENET1))
+		if (check_module_fused(MODULE_ENET1))
 			return -1;
 
 		/*
@@ -664,7 +672,7 @@ static int setup_fec(int fec_id)
 		gpio_direction_output(IMX_GPIO_NR(5, 2), 1);
 
 	} else {
-		if (check_module_fused(MX6_MODULE_ENET2))
+		if (check_module_fused(MODULE_ENET2))
 			return -1;
 
 		/* clk from phy, set gpr1[14], clear gpr1[18]*/
@@ -700,7 +708,7 @@ int board_phy_config(struct phy_device *phydev)
 }
 #endif
 
-#ifdef CONFIG_POWER
+#ifdef CONFIG_POWER_LEGACY
 #define I2C_PMIC	0
 int power_init_board(void)
 {
@@ -938,7 +946,7 @@ int board_init(void)
 	 * DNP.
 	 */
 
-#ifdef CONFIG_SYS_I2C
+#ifdef CONFIG_SYS_I2C_LEGACY
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
 #endif
 

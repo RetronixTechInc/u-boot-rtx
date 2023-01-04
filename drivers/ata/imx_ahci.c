@@ -853,5 +853,5 @@ U_BOOT_DRIVER(imx_ahci) = {
 	.bind	= imx_ahci_bind,
 	.probe	= imx_ahci_probe,
 	.remove	= imx_ahci_remove,
-	.priv_auto_alloc_size = sizeof(struct imx_ahci_priv),
+	.priv_auto = sizeof(struct imx_ahci_priv),
 };

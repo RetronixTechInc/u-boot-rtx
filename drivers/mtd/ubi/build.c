@@ -17,6 +17,7 @@
  */
 
 #ifndef __UBOOT__
+#include <log.h>
 #include <dm/devres.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -114,7 +115,7 @@ static struct ubi_device *ubi_devices[UBI_MAX_DEVICES];
 #else
 struct ubi_device *ubi_devices[UBI_MAX_DEVICES];
 #endif
- 
+
 #ifndef __UBOOT__
 /* Serializes UBI devices creations and removals */
 DEFINE_MUTEX(ubi_devices_mutex);

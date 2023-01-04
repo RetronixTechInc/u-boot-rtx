@@ -3,6 +3,7 @@
  * Copyright 2020 NXP
  */
 
+#include <part.h>
 #include "android_bootloader_message.h"
 #include "../lib/avb/fsl/utils.h"
 #include "fb_fsl_virtual_ab.h"

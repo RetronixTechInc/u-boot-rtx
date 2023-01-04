@@ -12,6 +12,8 @@
 #include <mxc_epdc_fb.h>
 #include <fs.h>
 #include <cpu_func.h>
+#include <env.h>
+#include <asm/cache.h>
 
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
 __weak int mmc_get_env_devno(void)

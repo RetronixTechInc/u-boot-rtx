@@ -15,6 +15,9 @@
 #include <i2c.h>
 #include <i2c_eeprom.h>
 #include <env.h>
+#include <init.h>
+#include <net.h>
+#include <asm/global_data.h>
 #include <linux/ctype.h>
 #include <u-boot/crc.h>
 
@@ -166,6 +169,9 @@ static void show_eeprom(u8 *eeprom)
 {
 	int tlv_end;
 	int curr_tlv;
+#ifdef DEBUG
+	int i;
+#endif
 	struct tlvinfo_header *eeprom_hdr = to_header(eeprom);
 	struct tlvinfo_tlv    *eeprom_tlv;
 
@@ -423,7 +429,7 @@ void show_tlv_code_list(void)
  *
  *  This function implements the tlv_eeprom command.
  */
-int do_tlv_eeprom(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+int do_tlv_eeprom(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char cmd;
 	struct tlvinfo_header *eeprom_hdr = to_header(eeprom);
@@ -748,7 +754,7 @@ static int set_mac(char *buf, const char *string)
 
 	/* Convert string to binary */
 	for (i = 0, p = (char *)string; i < 6; i++) {
-		buf[i] = p ? simple_strtoul(p, &end, 16) : 0;
+		buf[i] = p ? hextoul(p, &end) : 0;
 		if (p)
 			p = (*end) ? end + 1 : end;
 	}

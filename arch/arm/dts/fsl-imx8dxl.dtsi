@@ -1112,12 +1112,25 @@
 		power-domains = <&pd_conn_usbotg1_phy>;
 	};
 
+	usbmisc1: usbmisc@5b0d0200 {
+		#index-cells = <1>;
+		compatible = "fsl,imx7ulp-usbmisc", "fsl,imx6q-usbmisc";
+		reg = <0x0 0x5b0d0200 0x0 0x200>;
+	};
+
+	usbmisc2: usbmisc@5b0e0200 {
+		#index-cells = <1>;
+		compatible = "fsl,imx8dxl-usbmisc", "fsl,imx7ulp-usbmisc";
+		reg = <0x0 0x5b0e0200 0x0 0x200>;
+	};
+
 	usbotg1: usb@5b0d0000 {
 		compatible = "fsl,imx8qm-usb", "fsl,imx27-usb";
 		reg = <0x0 0x5b0d0000 0x0 0x200>;
 		interrupt-parent = <&wu>;
 		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>;
 		fsl,usbphy = <&usbphy1>;
+		fsl,usbmisc = <&usbmisc1 0>;
 		clocks = <&clk IMX8QXP_CLK_DUMMY>;
 		ahb-burst-config = <0x0>;
 		tx-burst-size-dword = <0x10>;
@@ -1133,6 +1146,7 @@
 		interrupt-parent = <&wu>;
 		interrupts = <GIC_SPI 166 IRQ_TYPE_LEVEL_HIGH>;
 		fsl,usbphy = <&usbphy2>;
+		fsl,usbmisc = <&usbmisc2 0>;
 		clocks = <&clk IMX8QXP_CLK_DUMMY>;
 		ahb-burst-config = <0x0>;
 		tx-burst-size-dword = <0x10>;
@@ -1767,14 +1781,15 @@
 	flexspi0: flexspi@05d120000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		compatible = "fsl,imx8qxp-flexspi";
+		compatible = "nxp,imx8dxl-fspi";
 		reg = <0x0 0x5d120000 0x0 0x10000>, <0x0 0x08000000 0x0 0x10000000>;
-		reg-names = "FlexSPI", "FlexSPI-memory";
+		reg-names = "fspi_base", "fspi_mmap";
 		interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk IMX8QXP_LSIO_FSPI0_CLK>;
+		clocks = <&clk IMX8QXP_LSIO_FSPI0_CLK>,
+			<&clk IMX8QXP_LSIO_FSPI0_CLK>;
 		assigned-clocks = <&clk IMX8QXP_LSIO_FSPI0_DIV>;
 		assigned-clock-rates = <29000000>;
-		clock-names = "fspi";
+		clock-names = "fspi", "fspi_en";
 		power-domains = <&pd_lsio_flexspi0>;
 		status = "disabled";
 	};

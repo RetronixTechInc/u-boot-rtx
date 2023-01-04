@@ -12,7 +12,6 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_SYS_L2CACHE_OFF		/* No L2 cache */
 
 #include <asm/arch/tegra.h>		/* get chip and board defs */
 
@@ -21,8 +20,6 @@
 #define CONFIG_SYS_TIMER_RATE		1000000
 #define CONFIG_SYS_TIMER_COUNTER	NV_PA_TMRUS_BASE
 #endif
-
-#define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs */
 
 /* Environment */
 
@@ -38,9 +35,6 @@
  */
 #define CONFIG_SYS_MMC_MAX_DEVICE 4
 
-/* allow to overwrite serial and ethaddr */
-#define CONFIG_ENV_OVERWRITE
-
 /*
  * Increasing the size of the IO buffer as default nfsargs size is more
  *  than 256 and so it is not possible to edit it
@@ -52,8 +46,11 @@
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
 
-#define CONFIG_SYS_MEMTEST_START	(NV_PA_SDRC_CS0 + 0x600000)
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x100000)
+#ifdef CONFIG_ARM64
+#define FDTFILE "nvidia/" CONFIG_DEFAULT_DEVICE_TREE ".dtb"
+#else
+#define FDTFILE CONFIG_DEFAULT_DEVICE_TREE ".dtb"
+#endif
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map

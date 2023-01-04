@@ -14,22 +14,12 @@
 
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <linux/sizes.h>
-
-#define CONFIG_SKIP_LOWLEVEL_INIT
+#include <linux/stringify.h>
 
 /* Keep L2 Cache Disabled */
 
 /* input clock of PLL: 24MHz input clock */
-#define CONFIG_SYS_CLK_FREQ		24000000
-#define COUNTER_FREQUENCY		CONFIG_SYS_CLK_FREQ
-
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_CMDLINE_TAG
-#define CONFIG_INITRD_TAG
-#define CONFIG_ENV_OVERWRITE
-
-/* Size of malloc() pool before and after relocation */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (80 << 20))
+#define COUNTER_FREQUENCY		24000000
 
 /* select serial console configuration */
 

@@ -3,10 +3,21 @@
   * Copyright 2018 NXP
   */
 
-#include "imx8mm-evk.dts"
+/dts-v1/;
+
+#include "imx8mm-evk.dtsi"
 
 / {
-	model = "NXP i.MX8MM DDR4 EVK board";
+	model = "NXP i.MX8MM DDR4 EVK with CYW43455 WIFI/BT board";
+	compatible = "fsl,imx8mm-ddr4-evk", "fsl,imx8mm";
+};
+
+&gpmi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gpmi_nand>;
+	nand-on-flash-bbt;
+	fsl,use-minimum-ecc;
+	status = "okay";
 };
 
 /delete-node/ &pmic;
@@ -121,7 +132,7 @@
 };
 
 &iomuxc {
-	pinctrl_gpmi_nand_1: gpmi-nand-1 {
+	pinctrl_gpmi_nand: gpmi-nand {
 		fsl,pins = <
 			MX8MM_IOMUXC_NAND_ALE_RAWNAND_ALE		0x00000096
 			MX8MM_IOMUXC_NAND_CE0_B_RAWNAND_CE0_B		0x00000096
@@ -141,19 +152,4 @@
 			MX8MM_IOMUXC_NAND_WP_B_RAWNAND_WP_B		0x00000096
 		>;
 	};
-};
-
-&gpmi {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_gpmi_nand_1>;
-	status = "okay";
-	nand-on-flash-bbt;
-};
-
-&usdhc3 {
-	status = "disabled";
-};
-
-&flexspi{
-	status = "disabled";
 };

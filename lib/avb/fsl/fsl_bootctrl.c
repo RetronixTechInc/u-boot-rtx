@@ -18,7 +18,6 @@
 #include <fsl_avb.h>
 #include <image.h>
 #include <hang.h>
-#include "fsl_caam.h"
 #include "fsl_avbkey.h"
 #include "hang.h"
 #include "fsl_bootctrl.h"
@@ -456,74 +455,18 @@ out:
 	return ret;
 }
 
-
-/* Below are the A/B AVB flow in spl and uboot proper. */
-#if defined(CONFIG_DUAL_BOOTLOADER) && defined(CONFIG_SPL_BUILD)
-
-#define PARTITION_NAME_LEN 13
-#define PARTITION_BOOTLOADER "bootloader"
-#ifdef CONFIG_ANDROID_AUTO_SUPPORT
-/* This should always sync with the gpt */
-#define PARTITION_MISC_ID 9
-#endif
-
-extern int mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value);
-
-/* Pre-declaration of h_spl_load_read(), see detail implementation in
- * common/spl/spl_mmc.c.
- */
-ulong h_spl_load_read(struct spl_load_info *load, ulong sector,
-		      ulong count, void *buf);
-
-/* Writes A/B metadata to disk only if it has changed.
- */
-int fsl_save_metadata_if_changed_dual_uboot(struct blk_desc *dev_desc,
-					    struct bootloader_control* ab_data,
-					    struct bootloader_control* ab_data_orig) {
-	struct bootloader_control serialized;
-	size_t num_bytes;
-	disk_partition_t info;
-
-	/* Save metadata if changed. */
-	if (memcmp(ab_data, ab_data_orig, sizeof(struct bootloader_control)) != 0) {
-		/* Get misc partition info */
-#ifdef CONFIG_ANDROID_AUTO_SUPPORT
-		if (part_get_info(dev_desc, PARTITION_MISC_ID, &info) == -1) {
-#else
-		if (part_get_info_by_name(dev_desc, FASTBOOT_PARTITION_MISC, &info) == -1) {
-#endif
-			printf("Can't get partition info of partition: misc\n");
-			return -1;
-		}
-
-		/* Writing A/B metadata to disk. */
-		fsl_avb_ab_data_update_crc_and_byteswap(ab_data, &serialized);
-		if (write_to_partition_in_bytes(dev_desc, &info,
-						FSL_AB_METADATA_MISC_PARTITION_OFFSET,
-						sizeof(struct bootloader_control),
-						(void *)&serialized, &num_bytes) ||
-						(num_bytes != sizeof(struct bootloader_control))) {
-			printf("Error--write metadata fail!\n");
-			return -1;
-		}
-	}
-	return 0;
-}
-
+#ifdef CONFIG_SPL_BUILD
 /* Load metadate from misc partition.
  */
-int fsl_load_metadata_dual_uboot(struct blk_desc *dev_desc,
+#if defined(CONFIG_IMX_TRUSTY_OS) || defined(CONFIG_DUAL_BOOTLOADER)
+int spl_fsl_load_metadata(struct blk_desc *dev_desc,
 				 struct bootloader_control* ab_data,
 				 struct bootloader_control* ab_data_orig) {
-	disk_partition_t info;
+	struct disk_partition info;
 	struct bootloader_control serialized;
 	size_t num_bytes;
 
-#ifdef CONFIG_ANDROID_AUTO_SUPPORT
-	if (part_get_info(dev_desc, PARTITION_MISC_ID, &info) == -1) {
-#else
-	if (part_get_info_by_name(dev_desc, FASTBOOT_PARTITION_MISC, &info) == -1) {
-#endif
+	if (part_get_info_efi_by_name(dev_desc, FASTBOOT_PARTITION_MISC, &info) == -1) {
 		printf("Can't get partition info of partition: misc\n");
 		return -1;
 	} else {
@@ -562,8 +505,9 @@ int fsl_load_metadata_dual_uboot(struct blk_desc *dev_desc,
 		}
 	}
 }
+#endif /* CONFIG_IMX_TRUSTY_OS || CONFIG_DUAL_BOOTLOADER */
 
-#if !defined(CONFIG_XEN) && defined(CONFIG_IMX_TRUSTY_OS)
+#ifdef CONFIG_IMX_TRUSTY_OS
 static int spl_verify_rbidx(struct mmc *mmc, struct slot_metadata *slot,
 			struct spl_image_info *spl_image)
 {
@@ -623,13 +567,145 @@ static int spl_verify_rbidx(struct mmc *mmc, struct slot_metadata *slot,
 	}
 
 }
-#endif /* !CONFIG_XEN && CONFIG_IMX_TRUSTY_OS */
+/*
+ * spl_fit_get_rbindex(): Get rollback index of the bootloader.
+ * @fit:	Pointer to the FDT blob.
+ *
+ * Return:	the rollback index value of bootloader or a negative
+ * 		error number.
+ */
+int spl_fit_get_rbindex(const void *fit)
+{
+	const char *str;
+	uint64_t index;
+	int conf_node;
+	int len;
+
+	conf_node = fit_find_config_node(fit);
+	if (conf_node < 0) {
+		return conf_node;
+	}
+
+	str = fdt_getprop(fit, conf_node, "rbindex", &len);
+	if (!str) {
+		debug("cannot find property 'rbindex'\n");
+		return -EINVAL;
+	}
+
+	index = simple_strtoul(str, NULL, 10);
+
+	return index;
+}
+
+int check_rollback_index(struct spl_image_info *spl_image, struct mmc *mmc)
+{
+	struct disk_partition info;
+	struct blk_desc *desc;
+	struct bootloader_control ab_data, ab_data_orig;
+	size_t target_slot;
+	int ret = -1;
+	unsigned char original_part;
+
+	/* Only checks rollback index when rpmb key is set */
+	if (!rpmbkey_is_set()) {
+		printf("RPMB key is not set.\n");
+		return 0;
+	}
+
+	/* Check if gpt is valid */
+	desc = mmc_get_blk_desc(mmc);
+	if (desc) {
+		/* switch to user partition of eMMC */
+		original_part = desc->hwpart;
+		if (desc->hwpart != 0) {
+			if (mmc_switch_part(mmc, 0) != 0)
+				return -1;
+			desc->hwpart = 0;
+		}
+
+		if (part_get_info(desc, 1, &info)) {
+			printf("GPT is invalid, please flash correct GPT!\n");
+			ret = -1;
+			goto fail;
+		}
+	} else {
+		printf("Get block desc fail!\n");
+		return -1;
+	}
+
+	/* Load AB metadata from misc partition */
+	if (spl_fsl_load_metadata(desc, &ab_data, &ab_data_orig)) {
+		ret = -1;
+		goto fail;
+	}
+	target_slot = (ab_data.slot_info[1].priority > ab_data.slot_info[0].priority) ? 1 : 0;
+
+	ret = spl_verify_rbidx(mmc, &ab_data.slot_info[target_slot], spl_image);
+
+fail:
+	/* Return to original partition */
+	if (desc->hwpart != original_part) {
+		if (mmc_switch_part(mmc, original_part) != 0)
+			ret = -1;
+		else
+			desc->hwpart = original_part;
+	}
+
+	return ret;
+}
+#endif /* CONFIG_IMX_TRUSTY_OS */
+#endif /* CONFIG_SPL_BUILD */
+
+/* Below are the A/B AVB flow in spl and uboot proper. */
+#if defined(CONFIG_DUAL_BOOTLOADER) && defined(CONFIG_SPL_BUILD)
+
+#define PARTITION_NAME_LEN 13
+#define PARTITION_BOOTLOADER "bootloader"
+
+extern int mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value);
+
+/* Pre-declaration of h_spl_load_read(), see detail implementation in
+ * common/spl/spl_mmc.c.
+ */
+ulong h_spl_load_read(struct spl_load_info *load, ulong sector,
+		      ulong count, void *buf);
+
+/* Writes A/B metadata to disk only if it has changed.
+ */
+int fsl_save_metadata_if_changed_dual_uboot(struct blk_desc *dev_desc,
+					    struct bootloader_control* ab_data,
+					    struct bootloader_control* ab_data_orig) {
+	struct bootloader_control serialized;
+	size_t num_bytes;
+	struct disk_partition info;
+
+	/* Save metadata if changed. */
+	if (memcmp(ab_data, ab_data_orig, sizeof(struct bootloader_control)) != 0) {
+		/* Get misc partition info */
+		if (part_get_info_efi_by_name(dev_desc, FASTBOOT_PARTITION_MISC, &info) == -1) {
+			printf("Can't get partition info of partition: misc\n");
+			return -1;
+		}
+
+		/* Writing A/B metadata to disk. */
+		fsl_avb_ab_data_update_crc_and_byteswap(ab_data, &serialized);
+		if (write_to_partition_in_bytes(dev_desc, &info,
+						FSL_AB_METADATA_MISC_PARTITION_OFFSET,
+						sizeof(struct bootloader_control),
+						(void *)&serialized, &num_bytes) ||
+						(num_bytes != sizeof(struct bootloader_control))) {
+			printf("Error--write metadata fail!\n");
+			return -1;
+		}
+	}
+	return 0;
+}
 
 int mmc_load_image_raw_sector_dual_uboot(struct spl_image_info *spl_image,
 					 struct mmc *mmc)
 {
+	struct disk_partition info;
 	unsigned long count;
-	disk_partition_t info;
 	int ret = 0, n = 0;
 	char partition_name[PARTITION_NAME_LEN];
 	struct blk_desc *dev_desc;
@@ -655,13 +731,7 @@ int mmc_load_image_raw_sector_dual_uboot(struct spl_image_info *spl_image,
 
 #if !defined(CONFIG_XEN) && defined(CONFIG_IMX_TRUSTY_OS)
 	read_keyslot_package(&kp);
-	if (strcmp(kp.magic, KEYPACK_MAGIC)) {
-		if (rpmbkey_is_set()) {
-			printf("\nFATAL - RPMB key was destroyed!\n");
-			hang();
-		} else
-			printf("keyslot package magic error, do nothing here!\n");
-	} else {
+	if (!strcmp(kp.magic, KEYPACK_MAGIC)) {
 		/* Set power-on write protection to boot1 partition. */
 		if (mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_BOOT_WP, BOOT1_PWR_WP)) {
 			printf("Unable to set power-on write protection to boot1!\n");
@@ -671,7 +741,7 @@ int mmc_load_image_raw_sector_dual_uboot(struct spl_image_info *spl_image,
 #endif
 
 	/* Load AB metadata from misc partition */
-	if (fsl_load_metadata_dual_uboot(dev_desc, &ab_data,
+	if (spl_fsl_load_metadata(dev_desc, &ab_data,
 					&ab_data_orig)) {
 		return -1;
 	}
@@ -844,37 +914,6 @@ end:
 		return 0;
 }
 
-/*
- * spl_fit_get_rbindex(): Get rollback index of the bootloader.
- * @fit:	Pointer to the FDT blob.
- * @images:	Offset of the /images subnode.
- *
- * Return:	the rollback index value of bootloader or a negative
- * 		error number.
- */
-int spl_fit_get_rbindex(const void *fit, int images)
-{
-	const char *str;
-	uint64_t index;
-	int conf_node;
-	int len;
-
-	conf_node = fit_find_config_node(fit);
-	if (conf_node < 0) {
-		return conf_node;
-	}
-
-	str = fdt_getprop(fit, conf_node, "rbindex", &len);
-	if (!str) {
-		debug("cannot find property 'rbindex'\n");
-		return -EINVAL;
-	}
-
-	index = simple_strtoul(str, NULL, 10);
-
-	return index;
-}
-
 /* For normal build */
 #elif !defined(CONFIG_SPL_BUILD)
 
@@ -888,10 +927,9 @@ AvbABFlowResult avb_flow_dual_uboot(AvbABOps* ab_ops,
 	AvbOps* ops = ab_ops->ops;
 	AvbSlotVerifyData* slot_data = NULL;
 	AvbSlotVerifyData* data = NULL;
-	AvbABFlowResult ret;
+	AvbABFlowResult ret = 0;
 	struct bootloader_control ab_data, ab_data_orig;
 	AvbIOResult io_ret;
-	bool saw_and_allowed_verification_error = false;
 	AvbSlotVerifyResult verify_result;
 	bool set_slot_unbootable = false;
 	int target_slot, n;
@@ -960,8 +998,7 @@ AvbABFlowResult avb_flow_dual_uboot(AvbABOps* ab_ops,
 					   "AVB_SLOT_VERIFY_FLAGS_ALLOW_VERIFICATION_ERROR "
 					   "is set.\n",
 					   NULL);
-				saw_and_allowed_verification_error =
-					 true;
+				ret = AVB_AB_FLOW_RESULT_OK_WITH_VERIFICATION_ERROR;
 			} else {
 				set_slot_unbootable = true;
 			}
@@ -1040,13 +1077,6 @@ AvbABFlowResult avb_flow_dual_uboot(AvbABOps* ab_ops,
 	avb_assert(slot_data != NULL);
 	data = slot_data;
 	slot_data = NULL;
-	if (saw_and_allowed_verification_error) {
-		avb_assert(
-			flags & AVB_SLOT_VERIFY_FLAGS_ALLOW_VERIFICATION_ERROR);
-		ret = AVB_AB_FLOW_RESULT_OK_WITH_VERIFICATION_ERROR;
-	} else {
-		ret = AVB_AB_FLOW_RESULT_OK;
-	}
 
 out:
 	io_ret = fsl_save_metadata_if_changed(ab_ops, &ab_data, &ab_data_orig);
@@ -1212,11 +1242,10 @@ AvbABFlowResult avb_ab_flow_fast(AvbABOps* ab_ops,
 	AvbOps* ops = ab_ops->ops;
 	AvbSlotVerifyData* slot_data[2] = {NULL, NULL};
 	AvbSlotVerifyData* data = NULL;
-	AvbABFlowResult ret;
+	AvbABFlowResult ret = 0;
 	struct bootloader_control ab_data, ab_data_orig;
 	size_t slot_index_to_boot, n;
 	AvbIOResult io_ret;
-	bool saw_and_allowed_verification_error = false;
 	size_t target_slot;
 	AvbSlotVerifyResult verify_result;
 	bool set_slot_unbootable = false;
@@ -1285,9 +1314,8 @@ AvbABFlowResult avb_ab_flow_fast(AvbABOps* ab_ops,
 						   "AVB_SLOT_VERIFY_FLAGS_ALLOW_VERIFICATION_ERROR "
 						   "is set.\n",
 						   NULL);
-					saw_and_allowed_verification_error =
-						 true;
 					slot_index_to_boot = target_slot;
+					ret = AVB_AB_FLOW_RESULT_OK_WITH_VERIFICATION_ERROR;
 					n = 2;
 				} else {
 					set_slot_unbootable = true;
@@ -1375,13 +1403,6 @@ AvbABFlowResult avb_ab_flow_fast(AvbABOps* ab_ops,
 	avb_assert(slot_data[slot_index_to_boot] != NULL);
 	data = slot_data[slot_index_to_boot];
 	slot_data[slot_index_to_boot] = NULL;
-	if (saw_and_allowed_verification_error) {
-		avb_assert(
-			flags & AVB_SLOT_VERIFY_FLAGS_ALLOW_VERIFICATION_ERROR);
-		ret = AVB_AB_FLOW_RESULT_OK_WITH_VERIFICATION_ERROR;
-	} else {
-		ret = AVB_AB_FLOW_RESULT_OK;
-	}
 
 	/* ... and decrement tries remaining, if applicable. */
 	if (!ab_data.slot_info[slot_index_to_boot].successful_boot &&

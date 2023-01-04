@@ -5,7 +5,9 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <div64.h>
+#include <log.h>
 #include <asm/io.h>
 #include <linux/errno.h>
 #include <asm/arch/imx-regs.h>
@@ -652,7 +654,8 @@ void mxs_set_lcdclk(u32 base_addr, u32 freq)
 	if (is_mx6sx()) {
 		reg = readl(&imx_ccm->cscdr2);
 		/* Can't change clocks when clock not from pre-mux */
-		if ((reg & MXC_CCM_CSCDR2_LCDIF2_CLK_SEL_MASK) != 0)
+		if ((base_addr == LCDIF2_BASE_ADDR) &&
+			(reg & MXC_CCM_CSCDR2_LCDIF2_CLK_SEL_MASK) != 0)
 			return;
 	}
 
@@ -857,10 +860,9 @@ int enable_lcdif_clock(u32 base_addr, bool enable)
 	return 0;
 }
 
-int enable_lvds_bridge(u32 lcd_base_addr)
+int enable_lvds_clock(u32 lcd_base_addr)
 {
 	u32 reg = 0;
-	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
 
 	if (is_cpu_type(MXC_CPU_MX6SX)) {
 		if ((lcd_base_addr != LCDIF1_BASE_ADDR) &&
@@ -898,20 +900,6 @@ int enable_lvds_bridge(u32 lcd_base_addr)
 		reg |= (0x3 << MXC_CCM_CSCDR2_LCDIF2_CLK_SEL_OFFSET);
 	}
 	writel(reg, &imx_ccm->cscdr2);
-
-	reg = IOMUXC_GPR2_DI0_VS_POLARITY_ACTIVE_LOW
-		| IOMUXC_GPR2_BIT_MAPPING_CH0_SPWG
-		| IOMUXC_GPR2_DATA_WIDTH_CH0_18BIT
-		| IOMUXC_GPR2_LVDS_CH0_MODE_ENABLED_DI0;
-	writel(reg, &iomux->gpr[6]);
-
-	reg = readl(&iomux->gpr[5]);
-	if (lcd_base_addr == LCDIF1_BASE_ADDR)
-		reg &= ~0x8;  /* MUX LVDS to LCDIF1 */
-	else
-		reg |= 0x8; /* MUX LVDS to LCDIF2 */
-	writel(reg, &iomux->gpr[5]);
-
 	return 0;
 }
 
@@ -1400,7 +1388,8 @@ void disable_ipu_clock(void)
 /*
  * Dump some core clockes.
  */
-int do_mx6_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_mx6_showclocks(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	u32 freq;
 	freq = decode_pll(PLL_SYS, MXC_HCLK);
@@ -1432,8 +1421,8 @@ int do_mx6_showclocks(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 0;
 }
 
-#if defined(CONFIG_MX6QDL) || defined(CONFIG_MX6Q) || defined(CONFIG_MX6DL) || \
-	defined(CONFIG_MX6S)
+#if defined(CONFIG_MX6Q) || defined(CONFIG_MX6D) || defined(CONFIG_MX6DL) || \
+	defined(CONFIG_MX6S) || defined(CONFIG_MX6QDL) || defined(CONFIG_MX6QP)
 static void disable_ldb_di_clock_sources(void)
 {
 	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;

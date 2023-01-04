@@ -3,9 +3,11 @@
  * Copyright 2018 NXP
  */
 #include <common.h>
+#include <env.h>
 #include <asm/io.h>
 #include <miiphy.h>
 #include <netdev.h>
+#include <asm/global_data.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm-generic/gpio.h>
 #include <asm/arch/imx8mm_pins.h>
@@ -17,6 +19,7 @@
 #include <asm/mach-imx/dma.h>
 #include "../common/tcpc.h"
 #include <usb.h>
+#include <linux/delay.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -338,7 +341,7 @@ int board_ehci_usb_phy_mode(struct udevice *dev)
 	enum typec_cc_state state;
 	struct tcpc_port *port_ptr;
 
-	if (dev->req_seq == 0)
+	if (dev_seq(dev) == 0)
 		port_ptr = &port1;
 	else
 		port_ptr = &port2;

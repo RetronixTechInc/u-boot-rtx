@@ -8,8 +8,10 @@
 #define LOG_CATEGORY LOGC_ALLOC
 
 #include <common.h>
+#include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -21,7 +23,7 @@ static void *alloc_simple(size_t bytes, int align)
 
 	addr = ALIGN(gd->malloc_base + gd->malloc_ptr, align);
 	new_ptr = addr + bytes - gd->malloc_base;
-	log_debug("size=%zx, ptr=%lx, limit=%lx: ", bytes, new_ptr,
+	log_debug("size=%lx, ptr=%lx, limit=%lx: ", (ulong)bytes, new_ptr,
 		  gd->malloc_limit);
 	if (new_ptr > gd->malloc_limit) {
 		log_err("alloc space exhausted\n");

@@ -6,6 +6,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <mipi_dsi.h>
 #include <panel.h>
 #include <asm/gpio.h>
@@ -156,7 +157,7 @@ static int adv7535_enable(struct udevice *dev)
 
 static int adv7535_enable_backlight(struct udevice *dev)
 {
-	struct mipi_dsi_panel_plat *plat = dev_get_platdata(dev);
+	struct mipi_dsi_panel_plat *plat = dev_get_plat(dev);
 	struct mipi_dsi_device *device = plat->device;
 	int ret;
 
@@ -170,7 +171,7 @@ static int adv7535_enable_backlight(struct udevice *dev)
 static int adv7535_get_display_timing(struct udevice *dev,
 					    struct display_timing *timings)
 {
-	struct mipi_dsi_panel_plat *plat = dev_get_platdata(dev);
+	struct mipi_dsi_panel_plat *plat = dev_get_plat(dev);
 	struct mipi_dsi_device *device = plat->device;
 	struct adv7535_priv *priv = dev_get_priv(dev);
 
@@ -235,7 +236,7 @@ static const struct panel_ops adv7535_ops = {
 };
 
 static const struct udevice_id adv7535_ids[] = {
-	{ .compatible = "adi,adv7533" },
+	{ .compatible = "adi,adv7535" },
 	{ }
 };
 
@@ -245,6 +246,6 @@ U_BOOT_DRIVER(adv7535_mipi2hdmi) = {
 	.of_match		  = adv7535_ids,
 	.ops			  = &adv7535_ops,
 	.probe			  = adv7535_probe,
-	.platdata_auto_alloc_size = sizeof(struct mipi_dsi_panel_plat),
-	.priv_auto_alloc_size	= sizeof(struct adv7535_priv),
+	.plat_auto = sizeof(struct mipi_dsi_panel_plat),
+	.priv_auto	= sizeof(struct adv7535_priv),
 };

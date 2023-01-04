@@ -45,6 +45,7 @@
 
 #ifdef CONFIG_IMX_TRUSTY_OS
 #include "u-boot/sha256.h"
+#include "trusty/rpmb.h"
 #include <trusty/libtipc.h>
 #endif
 
@@ -185,7 +186,7 @@ static void reboot_bootloader(char *cmd_parameter, char *response)
 {
 	enable_fastboot_command();
 
-	if (fastboot_set_reboot_flag())
+	if (fastboot_set_reboot_flag(FASTBOOT_REBOOT_REASON_BOOTLOADER))
 		fastboot_fail("Cannot set reboot flag", response);
 	else
 		fastboot_okay(NULL, response);
@@ -202,7 +203,7 @@ static void reboot_fastboot(char *cmd_parameter, char *response)
 {
 	enable_recovery_fastboot();
 
-	if (fastboot_set_reboot_flag())
+	if (fastboot_set_reboot_flag(FASTBOOT_REBOOT_REASON_FASTBOOTD))
 		fastboot_fail("Cannot set reboot flag", response);
 	else
 		fastboot_okay(NULL, response);
@@ -347,7 +348,7 @@ static int partition_table_valid(void)
 	if (!tos_flashed)
 		return 0;
 #endif
-	disk_partition_t info;
+	struct disk_partition info;
 	mmc_no = fastboot_devinfo.dev_id;
 	dev_desc = blk_get_dev("mmc", mmc_no);
 	if (dev_desc)
@@ -469,6 +470,16 @@ static bool endswith(char* s, char* subs) {
 		return false;
 	}
 	return true;
+}
+
+static bool erase_uboot_env(void) {
+	FbLockState status;
+	status = fastboot_get_lock_stat();
+	if (status == FASTBOOT_LOCK) {
+		printf("can not erase env when device is in locked state\n");
+		return false;
+	} else
+		return env_erase() ? false : true;
 }
 
 static void flashing(char *cmd, char *response)
@@ -643,7 +654,9 @@ static void flashing(char *cmd, char *response)
 			printf("Append ec attestation key successfully!\n");
 			strcpy(response, "OKAY");
 		}
-	}  else if (endswith(cmd, FASTBOOT_GET_MPPUBK)) {
+	}
+#ifdef CONFIG_GENERATE_MPPUBK
+	else if (endswith(cmd, FASTBOOT_GET_MPPUBK)) {
 		if (fastboot_get_mppubk(fastboot_buf_addr, &fastboot_bytes_received)) {
 			printf("ERROR Generate mppubk failed!\n");
 			strcpy(response, "FAILGenerate mppubk failed!");
@@ -651,7 +664,9 @@ static void flashing(char *cmd, char *response)
 			printf("mppubk generated!\n");
 			strcpy(response, "OKAY");
 		}
-	}  else if (endswith(cmd, FASTBOOT_GET_SERIAL_NUMBER)) {
+	}
+#endif
+	else if (endswith(cmd, FASTBOOT_GET_SERIAL_NUMBER)) {
 		char *serial = get_serial();
 
 		if (!serial)
@@ -663,20 +678,55 @@ static void flashing(char *cmd, char *response)
 			printf("Serial number generated!\n");
 			strcpy(response, "OKAY");
 		}
+	} else if (endswith(cmd, FASTBOOT_WV_PROVISION)) {
+		if (hwcrypto_provision_wv_key(fastboot_buf_addr, fastboot_bytes_received)) {
+			printf("ERROR provision widevine keybox failed!\n");
+			strcpy(response, "FAILInternal error!");
+		} else {
+			printf("Provision widevine keybox successfully!\n");
+			strcpy(response, "OKAY");
+		}
+	} else if (endswith(cmd, FASTBOOT_WV_PROVISION_ENC)) {
+		if (hwcrypto_provision_wv_key_enc(fastboot_buf_addr, fastboot_bytes_received)) {
+			printf("ERROR provision widevine keybox failed!\n");
+			strcpy(response, "FAILInternal error!");
+		} else {
+			printf("Provision widevine keybox successfully!\n");
+			strcpy(response, "OKAY");
+		}
 	}
+#ifdef CONFIG_ID_ATTESTATION
+	else if (endswith(cmd, FASTBOOT_SET_ATTESTATION_ID)) {
+		if (trusty_set_attestation_id()) {
+			printf("ERROR set device ids failed!\n");
+			strcpy(response, "FAILSet device ids failed!");
+		} else {
+			printf("Set device ids successfully!\n");
+			strcpy(response, "OKAY");
+		}
+	}
+#endif
 #ifndef CONFIG_AVB_ATX
-	else if (endswith(cmd, FASTBOOT_SET_RPMB_KEY)) {
-		if (fastboot_set_rpmb_key(fastboot_buf_addr, fastboot_bytes_received)) {
-			printf("ERROR set rpmb key failed!\n");
-			strcpy(response, "FAILset rpmb key failed!");
+	else if (endswith(cmd, FASTBOOT_SET_RPMB_STAGED_KEY)) {
+		if (fastboot_set_rpmb_staged_key(fastboot_buf_addr, fastboot_bytes_received)) {
+			printf("ERROR set rpmb staged key failed!\n");
+			strcpy(response, "FAILset rpmb staged key failed!");
 		} else
 			strcpy(response, "OKAY");
-	} else if (endswith(cmd, FASTBOOT_SET_RPMB_RANDOM_KEY)) {
-		if (fastboot_set_rpmb_random_key()) {
-			printf("ERROR set rpmb random key failed!\n");
-			strcpy(response, "FAILset rpmb random key failed!");
+	} else if (endswith(cmd, FASTBOOT_SET_RPMB_HARDWARE_KEY)) {
+		if (fastboot_set_rpmb_hardware_key()) {
+			printf("ERROR set rpmb hardware key failed!\n");
+			strcpy(response, "FAILset rpmb hardware key failed!");
 		} else
 			strcpy(response, "OKAY");
+	} else if (endswith(cmd, FASTBOOT_ERASE_RPMB)) {
+		if (storage_erase_rpmb()) {
+			printf("ERROR erase rpmb storage failed!\n");
+			strcpy(response, "FAILerase rpmb storage failed!");
+		} else {
+			printf("erase rpmb storage succeed!\n");
+			strcpy(response, "OKAY");
+		}
 	} else if (endswith(cmd, FASTBOOT_SET_VBMETA_PUBLIC_KEY)) {
 		if (avb_set_public_key(fastboot_buf_addr,
 					fastboot_bytes_received))
@@ -686,7 +736,14 @@ static void flashing(char *cmd, char *response)
 	}
 #endif /* !CONFIG_AVB_ATX */
 #endif /* CONFIG_IMX_TRUSTY_OS */
-	else if (endswith(cmd, "unlock_critical")) {
+	else if (endswith(cmd, ERASE_UBOOT_ENV)) {
+		if(erase_uboot_env())
+			strcpy(response, "OKAY");
+		else {
+			printf("ERROR erase uboot environment variable failed!");
+		        strcpy(response, "FAILerase uboot environment variable failed!");
+		}
+	} else if (endswith(cmd, "unlock_critical")) {
 		strcpy(response, "OKAY");
 	} else if (endswith(cmd, "unlock")) {
 		printf("flashing unlock.\n");
@@ -831,6 +888,18 @@ static void flash(char *cmd, char *response)
 #if defined(CONFIG_FASTBOOT_LOCK)
 	if (strncmp(cmd, "gpt", 3) == 0) {
 		int gpt_valid = 0;
+		int mmc_no;
+		struct blk_desc *dev_desc;
+		mmc_no = fastboot_devinfo.dev_id;
+		dev_desc = blk_get_dev("mmc", mmc_no);
+		if (dev_desc) {
+			if (dev_desc->part_type != PART_TYPE_EFI)
+				dev_desc->part_type = PART_TYPE_EFI;
+		}
+		else {
+			fastboot_fail("", response);
+			return;
+		}
 		gpt_valid = partition_table_valid();
 		/* If gpt is valid, load partitons table into memory.
 		   So if the next command is "fastboot reboot bootloader",
@@ -888,7 +957,7 @@ static void erase(char *cmd, char *response)
  * set with another way. Redefine this function to override the weak
  * definition to avoid error return value.
  */
-int fastboot_set_reboot_flag(void)
+int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
 {
 	return 0;
 }

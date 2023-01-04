@@ -12,6 +12,10 @@
 #include <command.h>
 #include <cpu_func.h>
 #include <env_callback.h>
+#include <log.h>
+#include <asm/cache.h>
+#include <init.h>
+#include <asm/global_data.h>
 #include <linux/types.h>
 #include <stdio_dev.h>
 #include <lcd.h>
@@ -740,7 +744,7 @@ static int on_splashimage(const char *name, const char *value, enum env_op op,
 	if (op == env_op_delete)
 		return 0;
 
-	addr = simple_strtoul(value, NULL, 16);
+	addr = hextoul(value, NULL);
 	/* See README.displaying-bmps */
 	aligned = (addr % 4 == 2);
 	if (!aligned) {

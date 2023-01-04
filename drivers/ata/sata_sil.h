@@ -21,7 +21,7 @@ struct sil_sata {
 	u16		pio;
 	u16		mwdma;
 	u16		udma;
-	pci_dev_t devno;
+	struct udevice	*devno;
 	int		wcache;
 	int		flush;
 	int		flush_ext;

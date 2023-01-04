@@ -32,6 +32,8 @@
 #include <trusty/trusty_ipc.h>
 #include <trusty/util.h>
 #include <hang.h>
+#include <env.h>
+#include <trusty/imx_snvs.h>
 
 #define LOCAL_LOG 0
 
@@ -47,6 +49,14 @@ bool rpmbkey_is_set(void);
 void rpmb_storage_put_ctx(void *dev);
 void trusty_ipc_shutdown(void)
 {
+    /**
+     * Trusty OS is not well initialized when the rpmb
+     * key is not set, skip ipc shut down to avoid panic.
+     */
+    if (!rpmbkey_is_set()) {
+        return;
+    }
+
     (void)rpmb_storage_proxy_shutdown(_ipc_dev);
     (void)rpmb_storage_put_ctx(rpmb_ctx);
 
@@ -67,6 +77,7 @@ void trusty_ipc_shutdown(void)
 int trusty_ipc_init(void)
 {
     int rc;
+    bool use_keystore = true;
     /* init Trusty device */
     trusty_info("Initializing Trusty device\n");
     rc = trusty_dev_init(&_tdev, NULL);
@@ -76,6 +87,7 @@ int trusty_ipc_init(void)
     }
 
     /* create Trusty IPC device */
+    trusty_info("Initializing Trusty IPC device\n");
     rc = trusty_ipc_dev_create(&_ipc_dev, &_tdev, PAGE_SIZE);
     if (rc != 0) {
         trusty_error("Initializing Trusty IPC device failed (%d)\n", rc);
@@ -86,10 +98,10 @@ int trusty_ipc_init(void)
     rpmb_ctx = rpmb_storage_get_ctx();
 
     /* start secure storage proxy service */
+    trusty_info("Initializing RPMB storage proxy service\n");
     rc = rpmb_storage_proxy_init(_ipc_dev, rpmb_ctx);
     if (rc != 0) {
-        trusty_error("Initlializing RPMB storage proxy service failed (%d)\n",
-                     rc);
+        trusty_error("Initlializing RPMB storage proxy service failed (%d)\n", rc);
 #ifndef CONFIG_AVB_ATX
         /* check if rpmb key has been fused. */
         if(rpmbkey_is_set()) {
@@ -98,32 +110,52 @@ int trusty_ipc_init(void)
             hang();
         }
 #else
-    return rc;
+        return rc;
 #endif
-    } else {
-        /* secure storage service init ok, use trusty backed keystore */
-        env_set("keystore", "trusty");
+    }
 
+    /**
+     * The proxy service can return success even the storage initialization
+     * failed (when the rpmb key not set). Init the avb and keymaster service
+     * only when the rpmb key has been set.
+     */
+    if (rpmbkey_is_set()) {
         rc = avb_tipc_init(_ipc_dev);
         if (rc != 0) {
             trusty_error("Initlializing Trusty AVB client failed (%d)\n", rc);
             return rc;
         }
 
+        trusty_info("Initializing Trusty Keymaster client\n");
         rc = km_tipc_init(_ipc_dev);
         if (rc != 0) {
             trusty_error("Initlializing Trusty Keymaster client failed (%d)\n", rc);
             return rc;
         }
-    }
+    } else
+        use_keystore = false;
 
 #ifndef CONFIG_AVB_ATX
+    trusty_info("Initializing Trusty Hardware Crypto client\n");
     rc = hwcrypto_tipc_init(_ipc_dev);
     if (rc != 0) {
-        trusty_error("Initlializing Trusty Keymaster client failed (%d)\n", rc);
+        trusty_error("Initlializing Trusty hwcrypto client failed (%d)\n", rc);
         return rc;
     }
 #endif
+
+#ifdef CONFIG_IMX8M
+    trusty_info("Initializing Trusty SNVS driver\n");
+    rc = imx_snvs_init(_ipc_dev);
+    if (rc != 0) {
+        trusty_error("Initlializing Trusty SNVS driver failed (%d)\n", rc);
+        return rc;
+    }
+#endif
+
+    /* secure storage service init ok, use trusty backed keystore */
+    if (use_keystore)
+        env_set("keystore", "trusty");
 
     return TRUSTY_ERR_NONE;
 }

@@ -1,4 +1,4 @@
-if TARGET_IMX8QM_MEK
+if TARGET_IMX8QM_MEK || TARGET_IMX8QM_MEK_A53_ONLY || TARGET_IMX8QM_MEK_A72_ONLY
 
 config SYS_BOARD
 	default "imx8qm_mek"
@@ -8,6 +8,9 @@ config SYS_VENDOR
 
 config SYS_CONFIG_NAME
 	default "imx8qm_mek"
+
+config IMX_CONFIG
+	default "board/freescale/imx8qm_mek/imximage.cfg"
 
 source "board/freescale/common/Kconfig"
 

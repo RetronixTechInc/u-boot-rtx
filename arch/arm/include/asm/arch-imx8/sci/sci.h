@@ -6,6 +6,7 @@
 #ifndef _SC_SCI_H
 #define _SC_SCI_H
 
+#include <log.h>
 #include <asm/arch/sci/types.h>
 #include <asm/arch/sci/svc/misc/api.h>
 #include <asm/arch/sci/svc/pad/api.h>
@@ -16,7 +17,7 @@
 #include <asm/arch/sci/svc/timer/api.h>
 #include <asm/arch/sci/rpc.h>
 #include <dt-bindings/soc/imx_rsrc.h>
-#include <common.h>
+#include <linux/errno.h>
 
 static inline int sc_err_to_linux(sc_err_t err)
 {

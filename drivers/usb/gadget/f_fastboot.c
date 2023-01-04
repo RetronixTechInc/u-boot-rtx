@@ -9,11 +9,13 @@
  * Copyright 2014 Linaro, Ltd.
  * Rob Herring <robh@kernel.org>
  */
+#include <command.h>
 #include <config.h>
 #include <common.h>
 #include <env.h>
 #include <errno.h>
 #include <fastboot.h>
+#include <log.h>
 #include <malloc.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -55,7 +57,7 @@ struct f_fastboot {
 };
 
 static char fb_ext_prop_name[] = "DeviceInterfaceGUID";
-static char fb_ext_prop_data[] = "{4866319A-F4D6-4374-93B9-DC2DEB361BA9}";
+static char fb_ext_prop_data[] = "{F72FE0D4-CBCB-407d-8814-9ED673D0DD6B}";
 
 static struct usb_os_desc_ext_prop fb_ext_prop = {
 	.type = 1,		/* NUL-terminated Unicode String (REG_SZ) */
@@ -308,7 +310,10 @@ static void fastboot_unbind(struct usb_configuration *c, struct usb_function *f)
 	memset(fastboot_func, 0, sizeof(*fastboot_func));
 
 #if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT) && CONFIG_IS_ENABLED(SYS_STDIO_DEREGISTER)
-	stdio_deregister("fastboot", 1);
+	struct stdio_dev *dev;
+	dev = stdio_get_by_name("fastboot");
+	if (dev)
+		stdio_deregister_dev(dev, 1);
 #endif
 
 }
@@ -429,7 +434,7 @@ static int fastboot_add(struct usb_configuration *c)
 	status = usb_add_function(c, &f_fb->usb_function);
 	if (status) {
 		free(f_fb);
-		fastboot_func = f_fb;
+		fastboot_func = NULL;
 	}
 
 	return status;
@@ -504,7 +509,7 @@ static int fastboot_tx_write_str(const char *buffer)
 }
 
 #ifdef CONFIG_PSCI_BOARD_REBOOT
-int do_board_reboot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+int do_board_reboot(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[]);
 #endif
 
 static void compl_do_reset(struct usb_ep *ep, struct usb_request *req)
@@ -594,7 +599,7 @@ static void do_acmd_complete(struct usb_ep *ep, struct usb_request *req)
 	 *  Need status value before call run_command.
 	 * otherwise, host can't get last message.
 	 */
-	if(req->status == 0)
+	if (req->status == 0)
 		fastboot_acmd_complete();
 }
 #endif
@@ -625,8 +630,6 @@ static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
 		req->length = rx_bytes_expected(ep);
 	}
 
-	fastboot_tx_write_str(response);
-
 	if (!strncmp("OKAY", response, 4)) {
 		switch (cmd) {
 		case FASTBOOT_COMMAND_BOOT:
@@ -639,6 +642,8 @@ static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
 
 		case FASTBOOT_COMMAND_REBOOT:
 		case FASTBOOT_COMMAND_REBOOT_BOOTLOADER:
+		case FASTBOOT_COMMAND_REBOOT_FASTBOOTD:
+		case FASTBOOT_COMMAND_REBOOT_RECOVERY:
 #ifdef CONFIG_ANDROID_RECOVERY
 		case FASTBOOT_COMMAND_RECOVERY_FASTBOOT:
 #endif
@@ -651,6 +656,8 @@ static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
 #endif
 		}
 	}
+
+	fastboot_tx_write_str(response);
 
 	*cmdbuf = '\0';
 	req->actual = 0;

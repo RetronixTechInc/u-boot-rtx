@@ -2,7 +2,7 @@
 /*
  * LPSPI controller driver.
  *
- * Copyright 2020 NXP Semiconductor, Inc.
+ * Copyright 2020 NXP
  * Author: Clark Wang (xiaoning.wang@nxp.com)
  */
 
@@ -125,7 +125,7 @@ static int fsl_lpspi_set_word_size(struct fsl_lpspi_slave *lpspi,
 static void fsl_lpspi_cs_activate(struct fsl_lpspi_slave *lpspi)
 {
 	struct udevice *dev = lpspi->dev;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 
 	u32 cs = slave_plat->cs;
 
@@ -138,7 +138,7 @@ static void fsl_lpspi_cs_activate(struct fsl_lpspi_slave *lpspi)
 static void fsl_lpspi_cs_deactivate(struct fsl_lpspi_slave *lpspi)
 {
 	struct udevice *dev = lpspi->dev;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 
 	u32 cs = slave_plat->cs;
 
@@ -300,13 +300,15 @@ static int fsl_lpspi_xfer_internal(struct fsl_lpspi_slave *lpspi,
 	u32 blk_size;
 	struct LPSPI_Type *regs;
 	u8 watermark = 0;
-	struct udevice *dev = lpspi->dev;
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct udevice *dev;
+	struct dm_spi_slave_plat *slave_plat;
 
 	if (!lpspi)
 		return -EINVAL;
 
 	regs = (struct LPSPI_Type *)lpspi->base;
+	dev = lpspi->dev;
+	slave_plat = dev_get_parent_plat(dev);
 
 	ret = fsl_lpspi_check_trans_len(n_bytes, lpspi->wordlen);
 	if (ret)
@@ -384,7 +386,7 @@ static int fsl_lpspi_claim_bus_internal(struct fsl_lpspi_slave *lpspi, int cs)
 
 static int fsl_lpspi_probe(struct udevice *bus)
 {
-	struct fsl_lpspi_slave *lpspi = dev_get_platdata(bus);
+	struct fsl_lpspi_slave *lpspi = dev_get_plat(bus);
 	int node = dev_of_offset(bus);
 	const void *blob = gd->fdt_blob;
 	int ret;
@@ -440,7 +442,7 @@ static int fsl_lpspi_probe(struct udevice *bus)
 			return ret;
 		}
 	} else {
-		lpspi->seq = bus->seq;
+		lpspi->seq = dev_seq(bus);
 		/* To i.MX7ULP, only spi2/3 can be handled by A7 core */
 		ret = enable_lpspi_clk(1, lpspi->seq);
 		if (ret < 0)
@@ -453,15 +455,15 @@ static int fsl_lpspi_probe(struct udevice *bus)
 static int fsl_lpspi_xfer(struct udevice *dev, unsigned int bitlen,
 		const void *dout, void *din, unsigned long flags)
 {
-	struct fsl_lpspi_slave *lpspi = dev_get_platdata(dev->parent);
+	struct fsl_lpspi_slave *lpspi = dev_get_plat(dev->parent);
 
 	return fsl_lpspi_xfer_internal(lpspi, bitlen, dout, din, flags);
 }
 
 static int fsl_lpspi_claim_bus(struct udevice *dev)
 {
-	struct fsl_lpspi_slave *lpspi = dev_get_platdata(dev->parent);
-	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	struct fsl_lpspi_slave *lpspi = dev_get_plat(dev->parent);
+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
 
 	lpspi->dev = dev;
 
@@ -481,7 +483,7 @@ static int fsl_lpspi_release_bus(struct udevice *dev)
 
 static int fsl_lpspi_set_speed(struct udevice *bus, uint speed)
 {
-	struct fsl_lpspi_slave *lpspi = dev_get_platdata(bus);
+	struct fsl_lpspi_slave *lpspi = dev_get_plat(bus);
 
 	lpspi->speed = speed;
 
@@ -490,7 +492,7 @@ static int fsl_lpspi_set_speed(struct udevice *bus, uint speed)
 
 static int fsl_lpspi_set_mode(struct udevice *bus, uint mode)
 {
-	struct fsl_lpspi_slave *lpspi = dev_get_platdata(bus);
+	struct fsl_lpspi_slave *lpspi = dev_get_plat(bus);
 
 	lpspi->mode = mode;
 
@@ -499,7 +501,7 @@ static int fsl_lpspi_set_mode(struct udevice *bus, uint mode)
 
 static int fsl_lpspi_set_wordlen(struct udevice *bus, unsigned int wordlen)
 {
-	struct fsl_lpspi_slave *lpspi = dev_get_platdata(bus);
+	struct fsl_lpspi_slave *lpspi = dev_get_plat(bus);
 
 	return fsl_lpspi_set_word_size(lpspi, wordlen);
 }
@@ -523,6 +525,6 @@ U_BOOT_DRIVER(fsl_lpspi) = {
 	.id	= UCLASS_SPI,
 	.of_match = fsl_lpspi_ids,
 	.ops	= &fsl_lpspi_ops,
-	.platdata_auto_alloc_size = sizeof(struct fsl_lpspi_slave),
+	.plat_auto = sizeof(struct fsl_lpspi_slave),
 	.probe	= fsl_lpspi_probe,
 };

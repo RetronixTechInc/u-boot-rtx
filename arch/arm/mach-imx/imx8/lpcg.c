@@ -8,6 +8,7 @@
 #include <asm/io.h>
 #include <linux/errno.h>
 #include <asm/arch/lpcg.h>
+#include <linux/delay.h>
 
 #define LPCG_CLOCK_MASK         0x3U
 #define LPCG_CLOCK_OFF          0x0U

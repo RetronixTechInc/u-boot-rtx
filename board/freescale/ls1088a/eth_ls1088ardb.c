@@ -18,7 +18,8 @@
 #include <fsl-mc/fsl_mc.h>
 #include <fsl-mc/ldpaa_wriop.h>
 
-int board_eth_init(bd_t *bis)
+#ifndef CONFIG_DM_ETH
+int board_eth_init(struct bd_info *bis)
 {
 #if defined(CONFIG_FSL_MC_ENET)
 	int i, interface;
@@ -51,9 +52,9 @@ int board_eth_init(bd_t *bis)
 	switch (srds_s1) {
 	case 0x1D:
 		/*
-		 * XFI does not need a PHY to work, but to avoid U-boot use
-		 * default PHY address which is zero to a MAC when it found
-		 * a MAC has no PHY address, we give a PHY address to XFI
+		 * 10GBase-R does not need a PHY to work, but to avoid U-boot
+		 * use default PHY address which is zero to a MAC when it found
+		 * a MAC has no PHY address, we give a PHY address to 10GBase-R
 		 * MAC error.
 		 */
 		wriop_set_phy_address(WRIOP1_DPMAC1, 0, 0x0a);
@@ -95,6 +96,7 @@ int board_eth_init(bd_t *bis)
 
 	return pci_eth_init(bis);
 }
+#endif
 
 #if defined(CONFIG_RESET_PHY_R)
 void reset_phy(void)

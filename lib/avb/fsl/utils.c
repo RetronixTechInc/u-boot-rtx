@@ -6,6 +6,7 @@
 + */
 #include <common.h>
 #include <stdlib.h>
+#include <part.h>
 
 #include "debug.h"
 #include "utils.h"
@@ -67,7 +68,7 @@ int get_margin_pos(long part_start, long part_end, long blksz,
 }
 
 int read_from_partition_in_bytes(struct blk_desc *fs_dev_desc,
-				 disk_partition_t *info, int64_t offset,
+				 struct disk_partition *info, int64_t offset,
 				 size_t num_bytes, void* buffer,
 				 size_t* out_num_read)
 {
@@ -150,7 +151,7 @@ fail:
 }
 
 int write_to_partition_in_bytes(struct blk_desc *fs_dev_desc,
-				disk_partition_t *info, int64_t offset,
+				struct disk_partition *info, int64_t offset,
 				size_t num_bytes,
 				void* buffer, size_t *out_num_write)
 {

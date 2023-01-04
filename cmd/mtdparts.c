@@ -73,7 +73,9 @@
 #include <common.h>
 #include <command.h>
 #include <env.h>
+#include <log.h>
 #include <malloc.h>
+#include <asm/global_data.h>
 #include <jffs2/load_kernel.h>
 #include <linux/list.h>
 #include <linux/ctype.h>
@@ -202,7 +204,7 @@ static int find_seperator(const char **p, char sp, int n, int limit)
  *
  * @param ptr where parse begins
  * @param retptr output pointer to next char after parse completes (output)
- * @return resulting unsigned int
+ * Return: resulting unsigned int
  */
 static u64 memsize_parse (const char *const ptr, const char **retptr)
 {
@@ -334,7 +336,7 @@ static void current_save(void)
  * @param type mtd type
  * @param num mtd number
  * @param mtd a pointer to an mtd_info instance (output)
- * @return 0 if device is valid, 1 otherwise
+ * Return: 0 if device is valid, 1 otherwise
  */
 static int get_mtd_info(u8 type, u8 num, struct mtd_info **mtd)
 {
@@ -358,7 +360,7 @@ static int get_mtd_info(u8 type, u8 num, struct mtd_info **mtd)
  *
  * @param id of the parent device
  * @param part partition to validate
- * @return 0 if partition is valid, 1 otherwise
+ * Return: 0 if partition is valid, 1 otherwise
  */
 static int part_validate_eraseblock(struct mtdids *id, struct part_info *part)
 {
@@ -445,7 +447,7 @@ static int part_validate_eraseblock(struct mtdids *id, struct part_info *part)
  *
  * @param id of the parent device
  * @param part partition to validate
- * @return 0 if partition is valid, 1 otherwise
+ * Return: 0 if partition is valid, 1 otherwise
  */
 static int part_validate(struct mtdids *id, struct part_info *part)
 {
@@ -481,7 +483,7 @@ static int part_validate(struct mtdids *id, struct part_info *part)
  *
  * @param dev device to delete partition from
  * @param part partition to delete
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int part_del(struct mtd_device *dev, struct part_info *part)
 {
@@ -609,7 +611,7 @@ static int part_sort_add(struct mtd_device *dev, struct part_info *part)
  *
  * @param dev device to which partition is added
  * @param part partition to be added
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int part_add(struct mtd_device *dev, struct part_info *part)
 {
@@ -631,7 +633,7 @@ static int part_add(struct mtd_device *dev, struct part_info *part)
  * @param partdef pointer to the partition definition string i.e. <part-def>
  * @param ret output pointer to next char after parse completes (output)
  * @param retpart pointer to the allocated partition (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int part_parse(const char *const partdef, const char **ret, struct part_info **retpart)
 {
@@ -749,7 +751,7 @@ static int part_parse(const char *const partdef, const char **ret, struct part_i
  * @param type mtd type
  * @param num mtd number
  * @param size a pointer to the size of the mtd device (output)
- * @return 0 if device is valid, 1 otherwise
+ * Return: 0 if device is valid, 1 otherwise
  */
 static int mtd_device_validate(u8 type, u8 num, u64 *size)
 {
@@ -767,7 +769,7 @@ static int mtd_device_validate(u8 type, u8 num, u64 *size)
  * Delete all mtd devices from a supplied devices list, free memory allocated for
  * each device and delete all device partitions.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int device_delall(struct list_head *head)
 {
@@ -791,7 +793,7 @@ static int device_delall(struct list_head *head)
  * from device list and device memory is freed.
  *
  * @param dev device to be deleted
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int device_del(struct mtd_device *dev)
 {
@@ -823,7 +825,7 @@ static int device_del(struct mtd_device *dev)
  *
  * @param type device type
  * @param num device number
- * @return NULL if requested device does not exist
+ * Return: NULL if requested device does not exist
  */
 struct mtd_device *device_find(u8 type, u8 num)
 {
@@ -870,7 +872,7 @@ static void device_add(struct mtd_device *dev)
  * @param mtd_dev pointer to the device definition string i.e. <mtd-dev>
  * @param ret output pointer to next char after parse completes (output)
  * @param retdev pointer to the allocated device (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int device_parse(const char *const mtd_dev, const char **ret, struct mtd_device **retdev)
 {
@@ -1001,7 +1003,7 @@ static int device_parse(const char *const mtd_dev, const char **ret, struct mtd_
 /**
  * Initialize global device list.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int mtd_devices_init(void)
 {
@@ -1015,7 +1017,7 @@ static int mtd_devices_init(void)
 /*
  * Search global mtdids list and find id of requested type and number.
  *
- * @return pointer to the id if it exists, NULL otherwise
+ * Return: pointer to the id if it exists, NULL otherwise
  */
 static struct mtdids* id_find(u8 type, u8 num)
 {
@@ -1039,7 +1041,7 @@ static struct mtdids* id_find(u8 type, u8 num)
  *
  * @param mtd_id string containing requested mtd_id
  * @param mtd_id_len length of supplied mtd_id
- * @return pointer to the id if it exists, NULL otherwise
+ * Return: pointer to the id if it exists, NULL otherwise
  */
 static struct mtdids* id_find_by_mtd_id(const char *mtd_id, unsigned int mtd_id_len)
 {
@@ -1072,7 +1074,7 @@ static struct mtdids* id_find_by_mtd_id(const char *mtd_id, unsigned int mtd_id_
  * @param ret_id output pointer to next char after parse completes (output)
  * @param dev_type parsed device type (output)
  * @param dev_num parsed device number (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type,
 		 u8 *dev_num)
@@ -1114,7 +1116,7 @@ int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type,
  *
  * @param buf output buffer holding generated mtdparts string (output)
  * @param buflen buffer size
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int generate_mtdparts(char *buf, u32 buflen)
 {
@@ -1239,7 +1241,7 @@ cleanup:
  *
  * @param buf output buffer holding generated mtdparts string (output)
  * @param buflen buffer size
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int generate_mtdparts_save(char *buf, u32 buflen)
 {
@@ -1261,7 +1263,7 @@ static int generate_mtdparts_save(char *buf, u32 buflen)
  *
  * @param mtd the mtd info
  * @param part the partition
- * @return the calculated net size of this partition
+ * Return: the calculated net size of this partition
  */
 static uint64_t net_part_size(struct mtd_info *mtd, struct part_info *part)
 {
@@ -1377,7 +1379,7 @@ static void list_partitions(void)
  * @param dev pointer to the requested device (output)
  * @param part_num verified partition number (output)
  * @param part pointer to requested partition (output)
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 int find_dev_and_part(const char *id, struct mtd_device **dev,
 		u8 *part_num, struct part_info **part)
@@ -1437,7 +1439,7 @@ int find_dev_and_part(const char *id, struct mtd_device **dev,
  * Find and delete partition. For partition id format see find_dev_and_part().
  *
  * @param id string describing device and partition
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int delete_partition(const char *id)
 {
@@ -1513,7 +1515,7 @@ static void spread_partition(struct mtd_info *mtd, struct part_info *part,
  * as big as their mtdparts environment variable sizes and they each start
  * on a good block.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int spread_partitions(void)
 {
@@ -1566,7 +1568,7 @@ static int spread_partitions(void)
  * buffer.  gd->env_buf will be too small.
  *
  * @param buf temporary buffer pointer MTDPARTS_MAXLEN long
- * @return mtdparts variable string, NULL if not found
+ * Return: mtdparts variable string, NULL if not found
  */
 static const char *env_get_mtdparts(char *buf)
 {
@@ -1582,7 +1584,7 @@ static const char *env_get_mtdparts(char *buf)
  * for each entry. Add created devices to the global devices list.
  *
  * @param mtdparts string specifing mtd partitions
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int parse_mtdparts(const char *const mtdparts)
 {
@@ -1646,7 +1648,7 @@ static int parse_mtdparts(const char *const mtdparts)
  * to the global mtdids list.
  *
  * @param ids mapping string
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 static int parse_mtdids(const char *const ids)
 {
@@ -1768,7 +1770,7 @@ static int parse_mtdids(const char *const ids)
  * Parse and initialize global mtdids mapping and create global
  * device/partition list.
  *
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
 int mtdparts_init(void)
 {
@@ -1918,7 +1920,7 @@ int mtdparts_init(void)
  *
  * @param dev device that is to be searched for a partition
  * @param part_num requested partition number
- * @return pointer to the part_info, NULL otherwise
+ * Return: pointer to the part_info, NULL otherwise
  */
 static struct part_info* mtd_part_info(struct mtd_device *dev, unsigned int part_num)
 {
@@ -1965,9 +1967,10 @@ static struct part_info* mtd_part_info(struct mtd_device *dev, unsigned int part
  * @param flag command flag
  * @param argc number of arguments supplied to the command
  * @param argv arguments list
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
-static int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_chpart(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 /* command line only */
 	struct mtd_device *dev;
@@ -2003,10 +2006,10 @@ static int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
  * @param flag command flag
  * @param argc number of arguments supplied to the command
  * @param argv arguments list
- * @return 0 on success, 1 otherwise
+ * Return: 0 on success, 1 otherwise
  */
-static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
-		       char * const argv[])
+static int do_mtdparts(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
 {
 	if (argc == 2) {
 		if (strcmp(argv[1], "default") == 0) {
@@ -2126,9 +2129,9 @@ static int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc,
 /***************************************************/
 U_BOOT_CMD(
 	chpart,	2,	0,	do_chpart,
-	"change active partition",
+	"change active partition of a MTD device",
 	"part-id\n"
-	"    - change active partition (e.g. part-id = nand0,1)"
+	"    - change active partition (e.g. part-id = nand0,1) of a MTD device"
 );
 
 #ifdef CONFIG_SYS_LONGHELP

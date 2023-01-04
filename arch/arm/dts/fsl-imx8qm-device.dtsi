@@ -861,11 +861,11 @@
 		dpu1_disp0: port@0 {
 			reg = <0>;
 
-			dpu1_disp0_hdmi: hdmi-endpoint {
+			dpu1_disp0_hdmi: endpoint@0 {
 				remote-endpoint = <&hdmi_disp>;
 			};
 
-			dpu1_disp0_mipi_dsi: mipi-dsi-endpoint {
+			dpu1_disp0_mipi_dsi: endpoint@1 {
 				remote-endpoint = <&mipi_dsi1_in>;
 			};
 		};
@@ -873,11 +873,11 @@
 		dpu1_disp1: port@1 {
 			reg = <1>;
 
-			dpu1_disp1_lvds0: lvds0-endpoint {
+			dpu1_disp1_lvds0: endpoint@0 {
 				remote-endpoint = <&ldb1_lvds0>;
 			};
 
-			dpu1_disp1_lvds1: lvds1-endpoint {
+			dpu1_disp1_lvds1: endpoint@1 {
 				remote-endpoint = <&ldb1_lvds1>;
 			};
 		};
@@ -1156,7 +1156,7 @@
 		dpu2_disp0: port@0 {
 			reg = <0>;
 
-			dpu2_disp0_mipi_dsi: mipi-dsi-endpoint {
+			dpu2_disp0_mipi_dsi: endpoint {
 				remote-endpoint = <&mipi_dsi2_in>;
 			};
 		};
@@ -1164,11 +1164,11 @@
 		dpu2_disp1: port@1 {
 			reg = <1>;
 
-			dpu2_disp1_lvds0: lvds0-endpoint {
+			dpu2_disp1_lvds0: endpoint@0 {
 				remote-endpoint = <&ldb2_lvds0>;
 			};
 
-			dpu2_disp1_lvds1: lvds1-endpoint {
+			dpu2_disp1_lvds1: endpoint@1 {
 				remote-endpoint = <&ldb2_lvds1>;
 			};
 		};
@@ -2127,16 +2127,17 @@
 	flexspi0: flexspi@05d120000 {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		compatible = "fsl,imx8qm-flexspi";
+		compatible = "nxp,imx8qxp-fspi";
 		reg = <0x0 0x5d120000 0x0 0x10000>,
 			<0x0 0x08000000 0x0 0x19ffffff>;
-		reg-names = "FlexSPI", "FlexSPI-memory";
+		reg-names = "fspi_base", "fspi_mmap";
 		interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk IMX8QM_FSPI0_CLK>;
+		clocks = <&clk IMX8QM_FSPI0_CLK>,
+			<&clk IMX8QM_FSPI0_CLK>;
 		assigned-clocks = <&clk IMX8QM_FSPI0_DIV>;
 		assigned-clock-rates = <29000000>;
 		power-domains = <&pd_lsio_flexspi0>;
-		clock-names = "fspi";
+		clock-names = "fspi", "fspi_en";
 		status = "disabled";
 	};
 

@@ -17,9 +17,10 @@
 #include <panel.h>
 #include <video.h>
 #include <asm/io.h>
-#include <asm/arch/gpio.h>
 #include <dm/device-internal.h>
 #include <dm/device_compat.h>
+#include <linux/bitops.h>
+#include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <video_bridge.h>
 
@@ -312,7 +313,8 @@ static int dw_mipi_dsi_gen_pkt_hdr_write(struct dw_mipi_dsi *dsi, u32 hdr_val)
 				 val, !(val & GEN_CMD_FULL),
 				 CMD_PKT_STATUS_TIMEOUT_US);
 	if (ret) {
-		dev_err(dsi->dev, "failed to get available command FIFO\n");
+		dev_err(dsi->dsi_host.dev,
+			"failed to get available command FIFO\n");
 		return ret;
 	}
 
@@ -323,7 +325,7 @@ static int dw_mipi_dsi_gen_pkt_hdr_write(struct dw_mipi_dsi *dsi, u32 hdr_val)
 				 val, (val & mask) == mask,
 				 CMD_PKT_STATUS_TIMEOUT_US);
 	if (ret) {
-		dev_err(dsi->dev, "failed to write command FIFO\n");
+		dev_err(dsi->dsi_host.dev, "failed to write command FIFO\n");
 		return ret;
 	}
 
@@ -355,7 +357,7 @@ static int dw_mipi_dsi_write(struct dw_mipi_dsi *dsi,
 					 val, !(val & GEN_PLD_W_FULL),
 					 CMD_PKT_STATUS_TIMEOUT_US);
 		if (ret) {
-			dev_err(dsi->dev,
+			dev_err(dsi->dsi_host.dev,
 				"failed to get available write payload FIFO\n");
 			return ret;
 		}
@@ -378,7 +380,7 @@ static int dw_mipi_dsi_read(struct dw_mipi_dsi *dsi,
 				 val, !(val & GEN_RD_CMD_BUSY),
 				 CMD_PKT_STATUS_TIMEOUT_US);
 	if (ret) {
-		dev_err(dsi->dev, "Timeout during read operation\n");
+		dev_err(dsi->dsi_host.dev, "Timeout during read operation\n");
 		return ret;
 	}
 
@@ -388,7 +390,8 @@ static int dw_mipi_dsi_read(struct dw_mipi_dsi *dsi,
 					 val, !(val & GEN_PLD_R_EMPTY),
 					 CMD_PKT_STATUS_TIMEOUT_US);
 		if (ret) {
-			dev_err(dsi->dev, "Read payload FIFO is empty\n");
+			dev_err(dsi->dsi_host.dev,
+				"Read payload FIFO is empty\n");
 			return ret;
 		}
 
@@ -409,7 +412,7 @@ static ssize_t dw_mipi_dsi_host_transfer(struct mipi_dsi_host *host,
 
 	ret = mipi_dsi_create_packet(&packet, msg);
 	if (ret) {
-		dev_err(dsi->dev, "failed to create packet: %d\n", ret);
+		dev_err(host->dev, "failed to create packet: %d\n", ret);
 		return ret;
 	}
 
@@ -481,15 +484,27 @@ static void dw_mipi_dsi_set_mode(struct dw_mipi_dsi *dsi,
 
 static void dw_mipi_dsi_init_pll(struct dw_mipi_dsi *dsi)
 {
+	const struct mipi_dsi_phy_ops *phy_ops = dsi->phy_ops;
+	unsigned int esc_rate;
+	u32 esc_clk_division;
+
 	/*
 	 * The maximum permitted escape clock is 20MHz and it is derived from
-	 * lanebyteclk, which is running at "lane_mbps / 8".  Thus we want:
-	 *
-	 *     (lane_mbps >> 3) / esc_clk_division < 20
-	 * which is:
-	 *     (lane_mbps >> 3) / 20 > esc_clk_division
+	 * lanebyteclk, which is running at "lane_mbps / 8".
 	 */
-	u32 esc_clk_division = (dsi->lane_mbps >> 3) / 20 + 1;
+	if (phy_ops->get_esc_clk_rate)
+		phy_ops->get_esc_clk_rate(dsi->device, &esc_rate);
+	else
+		esc_rate = 20; /* Default to 20MHz */
+
+	/*
+	 * We want:
+	 *
+	 *     (lane_mbps >> 3) / esc_clk_division < X
+	 * which is:
+	 *     (lane_mbps >> 3) / X > esc_clk_division
+	 */
+	esc_clk_division = (dsi->lane_mbps >> 3) / esc_rate + 1;
 
 	dsi_write(dsi, DSI_PWR_UP, RESET);
 
@@ -498,7 +513,7 @@ static void dw_mipi_dsi_init_pll(struct dw_mipi_dsi *dsi)
 	 * timeout clock division should be computed with the
 	 * high speed transmission counter timeout and byte lane...
 	 */
-	dsi_write(dsi, DSI_CLKMGR_CFG, TO_CLK_DIVISION(10) |
+	dsi_write(dsi, DSI_CLKMGR_CFG, TO_CLK_DIVISION(0) |
 		  TX_ESC_CLK_DIVISION(esc_clk_division));
 }
 
@@ -523,9 +538,9 @@ static void dw_mipi_dsi_dpi_config(struct dw_mipi_dsi *dsi,
 		break;
 	}
 
-	if (device->mode_flags & DISPLAY_FLAGS_VSYNC_HIGH)
+	if (timings->flags & DISPLAY_FLAGS_VSYNC_LOW)
 		val |= VSYNC_ACTIVE_LOW;
-	if (device->mode_flags & DISPLAY_FLAGS_HSYNC_HIGH)
+	if (timings->flags & DISPLAY_FLAGS_HSYNC_LOW)
 		val |= HSYNC_ACTIVE_LOW;
 
 	dsi_write(dsi, DSI_DPI_VCID, DPI_VCID(dsi->channel));
@@ -537,7 +552,7 @@ static void dw_mipi_dsi_dpi_config(struct dw_mipi_dsi *dsi,
 	 * should be computed according to byte lane, lane number and only
 	 * if sending lp cmds in high speed is enable (PHY_TXREQUESTCLKHS)
 	 */
-	dsi_write(dsi, DSI_DPI_LP_CMD_TIM, OUTVACT_LPCMD_TIME(4)
+	dsi_write(dsi, DSI_DPI_LP_CMD_TIM, OUTVACT_LPCMD_TIME(0x10)
 		  | INVACT_LPCMD_TIME(4));
 }
 
@@ -606,8 +621,8 @@ static void dw_mipi_dsi_line_timer_config(struct dw_mipi_dsi *dsi,
 	htotal = timings->hactive.typ + timings->hfront_porch.typ +
 		 timings->hback_porch.typ + timings->hsync_len.typ;
 
-	hsa = timings->hback_porch.typ;
-	hbp = timings->hsync_len.typ;
+	hsa = timings->hsync_len.typ;
+	hbp = timings->hback_porch.typ;
 
 	/*
 	 * TODO dw drv improvements
@@ -629,9 +644,9 @@ static void dw_mipi_dsi_vertical_timing_config(struct dw_mipi_dsi *dsi,
 	u32 vactive, vsa, vfp, vbp;
 
 	vactive = timings->vactive.typ;
-	vsa =  timings->vback_porch.typ;
-	vfp =  timings->vfront_porch.typ;
-	vbp = timings->vsync_len.typ;
+	vsa = timings->vsync_len.typ;
+	vfp = timings->vfront_porch.typ;
+	vbp = timings->vback_porch.typ;
 
 	dsi_write(dsi, DSI_VID_VACTIVE_LINES, vactive);
 	dsi_write(dsi, DSI_VID_VSA_LINES, vsa);
@@ -641,7 +656,12 @@ static void dw_mipi_dsi_vertical_timing_config(struct dw_mipi_dsi *dsi,
 
 static void dw_mipi_dsi_dphy_timing_config(struct dw_mipi_dsi *dsi)
 {
+	const struct mipi_dsi_phy_ops *phy_ops = dsi->phy_ops;
+	struct mipi_dsi_phy_timing timing = {0x40, 0x40, 0x40, 0x40};
 	u32 hw_version;
+
+	if (phy_ops->get_timing)
+		phy_ops->get_timing(dsi->device, dsi->lane_mbps, &timing);
 
 	/*
 	 * TODO dw drv improvements
@@ -654,16 +674,16 @@ static void dw_mipi_dsi_dphy_timing_config(struct dw_mipi_dsi *dsi)
 	hw_version = dsi_read(dsi, DSI_VERSION) & VERSION;
 
 	if (hw_version >= HWVER_131) {
-		dsi_write(dsi, DSI_PHY_TMR_CFG, PHY_HS2LP_TIME_V131(0x40) |
-			  PHY_LP2HS_TIME_V131(0x40));
+		dsi_write(dsi, DSI_PHY_TMR_CFG, PHY_HS2LP_TIME_V131(timing.data_hs2lp) |
+			  PHY_LP2HS_TIME_V131(timing.data_lp2hs));
 		dsi_write(dsi, DSI_PHY_TMR_RD_CFG, MAX_RD_TIME_V131(10000));
 	} else {
-		dsi_write(dsi, DSI_PHY_TMR_CFG, PHY_HS2LP_TIME(0x40) |
-			  PHY_LP2HS_TIME(0x40) | MAX_RD_TIME(10000));
+		dsi_write(dsi, DSI_PHY_TMR_CFG, PHY_HS2LP_TIME(timing.data_hs2lp) |
+			  PHY_LP2HS_TIME(timing.data_lp2hs) | MAX_RD_TIME(10000));
 	}
 
-	dsi_write(dsi, DSI_PHY_TMR_LPCLK_CFG, PHY_CLKHS2LP_TIME(0x40)
-		  | PHY_CLKLP2HS_TIME(0x40));
+	dsi_write(dsi, DSI_PHY_TMR_LPCLK_CFG, PHY_CLKHS2LP_TIME(timing.clk_hs2lp)
+		  | PHY_CLKLP2HS_TIME(timing.clk_lp2hs));
 }
 
 static void dw_mipi_dsi_dphy_interface_config(struct dw_mipi_dsi *dsi)
@@ -700,13 +720,15 @@ static void dw_mipi_dsi_dphy_enable(struct dw_mipi_dsi *dsi)
 	ret = readl_poll_timeout(dsi->base + DSI_PHY_STATUS, val,
 				 val & PHY_LOCK, PHY_STATUS_TIMEOUT_US);
 	if (ret)
-		dev_warn(dsi->dev, "failed to wait phy lock state\n");
+		dev_dbg(dsi->dsi_host.dev,
+			"failed to wait phy lock state\n");
 
 	ret = readl_poll_timeout(dsi->base + DSI_PHY_STATUS,
 				 val, val & PHY_STOP_STATE_CLK_LANE,
 				 PHY_STATUS_TIMEOUT_US);
 	if (ret)
-		dev_warn(dsi->dev, "failed to wait phy clk lane stop state\n");
+		dev_dbg(dsi->dsi_host.dev,
+			"failed to wait phy clk lane stop state\n");
 }
 
 static void dw_mipi_dsi_clear_err(struct dw_mipi_dsi *dsi)
@@ -727,7 +749,7 @@ static void dw_mipi_dsi_bridge_set(struct dw_mipi_dsi *dsi,
 	ret = phy_ops->get_lane_mbps(dsi->device, timings, device->lanes,
 				     device->format, &dsi->lane_mbps);
 	if (ret)
-		dev_warn(dsi->dev, "Phy get_lane_mbps() failed\n");
+		dev_warn(dsi->dsi_host.dev, "Phy get_lane_mbps() failed\n");
 
 	dw_mipi_dsi_init_pll(dsi);
 	dw_mipi_dsi_dpi_config(dsi, timings);
@@ -746,7 +768,7 @@ static void dw_mipi_dsi_bridge_set(struct dw_mipi_dsi *dsi,
 
 	ret = phy_ops->init(dsi->device);
 	if (ret)
-		dev_warn(dsi->dev, "Phy init() failed\n");
+		dev_warn(dsi->dsi_host.dev, "Phy init() failed\n");
 
 	dw_mipi_dsi_dphy_enable(dsi);
 
@@ -774,6 +796,7 @@ static int dw_mipi_dsi_init(struct udevice *dev,
 	dsi->phy_ops = phy_ops;
 	dsi->max_data_lanes = max_data_lanes;
 	dsi->device = device;
+	dsi->dsi_host.dev = (struct device *)dev;
 	dsi->dsi_host.ops = &dw_mipi_dsi_host_ops;
 	device->host = &dsi->dsi_host;
 
@@ -784,13 +807,10 @@ static int dw_mipi_dsi_init(struct udevice *dev,
 	}
 
 	ret = clk_get_by_name(device->dev, "px_clk", &clk);
-	if (ret) {
-		dev_err(device->dev, "peripheral clock get error %d\n", ret);
-		return ret;
+	if (!ret) {
+		/*  get the pixel clock set by the clock framework */
+		timings->pixelclock.typ = clk_get_rate(&clk);
 	}
-
-	/*  get the pixel clock set by the clock framework */
-	timings->pixelclock.typ = clk_get_rate(&clk);
 
 	dw_mipi_dsi_bridge_set(dsi, timings);
 
@@ -817,12 +837,22 @@ static int dw_mipi_dsi_probe(struct udevice *dev)
 	return 0;
 }
 
+#if (IS_ENABLED(CONFIG_VIDEO_IMX_DW_DSI))
+static const struct udevice_id dw_mipi_dsi_ids[] = {
+	{ .compatible = "synopsys,dw-mipi-dsi" },
+	{ }
+};
+#endif
+
 U_BOOT_DRIVER(dw_mipi_dsi) = {
 	.name			= "dw_mipi_dsi",
 	.id			= UCLASS_DSI_HOST,
+#if (IS_ENABLED(CONFIG_VIDEO_IMX_DW_DSI))
+	.of_match		= dw_mipi_dsi_ids,
+#endif
 	.probe			= dw_mipi_dsi_probe,
 	.ops			= &dw_mipi_dsi_ops,
-	.priv_auto_alloc_size	= sizeof(struct dw_mipi_dsi),
+	.priv_auto	= sizeof(struct dw_mipi_dsi),
 };
 
 MODULE_AUTHOR("Chris Zhong <zyw@rock-chips.com>");

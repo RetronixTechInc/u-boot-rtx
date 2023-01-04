@@ -3,6 +3,7 @@
  * include/asm-arm/macro.h
  *
  * Copyright (C) 2009 Jean-Christophe PLAGNIOL-VILLARD <plagnioj@jcrosoft.com>
+ * Copyright 2022 NXP
  */
 
 #ifndef __ASM_ARM_MACRO_H__
@@ -78,6 +79,24 @@ lr	.req	x30
 .endm
 
 /*
+ * Branch if we are not in the highest exception level
+ */
+.macro	branch_if_not_highest_el, xreg, label
+	switch_el \xreg, 3f, 2f, 1f
+
+2:	mrs	\xreg, ID_AA64PFR0_EL1
+	and	\xreg, \xreg, #(ID_AA64PFR0_EL1_EL3)
+	cbnz	\xreg, \label
+	b	3f
+
+1:	mrs	\xreg, ID_AA64PFR0_EL1
+	and	\xreg, \xreg, #(ID_AA64PFR0_EL1_EL3 | ID_AA64PFR0_EL1_EL2)
+	cbnz	\xreg, \label
+
+3:
+.endm
+
+/*
  * Branch if current processor is a Cortex-A57 core.
  */
 .macro	branch_if_a57_core, xreg, a57_label
@@ -136,7 +155,7 @@ lr	.req	x30
 	orr	\xreg1, \xreg1, \xreg2
 	cbz	\xreg1, \master_label
 #else
-	b 	\master_label
+	b	\master_label
 #endif
 .endm
 
@@ -238,7 +257,7 @@ lr	.req	x30
  * For loading 64-bit OS, x0 is physical address to the FDT blob.
  * They will be passed to the guest.
  */
-.macro armv8_switch_to_el1_m, ep, flag, tmp
+.macro armv8_switch_to_el1_m, ep, flag, tmp, tmp2
 	/* Initialize Generic Timers */
 	mrs	\tmp, cnthctl_el2
 	/* Enable EL1 access to timers */
@@ -288,7 +307,14 @@ lr	.req	x30
 	b.eq	1f
 
 	/* Initialize HCR_EL2 */
-	ldr	\tmp, =(HCR_EL2_RW_AARCH64 | HCR_EL2_HCD_DIS)
+	/* Only disable PAuth traps if PAuth is supported */
+	mrs	\tmp, id_aa64isar1_el1
+	ldr	\tmp2, =(ID_AA64ISAR1_EL1_GPI | ID_AA64ISAR1_EL1_GPA | \
+		      ID_AA64ISAR1_EL1_API | ID_AA64ISAR1_EL1_APA)
+	tst	\tmp, \tmp2
+	mov	\tmp2, #(HCR_EL2_RW_AARCH64 | HCR_EL2_HCD_DIS)
+	orr	\tmp, \tmp2, #(HCR_EL2_APK | HCR_EL2_API)
+	csel	\tmp, \tmp2, \tmp, eq
 	msr	hcr_el2, \tmp
 
 	/* Return to the EL1_SP1 mode from EL2 */
@@ -330,6 +356,45 @@ lr	.req	x30
 	cbnz    \wreg2, 0b
 .endm
 #endif
+
+/*
+ * Select code when configured for LE.
+ */
+#ifdef CONFIG_CPU_BIG_ENDIAN
+#define CPU_LE(code...)
+#else
+#define CPU_LE(code...) code
+#endif
+
+/*
+ * Pseudo-ops for PC-relative adr/ldr <reg>, <symbol> where
+ * <symbol> is within the range +/- 4 GB of the PC.
+ */
+	/*
+	 * @dst: destination register (64 bit wide)
+	 * @sym: name of the symbol
+	 */
+	.macro	adr_l, dst, sym
+	adrp	\dst, \sym
+	add	\dst, \dst, :lo12:\sym
+	.endm
+
+	/*
+	 * @dst: destination register (32 or 64 bit wide)
+	 * @sym: name of the symbol
+	 * @tmp: optional 64-bit scratch register to be used if <dst> is a
+	 *       32-bit wide register, in which case it cannot be used to hold
+	 *       the address
+	 */
+	.macro	ldr_l, dst, sym, tmp=
+	.ifb	\tmp
+	adrp	\dst, \sym
+	ldr	\dst, [\dst, :lo12:\sym]
+	.else
+	adrp	\tmp, \sym
+	ldr	\dst, [\tmp, :lo12:\sym]
+	.endif
+	.endm
 
 #endif /* CONFIG_ARM64 */
 

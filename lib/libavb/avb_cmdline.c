@@ -7,6 +7,7 @@
 #include "avb_sha.h"
 #include "avb_util.h"
 #include "avb_version.h"
+#include <log.h>
 #include <malloc.h>
 
 #ifndef CONFIG_ANDROID_DYNAMIC_PARTITION

@@ -20,9 +20,7 @@
 #define CONFIG_SYS_INIT_SP_ADDR		\
 	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
 
-#define CONFIG_SYS_MALLOC_LEN		SZ_128K
 #define CONFIG_SYS_BOOTM_LEN		SZ_32M
-#define CONFIG_SYS_LOAD_ADDR		0x82000000
 
 /*
  * UART configuration
@@ -38,7 +36,6 @@
  * Until Realtek PHY driver is fixed fall back to generic PHY driver
  * which implements all required functionality and behaves much more stable.
  *
- * #define CONFIG_PHY_REALTEK
  *
  */
 
@@ -49,14 +46,9 @@
 #define ETH1_BASE_ADDRESS		0xFE110000
 
 /*
- * Command line configuration
- */
-
-/*
  * Environment configuration
  */
 #define CONFIG_BOOTFILE			"uImage"
-#define CONFIG_LOADADDR			CONFIG_SYS_LOAD_ADDR
 
 /*
  * Console configuration

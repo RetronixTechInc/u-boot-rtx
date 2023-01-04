@@ -12,6 +12,7 @@
 #include <dm.h>
 #include <env_internal.h>
 #include <i2c.h>
+#include <log.h>
 #include <asm/io.h>
 #if !CONFIG_IS_ENABLED(TARGET_GIEDI) && !CONFIG_IS_ENABLED(TARGET_DENEB)
 #include <asm/arch/cpu.h>
@@ -242,7 +243,7 @@ int factoryset_read_eeprom(int i2c_addr)
 			       buf, MAX_STRING_LENGTH);
 	cp1 = buf;
 	for (i = 0; i < 6; i++) {
-		factory_dat.mac[i] = simple_strtoul((char *)cp1, NULL, 16);
+		factory_dat.mac[i] = hextoul((char *)cp1, NULL);
 		cp1 += 3;
 	}
 
@@ -253,8 +254,7 @@ int factoryset_read_eeprom(int i2c_addr)
 	if (ret > 0) {
 		cp1 = buf;
 		for (i = 0; i < 6; i++) {
-			factory_dat.mac_wlan[i] = simple_strtoul((char *)cp1,
-								 NULL, 16);
+			factory_dat.mac_wlan[i] = hextoul((char *)cp1, NULL);
 			cp1 += 3;
 		}
 	}
@@ -265,15 +265,13 @@ int factoryset_read_eeprom(int i2c_addr)
 	if (0 <= get_factory_record_val(cp, size, (uchar *)"USBD1",
 					(uchar *)"vid", buf,
 					MAX_STRING_LENGTH)) {
-		factory_dat.usb_vendor_id = simple_strtoul((char *)buf,
-							   NULL, 16);
+		factory_dat.usb_vendor_id = hextoul((char *)buf, NULL);
 	}
 
 	if (0 <= get_factory_record_val(cp, size, (uchar *)"USBD1",
 					(uchar *)"pid", buf,
 					MAX_STRING_LENGTH)) {
-		factory_dat.usb_product_id = simple_strtoul((char *)buf,
-							    NULL, 16);
+		factory_dat.usb_product_id = hextoul((char *)buf, NULL);
 	}
 	printf("DFU USB: VID = 0x%4x, PID = 0x%4x\n", factory_dat.usb_vendor_id,
 	       factory_dat.usb_product_id);
@@ -293,8 +291,7 @@ int factoryset_read_eeprom(int i2c_addr)
 	if (0 <= get_factory_record_val(cp, size, (uchar *)"DEV",
 					(uchar *)"ver", buf,
 					MAX_STRING_LENGTH)) {
-		factory_dat.version = simple_strtoul((char *)buf,
-							    NULL, 16);
+		factory_dat.version = hextoul((char *)buf, NULL);
 		debug("version number: %d\n", factory_dat.version);
 	}
 	/* Get ASN from factory set if available */

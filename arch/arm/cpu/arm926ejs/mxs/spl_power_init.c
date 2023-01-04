@@ -9,6 +9,7 @@
 #include <common.h>
 #include <config.h>
 #include <hang.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 
@@ -626,11 +627,11 @@ static void mxs_power_enable_4p2(void)
 
 	mxs_power_init_dcdc_4p2_source();
 
-	writel(vdddctrl, &power_regs->hw_power_vdddctrl);
+	writel(vddioctrl, &power_regs->hw_power_vddioctrl);
 	early_delay(20);
 	writel(vddactrl, &power_regs->hw_power_vddactrl);
 	early_delay(20);
-	writel(vddioctrl, &power_regs->hw_power_vddioctrl);
+	writel(vdddctrl, &power_regs->hw_power_vdddctrl);
 
 	/*
 	 * Check if FET is enabled on either powerout and if so,

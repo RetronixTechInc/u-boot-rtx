@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Stefan Roese <sr@denx.de>
- * Copyright 2018 NXP
  */
 
 #include <common.h>
+#include <lmb.h>
+#include <log.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/mach-imx/regs-common.h>
-#include <fsl_caam.h>
 #include <fdt_support.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -77,36 +79,6 @@ int mxs_reset_block(struct mxs_register_32 *reg)
 	return 0;
 }
 
-static ulong get_sp(void)
-{
-	ulong ret;
-
-	asm("mov %0, sp" : "=r"(ret) : );
-	return ret;
-}
-
-void board_lmb_reserve(struct lmb *lmb)
-{
-	ulong sp, bank_end;
-	int bank;
-
-	sp = get_sp();
-	debug("## Current stack ends at 0x%08lx ", sp);
-
-	/* adjust sp by 16K to be safe */
-	sp -= 4096 << 2;
-	for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
-		if (sp < gd->bd->bi_dram[bank].start)
-			continue;
-		bank_end = gd->bd->bi_dram[bank].start +
-			gd->bd->bi_dram[bank].size;
-		if (sp >= bank_end)
-			continue;
-		lmb_reserve(lmb, sp, bank_end - sp);
-		break;
-	}
-}
-
 void configure_tzc380(void)
 {
 #if defined (IP2APB_TZASC1_BASE_ADDR)
@@ -117,13 +89,6 @@ void configure_tzc380(void)
 #if defined (IP2APB_TZASC2_BASE_ADDR)
 	if (iomux->gpr[9] & 0x2)
 		writel(0xf0000000, IP2APB_TZASC2_BASE_ADDR + 0x108);
-#endif
-}
-
-void imx_sec_init(void)
-{
-#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_SPL)
-	caam_open();
 #endif
 }
 

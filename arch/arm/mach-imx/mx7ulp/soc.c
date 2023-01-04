@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Freescale Semiconductor, Inc.
- * Copyright 2017-2018 NXP
+ * Copyright 2017-2021 NXP
  */
+
+#include <common.h>
 #include <cpu_func.h>
 #include <init.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
@@ -12,10 +15,11 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/hab.h>
+#include <asm/mach-imx/sys_proto.h>
 #include <asm/setup.h>
-#ifdef CONFIG_IMX_SEC_INIT
-#include <fsl_caam.h>
-#endif
+#include <linux/bitops.h>
+#include <dm.h>
+#include <asm/setup.h>
 
 #define PMC0_BASE_ADDR		0x410a1000
 #define PMC0_CTRL		0x28
@@ -122,6 +126,8 @@ int mcore_early_load_and_boot(void)
 
 int arch_cpu_init(void)
 {
+	enable_ca7_smp();
+
 #ifdef CONFIG_IMX_M4_BIND
 	int ret;
 	if (get_boot_mode() == SINGLE_BOOT) {
@@ -130,14 +136,24 @@ int arch_cpu_init(void)
 			puts("Invalid M4 image, boot failed\n");
 	}
 #endif
+	return 0;
+}
 
-#ifdef CONFIG_IMX_SEC_INIT
-	/* Secure init function such RNG */
-	imx_sec_init();
-#endif
+#if defined(CONFIG_ARCH_MISC_INIT)
+int arch_misc_init(void)
+{
+	if (IS_ENABLED(CONFIG_FSL_CAAM)) {
+		struct udevice *dev;
+		int ret;
+
+		ret = uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(caam_jr), &dev);
+		if (ret)
+			printf("Failed to initialize caam_jr: %d\n", ret);
+	}
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_BOARD_POSTCLK_INIT
 int board_postclk_init(void)
@@ -163,7 +179,7 @@ static void disable_wdog(u32 wdog_base)
 	__raw_writel(REFRESH_WORD1, (wdog_base + 0x04));
 	dmb();
 
-	if (!(val_cs & 800)) {
+	if (!(val_cs & 0x800)) {
 		dmb();
 		__raw_writel(UNLOCK_WORD0, (wdog_base + 0x04));
 		__raw_writel(UNLOCK_WORD1, (wdog_base + 0x04));
@@ -171,9 +187,11 @@ static void disable_wdog(u32 wdog_base)
 
 		while (!(readl(wdog_base + 0x00) & 0x800));
 	}
-	writel(0x0, (wdog_base + 0x0C)); /* Set WIN to 0 */
-	writel(0x400, (wdog_base + 0x08)); /* Set timeout to default 0x400 */
-	writel(0x120, (wdog_base + 0x00)); /* Disable it and set update */
+	dmb();
+	__raw_writel(0x0, wdog_base + 0x0C); /* Set WIN to 0 */
+	__raw_writel(0x400, wdog_base + 0x08); /* Set timeout to default 0x400 */
+	__raw_writel(0x120, wdog_base + 0x00); /* Disable it and set update */
+	dmb();
 
 	while (!(readl(wdog_base + 0x00) & 0x400));
 }
@@ -197,11 +215,25 @@ void init_wdog(void)
 	disable_wdog(WDG2_RBASE);
 }
 
+static bool ldo_mode_is_enabled(void)
+{
+	unsigned int reg;
+
+	reg = readl(PMC0_BASE_ADDR + PMC0_CTRL);
+	if (reg & PMC0_CTRL_LDOEN)
+		return true;
+	else
+		return false;
+}
+
 #if !defined(CONFIG_SPL) || (defined(CONFIG_SPL) && defined(CONFIG_SPL_BUILD))
 #if defined(CONFIG_LDO_ENABLED_MODE)
 static void init_ldo_mode(void)
 {
 	unsigned int reg;
+
+	if (ldo_mode_is_enabled())
+		return;
 
 	/* Set LDOOKDIS */
 	setbits_le32(PMC0_BASE_ADDR + PMC0_CTRL, PMC0_CTRL_LDOOKDIS);
@@ -263,7 +295,7 @@ void s_init(void)
 #endif
 
 #ifndef CONFIG_ULP_WATCHDOG
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	setbits_le32(SIM0_RBASE, SIM_SOPT1_A7_SW_RESET);
 	while (1)
@@ -275,21 +307,6 @@ void reset_cpu(ulong addr)
 const char *get_imx_type(u32 imxtype)
 {
 	return "7ULP";
-}
-
-#define PMC0_BASE_ADDR		0x410a1000
-#define PMC0_CTRL		0x28
-#define PMC0_CTRL_LDOEN		BIT(31)
-
-static bool ldo_mode_is_enabled(void)
-{
-	unsigned int reg;
-
-	reg = readl(PMC0_BASE_ADDR + PMC0_CTRL);
-	if (reg & PMC0_CTRL_LDOEN)
-		return true;
-	else
-		return false;
 }
 
 int print_cpuinfo(void)
@@ -477,17 +494,24 @@ bool is_usb_boot(void)
 	return get_boot_device() == USB_BOOT;
 }
 
-#ifdef CONFIG_FSL_FASTBOOT
-#ifdef CONFIG_SERIAL_TAG
+#if defined(CONFIG_SERIAL_TAG) || defined(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)
+/*
+ * OCOTP_CFG (SJC CHALLENGE, Unique ID)
+ * i.MX 7ULP Applications Processor Reference Manual, Rev. 0, 09/2020
+ *
+ * OCOTP_CFG0 offset 0x4B0: 15:0 -> 15:0  bits of Unique ID
+ * OCOTP_CFG1 offset 0x4C0: 15:0 -> 31:16 bits of Unique ID
+ * OCOTP_CFG2 offset 0x4D0: 15:0 -> 47:32 bits of Unique ID
+ * OCOTP_CFG3 offset 0x4E0: 15:0 -> 63:48 bits of Unique ID
+ */
 void get_board_serial(struct tag_serialnr *serialnr)
 {
-
 	struct ocotp_regs *ocotp = (struct ocotp_regs *)OCOTP_BASE_ADDR;
 	struct fuse_bank *bank = &ocotp->bank[1];
 	struct fuse_bank1_regs *fuse =
 		(struct fuse_bank1_regs *)bank->fuse_regs;
+
 	serialnr->low = (fuse->cfg0 & 0xFFFF) + ((fuse->cfg1 & 0xFFFF) << 16);
 	serialnr->high = (fuse->cfg2 & 0xFFFF) + ((fuse->cfg3 & 0xFFFF) << 16);
 }
-#endif /*CONFIG_SERIAL_TAG*/
-#endif /*CONFIG_FSL_FASTBOOT*/
+#endif /* CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG */

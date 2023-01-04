@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2017-2018 NXP
+ * Copyright 2017-2018, 2020-2021 NXP
  */
 #include <common.h>
 #include <command.h>
 #include <cpu_func.h>
 #include <env.h>
 #include <errno.h>
+#include <image.h>
+#include <log.h>
 #include <malloc.h>
+#include <mapmem.h>
+#include <asm/global_data.h>
 #include <linux/bug.h>
 #include <asm/io.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <net.h>
 #include <fdt_support.h>
@@ -33,6 +38,16 @@
 #define MC_BOOT_TIMEOUT_ENV_VAR	"mcboottimeout"
 #define MC_BOOT_ENV_VAR		"mcinitcmd"
 #define MC_DRAM_BLOCK_DEFAULT_SIZE (512UL * 1024 * 1024)
+
+#define MC_BUFFER_SIZE   (1024 * 1024 * 16)
+#define MAGIC_MC 0x4d430100
+#define MC_FW_ADDR_MASK_LOW 0xE0000000
+#define MC_FW_ADDR_MASK_HIGH 0X1FFFF
+#define MC_STRUCT_BUFFER_OFFSET 0x01000000
+#define MC_OFFSET_DELTA MC_STRUCT_BUFFER_OFFSET
+
+#define LOG_HEADER_FLAG_BUFFER_WRAPAROUND 0x80000000
+#define LAST_BYTE(a) ((a) & ~(LOG_HEADER_FLAG_BUFFER_WRAPAROUND))
 
 DECLARE_GLOBAL_DATA_PTR;
 static int mc_memset_resv_ram;
@@ -138,7 +153,7 @@ int parse_mc_firmware_fit_image(u64 mc_fw_addr,
 		return -EINVAL;
 	}
 
-	if (!fit_check_format(fit_hdr)) {
+	if (fit_check_format(fit_hdr, IMAGE_SIZE_INVAL)) {
 		printf("fsl-mc: ERR: Bad firmware image (bad FIT header)\n");
 		return -EINVAL;
 	}
@@ -174,9 +189,21 @@ enum mc_fixup_type {
 };
 
 static int mc_fixup_mac_addr(void *blob, int nodeoffset,
+#ifdef CONFIG_DM_ETH
+			     const char *propname, struct udevice *eth_dev,
+#else
 			     const char *propname, struct eth_device *eth_dev,
+#endif
 			     enum mc_fixup_type type)
 {
+#ifdef CONFIG_DM_ETH
+	struct eth_pdata *plat = dev_get_plat(eth_dev);
+	unsigned char *enetaddr = plat->enetaddr;
+	int eth_index = dev_seq(eth_dev);
+#else
+	unsigned char *enetaddr = eth_dev->enetaddr;
+	int eth_index = eth_dev->index;
+#endif
 	int err = 0, len = 0, size, i;
 	unsigned char env_enetaddr[ARP_HLEN];
 	unsigned int enetaddr_32[ARP_HLEN];
@@ -184,23 +211,22 @@ static int mc_fixup_mac_addr(void *blob, int nodeoffset,
 
 	switch (type) {
 	case MC_FIXUP_DPL:
-	/* DPL likes its addresses on 32 * ARP_HLEN bits */
-	for (i = 0; i < ARP_HLEN; i++)
-		enetaddr_32[i] = cpu_to_fdt32(eth_dev->enetaddr[i]);
-	val = enetaddr_32;
-	len = sizeof(enetaddr_32);
-	break;
-
+		/* DPL likes its addresses on 32 * ARP_HLEN bits */
+		for (i = 0; i < ARP_HLEN; i++)
+			enetaddr_32[i] = cpu_to_fdt32(enetaddr[i]);
+		val = enetaddr_32;
+		len = sizeof(enetaddr_32);
+		break;
 	case MC_FIXUP_DPC:
-	val = eth_dev->enetaddr;
-	len = ARP_HLEN;
-	break;
+		val = enetaddr;
+		len = ARP_HLEN;
+		break;
 	}
 
 	/* MAC address property present */
 	if (fdt_get_property(blob, nodeoffset, propname, NULL)) {
 		/* u-boot MAC addr randomly assigned - leave the present one */
-		if (!eth_env_get_enetaddr_by_index("eth", eth_dev->index,
+		if (!eth_env_get_enetaddr_by_index("eth", eth_index,
 						   env_enetaddr))
 			return err;
 	} else {
@@ -250,7 +276,11 @@ const char *dpl_get_connection_endpoint(void *blob, char *endpoint)
 }
 
 static int mc_fixup_dpl_mac_addr(void *blob, int dpmac_id,
+#ifdef CONFIG_DM_ETH
+				 struct udevice *eth_dev)
+#else
 				 struct eth_device *eth_dev)
+#endif
 {
 	int objoff = fdt_path_offset(blob, "/objects");
 	int dpmacoff = -1, dpnioff = -1;
@@ -302,7 +332,7 @@ void fdt_fixup_mc_ddr(u64 *base, u64 *size)
 void fdt_fsl_mc_fixup_iommu_map_entry(void *blob)
 {
 	u32 *prop;
-	u32 iommu_map[4];
+	u32 iommu_map[4], phandle;
 	int offset;
 	int lenp;
 
@@ -331,10 +361,29 @@ void fdt_fsl_mc_fixup_iommu_map_entry(void *blob)
 
 	fdt_setprop_inplace(blob, offset, "iommu-map",
 			    iommu_map, sizeof(iommu_map));
+
+	/* get phandle to MSI controller */
+	prop = (u32 *)fdt_getprop(blob, offset, "msi-parent", 0);
+	if (!prop) {
+		debug("\n%s: ERROR: missing msi-parent\n", __func__);
+		return;
+	}
+	phandle = fdt32_to_cpu(*prop);
+
+	/* also set msi-map property */
+	fdt_appendprop_u32(blob, offset, "msi-map", FSL_DPAA2_STREAM_ID_START);
+	fdt_appendprop_u32(blob, offset, "msi-map", phandle);
+	fdt_appendprop_u32(blob, offset, "msi-map", FSL_DPAA2_STREAM_ID_START);
+	fdt_appendprop_u32(blob, offset, "msi-map", FSL_DPAA2_STREAM_ID_END -
+			   FSL_DPAA2_STREAM_ID_START + 1);
 }
 
 static int mc_fixup_dpc_mac_addr(void *blob, int dpmac_id,
+#ifdef CONFIG_DM_ETH
+				 struct udevice *eth_dev)
+#else
 				 struct eth_device *eth_dev)
+#endif
 {
 	int nodeoffset = fdt_path_offset(blob, "/board_info/ports"), noff;
 	int err = 0;
@@ -377,8 +426,13 @@ static int mc_fixup_dpc_mac_addr(void *blob, int dpmac_id,
 static int mc_fixup_mac_addrs(void *blob, enum mc_fixup_type type)
 {
 	int i, err = 0, ret = 0;
-	char ethname[ETH_NAME_LEN];
+#ifdef CONFIG_DM_ETH
+#define ETH_NAME_LEN 20
+	struct udevice *eth_dev;
+#else
 	struct eth_device *eth_dev;
+#endif
+	char ethname[ETH_NAME_LEN];
 
 	for (i = WRIOP1_DPMAC1; i < NUM_WRIOP_PORTS; i++) {
 		/* port not enabled */
@@ -439,8 +493,19 @@ static int mc_fixup_dpc(u64 dpc_addr)
 
 	/* fixup MAC addresses for dpmac ports */
 	nodeoffset = fdt_path_offset(blob, "/board_info/ports");
-	if (nodeoffset < 0)
-		goto out;
+	if (nodeoffset < 0) {
+		err = fdt_increase_size(blob, 512);
+		if (err) {
+			printf("fdt_increase_size: err=%s\n",
+			       fdt_strerror(err));
+			goto out;
+		}
+		nodeoffset = fdt_path_offset(blob, "/board_info");
+		if (nodeoffset < 0)
+			nodeoffset = fdt_add_subnode(blob, 0, "board_info");
+
+		nodeoffset = fdt_add_subnode(blob, nodeoffset, "ports");
+	}
 
 	err = mc_fixup_mac_addrs(blob, MC_FIXUP_DPC);
 
@@ -588,7 +653,7 @@ static unsigned long get_mc_boot_timeout_ms(void)
 	char *timeout_ms_env_var = env_get(MC_BOOT_TIMEOUT_ENV_VAR);
 
 	if (timeout_ms_env_var) {
-		timeout_ms = simple_strtoul(timeout_ms_env_var, NULL, 10);
+		timeout_ms = dectoul(timeout_ms_env_var, NULL);
 		if (timeout_ms == 0) {
 			printf("fsl-mc: WARNING: Invalid value for \'"
 			       MC_BOOT_TIMEOUT_ENV_VAR
@@ -902,8 +967,7 @@ unsigned long mc_get_dram_block_size(void)
 	char *dram_block_size_env_var = env_get(MC_MEM_SIZE_ENV_VAR);
 
 	if (dram_block_size_env_var) {
-		dram_block_size = simple_strtoul(dram_block_size_env_var, NULL,
-						 16);
+		dram_block_size = hextoul(dram_block_size_env_var, NULL);
 
 		if (dram_block_size < CONFIG_SYS_LS_MC_DRAM_BLOCK_MIN_SIZE) {
 			printf("fsl-mc: WARNING: Invalid value for \'"
@@ -918,7 +982,7 @@ unsigned long mc_get_dram_block_size(void)
 	return dram_block_size;
 }
 
-int fsl_mc_ldpaa_init(bd_t *bis)
+int fsl_mc_ldpaa_init(struct bd_info *bis)
 {
 	int i;
 
@@ -1072,7 +1136,7 @@ static int dpio_exit(void)
 		goto err;
 	}
 
-	dpio_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpio->dpio_handle);
+	err = dpio_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpio->dpio_handle);
 	if (err < 0) {
 		printf("dpio_close() failed: %d\n", err);
 		goto err;
@@ -1654,7 +1718,7 @@ err:
 	return err;
 }
 
-int fsl_mc_ldpaa_exit(bd_t *bd)
+int fsl_mc_ldpaa_exit(struct bd_info *bd)
 {
 	int err = 0;
 	bool is_dpl_apply_status = false;
@@ -1720,10 +1784,78 @@ err:
 	return err;
 }
 
-static int do_fsl_mc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static void print_k_bytes(const void *buf, ssize_t *size)
+{
+	while (*size > 0) {
+		int count = printf("%s", (char *)buf);
+
+		buf += count;
+		*size -= count;
+	}
+}
+
+static void mc_dump_log(void)
+{
+	struct mc_ccsr_registers __iomem *mc_ccsr_regs = MC_CCSR_BASE_ADDR;
+	u64 high = in_le64(&mc_ccsr_regs->reg_mcfbahr) & MC_FW_ADDR_MASK_HIGH;
+	u64 low = in_le64(&mc_ccsr_regs->reg_mcfbalr) & MC_FW_ADDR_MASK_LOW;
+	u32 buf_len, wrapped, last_byte, magic, buf_start;
+	u64 mc_addr = (high << 32) | low;
+	struct log_header *header;
+	ssize_t size, bytes_end;
+	const void *end_of_data;
+	const void *map_addr;
+	const void *end_addr;
+	const void *cur_ptr;
+	const void *buf;
+
+	map_addr = map_sysmem(mc_addr + MC_STRUCT_BUFFER_OFFSET,
+			      MC_BUFFER_SIZE);
+	header = (struct log_header *)map_addr;
+	last_byte = in_le32(&header->last_byte);
+	buf_len = in_le32(&header->buf_length);
+	magic = in_le32(&header->magic_word);
+	buf_start = in_le32(&header->buf_start);
+	buf = map_addr + buf_start - MC_OFFSET_DELTA;
+	end_addr = buf + buf_len;
+	wrapped = last_byte & LOG_HEADER_FLAG_BUFFER_WRAPAROUND;
+	end_of_data = buf + LAST_BYTE(last_byte);
+
+	if (magic != MAGIC_MC) {
+		puts("Magic number is not valid\n");
+		printf("expected = %08x, received = %08x\n", MAGIC_MC, magic);
+		goto err_magic;
+	}
+
+	if (wrapped && end_of_data != end_addr)
+		cur_ptr = end_of_data + 1;
+	else
+		cur_ptr = buf;
+
+	if (cur_ptr <= end_of_data)
+		size = end_of_data - cur_ptr;
+	else
+		size = (end_addr - cur_ptr) + (end_of_data - buf);
+
+	bytes_end = end_addr - cur_ptr;
+	if (size > bytes_end) {
+		print_k_bytes(cur_ptr, &bytes_end);
+
+		cur_ptr = buf;
+		size -= bytes_end;
+	}
+
+	print_k_bytes(buf, &size);
+
+err_magic:
+	unmap_sysmem(map_addr);
+}
+
+static int do_fsl_mc(struct cmd_tbl *cmdtp, int flag, int argc,
+		     char *const argv[])
 {
 	int err = 0;
-	if (argc < 3)
+	if (argc < 2)
 		goto usage;
 
 	switch (argv[1][0]) {
@@ -1733,6 +1865,8 @@ static int do_fsl_mc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 			u64 aiop_fw_addr;
 #endif
+			if (argc < 3)
+				goto usage;
 
 			sub_cmd = argv[2][0];
 
@@ -1864,6 +1998,12 @@ static int do_fsl_mc(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 		break;
 		}
+	case 'd':
+		if (argc > 2)
+			goto usage;
+
+		mc_dump_log();
+		break;
 	default:
 		printf("Invalid option: %s\n", argv[1]);
 		goto usage;
@@ -1882,6 +2022,7 @@ U_BOOT_CMD(
 	"fsl_mc lazyapply DPL [DPL_addr] - Apply DPL file on exit\n"
 	"fsl_mc apply spb [spb_addr] - Apply SPB Soft Parser Blob\n"
 	"fsl_mc start aiop [FW_addr] - Start AIOP\n"
+	"fsl_mc dump_log - Dump MC Log\n"
 );
 
 void mc_env_boot(void)

@@ -14,33 +14,19 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
+#include <dm.h>
+#include <dm/devres.h>
+#include <dm/device_compat.h>
 
 #include "core.h"
 #include "gadget-export.h"
 #include "gadget.h"
 #include "io.h"
-#include <dm/devres.h>
 #include <linux/iopoll.h>
 
 static void __cdns3_gadget_start(struct usb_ss_dev *usb_ss);
 static void cdns_prepare_setup_packet(struct usb_ss_dev *usb_ss);
 static void cdns_ep_config(struct usb_ss_endpoint *usb_ss_ep);
-
-static const char *const speed_names[] = {
-	[USB_SPEED_UNKNOWN] = "UNKNOWN",
-	[USB_SPEED_LOW] = "low-speed",
-	[USB_SPEED_FULL] = "full-speed",
-	[USB_SPEED_HIGH] = "high-speed",
-	[USB_SPEED_WIRELESS] = "wireless",
-	[USB_SPEED_SUPER] = "super-speed",
-};
-
-const char *usb_speed_string(enum usb_device_speed speed)
-{
-	if (speed < 0 || speed >= ARRAY_SIZE(speed_names))
-		speed = USB_SPEED_UNKNOWN;
-	return speed_names[speed];
-}
 
 static struct usb_endpoint_descriptor cdns3_gadget_ep0_desc = {
 	.bLength	= USB_DT_ENDPOINT_SIZE,
@@ -69,7 +55,7 @@ static struct usb_request *next_request(struct list_head *list)
 static void select_ep(struct usb_ss_dev *usb_ss, u32 ep)
 {
 	if (!usb_ss || !usb_ss->regs) {
-		dev_err(&usb_ss->dev, "Failed to select endpoint!\n");
+		printf("Failed to select endpoint!\n");
 		return;
 	}
 
@@ -158,6 +144,7 @@ static void cdns_ep0_config(struct usb_ss_dev *usb_ss)
 		break;
 
 	case USB_SPEED_SUPER:
+	case USB_SPEED_SUPER_PLUS:
 		max_packet_size = ENDPOINT_MAX_PACKET_SIZE_512;
 		usb_ss->gadget.ep0->maxpacket = ENDPOINT_MAX_PACKET_SIZE_512;
 		cdns3_gadget_ep0_desc.wMaxPacketSize = cpu_to_le16(512);
@@ -1309,6 +1296,7 @@ static void cdns_ep_config(struct usb_ss_endpoint *usb_ss_ep)
 		break;
 
 	case USB_SPEED_SUPER:
+	case USB_SPEED_SUPER_PLUS:
 		max_packet_size = ENDPOINT_MAX_PACKET_SIZE_1024;
 		break;
 	}
@@ -1417,13 +1405,13 @@ static int cdns3_disable_reset_ep(struct usb_ss_dev *usb_ss,
 	ret = readl_poll_timeout(&usb_ss->regs->ep_sts, val,
 				  !(val & EP_STS__DBUSY__MASK), 10);
 	if (unlikely(ret))
-		dev_err(usb_ss->dev, "Timeout: %s wait dbusy\n",
+		dev_err(&usb_ss->dev, "Timeout: %s wait dbusy\n",
 			usb_ss->gadget.name);
 
 	ret = readl_poll_timeout(&usb_ss->regs->ep_sts, val,
 				  (val & EP_STS__BUFFEMPTY__MASK), 1000);
 	if (unlikely(ret))
-		dev_err(usb_ss->dev, "Timeout: %s: %s wait buffer empty\n",
+		dev_err(&usb_ss->dev, "Timeout: %s: %s wait buffer empty\n",
 			usb_ss_ep->name, usb_ss->gadget.name);
 
 	writel(EP_CMD__EPRST__MASK, &usb_ss->regs->ep_cmd);
@@ -1433,7 +1421,7 @@ static int cdns3_disable_reset_ep(struct usb_ss_dev *usb_ss,
 					1000);
 
 	if (unlikely(ret))
-		dev_err(usb_ss->dev, "Timeout: %s resetting failed.\n",
+		dev_err(&usb_ss->dev, "Timeout: %s resetting failed.\n",
 			usb_ss->gadget.name);
 
 

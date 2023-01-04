@@ -4,15 +4,18 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <asm/io.h>
 #include <asm/mach-imx/sys_proto.h>
 #include <command.h>
 #include <elf.h>
 #include <imx_sip.h>
+#include <linux/arm-smccc.h>
 #include <linux/compiler.h>
 #include <cpu_func.h>
 
-#if !defined(CONFIG_IMX8M) && !defined(CONFIG_IMX8)
+#ifndef CONFIG_IMX8
+#ifndef CONFIG_IMX8M
 const __weak struct rproc_att hostmap[] = { };
 
 static const struct rproc_att *get_host_mapping(unsigned long auxcore)
@@ -30,10 +33,11 @@ static const struct rproc_att *get_host_mapping(unsigned long auxcore)
 }
 
 /*
- * A very simple elf loader, assumes the image is valid, returns the
- * entry point address.
+ * A very simple elf loader for the auxilary core, assumes the image
+ * is valid, returns the entry point address.
+ * Translates load addresses in the elf file to the U-Boot address space.
  */
-static unsigned long load_elf_image_phdr(unsigned long addr)
+static unsigned long load_elf_image_m_core_phdr(unsigned long addr)
 {
 	Elf32_Ehdr *ehdr; /* ELF header structure pointer */
 	Elf32_Phdr *phdr; /* Program header structure pointer */
@@ -76,7 +80,6 @@ static unsigned long load_elf_image_phdr(unsigned long addr)
 }
 #endif
 
-#ifndef CONFIG_IMX8
 int arch_auxiliary_core_up(u32 core_id, ulong addr)
 {
 	u32 stack, pc;
@@ -94,7 +97,7 @@ int arch_auxiliary_core_up(u32 core_id, ulong addr)
 	 */
 	if (valid_elf_image(addr)) {
 		stack = 0x0;
-		pc = load_elf_image_phdr(addr);
+		pc = load_elf_image_m_core_phdr(addr);
 		if (!pc)
 			return CMD_RET_FAILURE;
 
@@ -119,7 +122,16 @@ int arch_auxiliary_core_up(u32 core_id, ulong addr)
 
 	/* Enable MCU */
 #ifdef CONFIG_IMX8M
-	call_imx_sip(IMX_SIP_SRC, IMX_SIP_SRC_MCU_START, 0, 0, 0);
+#if defined(CONFIG_IMX_HAB) && defined(CONFIG_ANDROID_SUPPORT)
+	extern int authenticate_image(
+		uint32_t ddr_start, uint32_t raw_image_size);
+	if (authenticate_image(addr, ANDROID_MCU_FIRMWARE_SIZE) != 0) {
+		printf("Authenticate MCU Image Fail, Please check.\n");
+		return -EINVAL;
+	}
+#endif
+	arm_smccc_smc(IMX_SIP_SRC, IMX_SIP_SRC_MCU_START, 0, 0,
+		      0, 0, 0, 0, NULL);
 #else
 	clrsetbits_le32(SRC_BASE_ADDR + SRC_M4_REG_OFFSET,
 			SRC_M4C_NON_SCLR_RST_MASK, SRC_M4_ENABLE_MASK);
@@ -131,7 +143,12 @@ int arch_auxiliary_core_up(u32 core_id, ulong addr)
 int arch_auxiliary_core_check_up(u32 core_id)
 {
 #ifdef CONFIG_IMX8M
-	return call_imx_sip(IMX_SIP_SRC, IMX_SIP_SRC_MCU_STARTED, 0, 0, 0);
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(IMX_SIP_SRC, IMX_SIP_SRC_MCU_STARTED, 0, 0,
+		      0, 0, 0, 0, &res);
+
+	return res.a0;
 #else
 	unsigned int val;
 
@@ -157,7 +174,8 @@ int arch_auxiliary_core_check_up(u32 core_id)
  * The TCMUL/IDTCM is mapped to (MCU_BOOTROM_BASE_ADDR) at A core side for
  * accessing the M4/M7 TCMUL/IDTCM.
  */
-static int do_bootaux(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_bootaux(struct cmd_tbl *cmdtp, int flag, int argc,
+		      char *const argv[])
 {
 	ulong addr;
 	int ret, up;
@@ -175,7 +193,7 @@ static int do_bootaux(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return CMD_RET_SUCCESS;
 	}
 
-	addr = simple_strtoul(argv[1], NULL, 16);
+	addr = hextoul(argv[1], NULL);
 
 	if (!addr)
 		return CMD_RET_FAILURE;

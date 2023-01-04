@@ -15,11 +15,13 @@
 #define SAVE_LONG(reg, idx)	sd	reg, (idx*SIZE_LONG)(sp)
 #define LOAD_LONG(reg, idx)	ld	reg, (idx*SIZE_LONG)(sp)
 #define PE_MACHINE	IMAGE_FILE_MACHINE_RISCV64
+#define PE_MAGIC    IMAGE_NT_OPTIONAL_HDR64_MAGIC
 #else
 #define SIZE_LONG	4
 #define SAVE_LONG(reg, idx)	sw	reg, (idx*SIZE_LONG)(sp)
 #define LOAD_LONG(reg, idx)	lw	reg, (idx*SIZE_LONG)(sp)
 #define PE_MACHINE	IMAGE_FILE_MACHINE_RISCV32
+#define PE_MAGIC    IMAGE_NT_OPTIONAL_HDR32_MAGIC
 #endif
 
 
@@ -31,7 +33,10 @@
 	.globl	ImageBase
 ImageBase:
 	.short	IMAGE_DOS_SIGNATURE		/* 'MZ' */
-	.skip	58				/* 'MZ' + pad + offset == 64 */
+	.skip	46				/* 'MZ' + pad + offset == 64 */
+	.long	0x43534952			/* Linux magic "RISCV */
+	.long	0x00000056
+	.long	0x05435352			/* Linux magic2 "RSC\x05*/
 	.long	pe_header - ImageBase		/* Offset to the PE header */
 pe_header:
 	.long	IMAGE_NT_SIGNATURE		/* 'PE' */
@@ -48,7 +53,7 @@ coff_header:
 		 IMAGE_FILE_LOCAL_SYMS_STRIPPED | \
 		 IMAGE_FILE_DEBUG_STRIPPED)
 optional_header:
-	.short	IMAGE_NT_OPTIONAL_HDR64_MAGIC	/* PE32+ format */
+	.short	PE_MAGIC			/* PE32(+) format */
 	.byte	0x02				/* MajorLinkerVersion */
 	.byte	0x14				/* MinorLinkerVersion */
 	.long	_edata - _start			/* SizeOfCode */
@@ -56,14 +61,21 @@ optional_header:
 	.long	0				/* SizeOfUninitializedData */
 	.long	_start - ImageBase		/* AddressOfEntryPoint */
 	.long	_start - ImageBase		/* BaseOfCode */
+#if __riscv_xlen == 32
+	.long	0				/* BaseOfData */
+#endif
 
 extra_header_fields:
+#if __riscv_xlen == 32
+	.long	0				/* ImageBase */
+#else
 	.quad	0				/* ImageBase */
-	.long	0x20				/* SectionAlignment */
-	.long	0x8				/* FileAlignment */
+#endif
+	.long	0x200				/* SectionAlignment */
+	.long	0x200				/* FileAlignment */
 	.short	0				/* MajorOperatingSystemVersion */
 	.short	0				/* MinorOperatingSystemVersion */
-	.short	0				/* MajorImageVersion */
+	.short	1				/* MajorImageVersion */
 	.short	0				/* MinorImageVersion */
 	.short	0				/* MajorSubsystemVersion */
 	.short	0				/* MinorSubsystemVersion */
@@ -78,10 +90,17 @@ extra_header_fields:
 	.long	0				/* CheckSum */
 	.short	IMAGE_SUBSYSTEM_EFI_APPLICATION /* Subsystem */
 	.short	0				/* DllCharacteristics */
+#if __riscv_xlen == 32
+	.long	0				/* SizeOfStackReserve */
+	.long	0				/* SizeOfStackCommit */
+	.long	0				/* SizeOfHeapReserve */
+	.long	0				/* SizeOfHeapCommit */
+#else
 	.quad	0				/* SizeOfStackReserve */
 	.quad	0				/* SizeOfStackCommit */
 	.quad	0				/* SizeOfHeapReserve */
 	.quad	0				/* SizeOfHeapCommit */
+#endif
 	.long	0				/* LoaderFlags */
 	.long	0x6				/* NumberOfRvaAndSizes */
 
@@ -129,6 +148,7 @@ section_table:
 	.short	0		/* NumberOfLineNumbers  (0 for executables) */
 	.long	0xe0500020	/* Characteristics (section flags) */
 
+	.align	9
 _start:
 	addi		sp, sp, -(SIZE_LONG * 3)
 	SAVE_LONG(a0, 0)

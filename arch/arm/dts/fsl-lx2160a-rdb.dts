@@ -5,7 +5,7 @@
  * Author:	Priyanka Jain <priyanka.jain@nxp.com>
  *		Sriram Dash <sriram.dash@nxp.com>
  *
- * Copyright 2018 NXP
+ * Copyright 2018-2022 NXP
  *
  */
 
@@ -21,6 +21,89 @@
 	};
 };
 
+&dpmac2 {
+	status = "okay";
+	phy-handle = <&cortina_phy>;
+	phy-connection-type = "xlaui4";
+};
+
+&dpmac3 {
+	status = "okay";
+	phy-handle = <&aquantia_phy1>;
+	phy-connection-type = "usxgmii";
+};
+
+&dpmac4 {
+	status = "okay";
+	phy-handle = <&aquantia_phy2>;
+	phy-connection-type = "usxgmii";
+};
+
+&dpmac5 {
+	status = "okay";
+	phy-handle = <&inphi_phy>;
+	phy-connection-type = "25g-aui";
+};
+
+&dpmac6 {
+	status = "okay";
+	phy-handle = <&inphi_phy>;
+	phy-connection-type = "25g-aui";
+};
+
+&dpmac17 {
+	status = "okay";
+	phy-handle = <&rgmii_phy1>;
+	phy-connection-type = "rgmii-id";
+};
+
+&dpmac18 {
+	status = "okay";
+	phy-handle = <&rgmii_phy2>;
+	phy-connection-type = "rgmii-id";
+};
+
+&emdio1 {
+	status = "okay";
+
+	cortina_phy: ethernet-phy@0 {
+		reg = <0x0>;
+	};
+
+	rgmii_phy1: ethernet-phy@1 {
+		/* AR8035 PHY - "compatible" property not strictly needed */
+		compatible = "ethernet-phy-id004d.d072";
+		reg = <0x1>;
+		/* Poll mode - no "interrupts" property defined */
+	};
+	rgmii_phy2: ethernet-phy@2 {
+		/* AR8035 PHY - "compatible" property not strictly needed */
+		compatible = "ethernet-phy-id004d.d072";
+		reg = <0x2>;
+		/* Poll mode - no "interrupts" property defined */
+	};
+	aquantia_phy1: ethernet-phy@4 {
+		/* AQR107 PHY - "compatible" property not strictly needed */
+		compatible = "ethernet-phy-ieee802.3-c45";
+		interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+		reg = <0x4>;
+	};
+	aquantia_phy2: ethernet-phy@5 {
+		/* AQR107 PHY - "compatible" property not strictly needed */
+		compatible = "ethernet-phy-ieee802.3-c45";
+		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+		reg = <0x5>;
+	};
+};
+
+&emdio2 {
+	status = "okay";
+	inphi_phy: ethernet-phy@0 {
+		compatible = "ethernet-phy-id0210.7440";
+		reg = <0x0>;
+	};
+};
+
 &esdhc0 {
 	status = "okay";
 };
@@ -28,6 +111,8 @@
 &esdhc1 {
 	status = "okay";
 	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	bus-width = <8>;
 };
 
 &fspi {
@@ -63,7 +148,7 @@
 	status = "okay";
 
 	rtc@51 {
-		compatible = "pcf2127-rtc";
+		compatible = "nxp,pcf2129";
 		reg = <0x51>;
 	};
 };

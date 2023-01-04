@@ -13,6 +13,8 @@
 #include <linux/compat.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg.h>
+#include <dm.h>
+#include <dm/device_compat.h>
 
 #include "cdns3-nxp-reg-def.h"
 #include "core.h"
@@ -177,15 +179,15 @@ int cdns3_init(struct cdns3 *cdns)
 	ret = cdns3_core_init_role(cdns, USB_DR_MODE_PERIPHERAL);
 
 	cdns->role = cdns3_get_role(cdns);
-	dev_dbg(dev, "the init role is %d\n", cdns->role);
+	dev_dbg(cdns->dev, "the init role is %d\n", cdns->role);
 	cdns3_set_role(cdns, cdns->role);
 	ret = cdns3_role_start(cdns, cdns->role);
 	if (ret) {
-		dev_err(dev, "can't start %s role\n", cdns3_role(cdns)->name);
+		dev_err(cdns->dev, "can't start %s role\n", cdns3_role(cdns)->name);
 		goto err;
 	}
 
-	dev_dbg(dev, "Cadence USB3 core: probe succeed\n");
+	dev_dbg(cdns->dev, "Cadence USB3 core: probe succeed\n");
 
 	return 0;
 

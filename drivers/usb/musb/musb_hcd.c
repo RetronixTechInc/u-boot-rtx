@@ -8,11 +8,13 @@
  */
 
 #include <common.h>
+#include <log.h>
 #include <usb.h>
+#include <linux/delay.h>
 #include "musb_hcd.h"
 
 /* MSC control transfers */
-#define USB_MSC_BBB_RESET 	0xFF
+#define USB_MSC_BBB_RESET	0xFF
 #define USB_MSC_BBB_GET_MAX_LUN	0xFE
 
 /* Endpoint configuration information */
@@ -325,7 +327,7 @@ static int ctrlreq_out_data_phase(struct usb_device *dev, u32 len, void *buffer)
 
 		/* Set TXPKTRDY bit */
 		csr = readw(&musbr->txcsr);
-			
+
 		csr |= MUSB_CSR0_TXPKTRDY;
 		csr |= MUSB_CSR0_H_DIS_PING;
 		writew(csr, &musbr->txcsr);

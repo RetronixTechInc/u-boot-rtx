@@ -13,11 +13,12 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <power/regulator.h>
-#if defined (CONFIG_TARGET_IMX8MM_AB2) || defined(CONFIG_TARGET_IMX8MM_DDR4_AB2)
+#if defined(CONFIG_IMX8MM)
 #include <asm/arch/imx8mm_pins.h>
 #else
 #include <asm/arch/imx8mn_pins.h>
 #endif
+#include <asm/global_data.h>
 #include <asm/arch/sys_proto.h>
 #include <asm-generic/gpio.h>
 #include <asm/mach-imx/dma.h>
@@ -25,6 +26,8 @@
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/mach-imx/mxc_i2c.h>
 #include <spl.h>
+#include <usb.h>
+#include "../common/tcpc.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -33,7 +36,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
 #define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
 
-#if defined (CONFIG_TARGET_IMX8MM_AB2) || defined(CONFIG_TARGET_IMX8MM_DDR4_AB2)
+#if defined(CONFIG_IMX8MM)
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MM_PAD_UART2_RXD_UART2_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 	IMX8MM_PAD_UART2_TXD_UART2_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -52,7 +55,7 @@ static iomux_v3_cfg_t const pwr_en_ana[] = {
 };
 #endif
 
-#if defined(CONFIG_TARGET_IMX8MN_AB2) || defined(CONFIG_TARGET_IMX8MN_DDR4_AB2)
+#if defined(CONFIG_IMX8MN)
 static iomux_v3_cfg_t const uart_pads[] = {
 	IMX8MN_PAD_UART2_RXD__UART2_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 	IMX8MN_PAD_UART2_TXD__UART2_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
@@ -101,6 +104,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
+#ifdef CONFIG_FEC_MXC
 static int setup_fec(void)
 {
 	struct iomuxc_gpr_base_regs *gpr =
@@ -120,6 +124,75 @@ int board_phy_config(struct phy_device *phydev)
 
 	return 0;
 }
+#endif
+
+#ifdef CONFIG_USB_TCPC
+struct tcpc_port port1;
+
+struct tcpc_port_config port1_config = {
+	.i2c_bus = 1, /* i2c2*/
+	.addr = 0x1d,
+	.port_type = TYPEC_PORT_UFP,
+	.max_snk_mv = 5000,
+	.max_snk_ma = 3000,
+	.max_snk_mw = 15000,
+	.op_snk_mv = 9000,
+};
+
+static int setup_typec(void)
+{
+	int ret;
+
+	ret = tcpc_init(&port1, port1_config, NULL);
+	if (ret) {
+		printf("%s: tcpc port1 init failed, err=%d\n", __func__, ret);
+	}
+
+	return ret;
+}
+
+int board_usb_init(int index, enum usb_init_type init)
+{
+	int ret = 0;
+
+	imx8m_usb_power(index, true);
+
+	if (init == USB_INIT_HOST)
+		tcpc_setup_dfp_mode(&port1);
+	else
+		tcpc_setup_ufp_mode(&port1);
+
+	return ret;
+}
+
+int board_usb_cleanup(int index, enum usb_init_type init)
+{
+	int ret = 0;
+
+	if (init == USB_INIT_HOST)
+		ret = tcpc_disable_src_vbus(&port1);
+
+	imx8m_usb_power(index, false);
+
+	return ret;
+}
+
+int board_ehci_usb_phy_mode(struct udevice *dev)
+{
+	enum typec_cc_polarity pol;
+	enum typec_cc_state state;
+	int ret = 0;
+
+	tcpc_setup_ufp_mode(&port1);
+	ret = tcpc_get_cc_status(&port1, &pol, &state);
+	if (!ret) {
+		if (state == TYPEC_STATE_SRC_RD_RA || state == TYPEC_STATE_SRC_RD)
+			return USB_INIT_HOST;
+	}
+
+	return USB_INIT_DEVICE;
+}
+#endif
 
 int board_init(void)
 {
@@ -127,28 +200,35 @@ int board_init(void)
 	regulators_enable_boot_on(false);
 #endif
 
+#ifdef CONFIG_USB_TCPC
+	setup_typec();
+#endif
+
 #ifdef CONFIG_FEC_MXC
 	setup_fec();
 #endif
 
 #ifdef CONFIG_NAND_MXS
-	setup_gpmi_nand();
+		setup_gpmi_nand();
 #endif
+
 	return 0;
 }
 
 int board_late_init(void)
 {
-#ifdef CONFIG_ENV_IS_IN_MMC
-	board_late_mmc_env_init();
-#endif
-#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-	env_set("board_name", "AB2");
-#if defined (CONFIG_TARGET_IMX8MM_AB2) || defined(CONFIG_TARGET_IMX8MM_DDR4_AB2)
-	env_set("board_rev", "iMX8MM");
-#else
-	env_set("board_rev", "iMX8MN");
-#endif
-#endif
+	if (IS_ENABLED(CONFIG_ENV_IS_IN_MMC))
+		board_late_mmc_env_init();
+
+	if (IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG))
+		env_set("board_name", "AB2");
+
+	if (IS_ENABLED(CONFIG_IMX8MM))
+		env_set("board_rev", "iMX8MM");
+	else {
+		env_set("board_rev", "iMX8MN");
+		env_set("board", "imx8mn_ab2");
+	}
+
 	return 0;
 }

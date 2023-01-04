@@ -8,6 +8,7 @@
 #include <dm.h>
 #include <generic-phy.h>
 #include <linux/usb/gadget.h>
+#include <linux/bug.h>
 #include <dm/device-internal.h>
 #include "core.h"
 #include "gadget.h"
@@ -107,9 +108,9 @@ U_BOOT_DRIVER(cdns3_generic_peripheral) = {
 	.name	= "cdns3-generic-peripheral",
 	.id	= UCLASS_USB_GADGET_GENERIC,
 	.of_match = cdns3_generic_peripheral_ids,
-	.ofdata_to_platdata = cdns3_generic_peripheral_ofdata_to_platdata,
+	.of_to_plat = cdns3_generic_peripheral_ofdata_to_platdata,
 	.probe = cdns3_generic_peripheral_probe,
 	.remove = cdns3_generic_peripheral_remove,
 	.handle_interrupts = cdns3_generic_handle_interrupts,
-	.priv_auto_alloc_size = sizeof(struct cdns3_generic_peripheral),
+	.priv_auto = sizeof(struct cdns3_generic_peripheral),
 };

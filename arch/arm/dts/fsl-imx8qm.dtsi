@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2018 NXP
+ * Copyright 2018, 2021 NXP
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -56,7 +56,6 @@
 		i2c8 = &i2c1_lvds1;
 		spi0 = &flexspi0;
 		pci0 = &pciea;
-		pci1 = &pcieb;
 		display0 = &ldb1;
 		display1 = &ldb2;
 		video0 = &dpu1;

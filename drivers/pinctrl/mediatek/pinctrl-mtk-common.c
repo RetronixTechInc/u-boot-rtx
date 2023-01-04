@@ -11,6 +11,7 @@
 #include <dm/pinctrl.h>
 #include <asm/io.h>
 #include <asm-generic/gpio.h>
+#include <linux/bitops.h>
 
 #include "pinctrl-mtk-common.h"
 
@@ -218,7 +219,7 @@ static const char *mtk_get_pin_name(struct udevice *dev,
 {
 	struct mtk_pinctrl_priv *priv = dev_get_priv(dev);
 
-	if (!priv->soc->grps[selector].name)
+	if (!priv->soc->pins[selector].name)
 		return mtk_pinctrl_dummy_name;
 
 	return priv->soc->pins[selector].name;
@@ -229,6 +230,19 @@ static int mtk_get_pins_count(struct udevice *dev)
 	struct mtk_pinctrl_priv *priv = dev_get_priv(dev);
 
 	return priv->soc->npins;
+}
+
+static int mtk_get_pin_muxing(struct udevice *dev, unsigned int selector,
+			      char *buf, int size)
+{
+	int val, err;
+
+	err = mtk_hw_get_value(dev, selector, PINCTRL_PIN_REG_MODE, &val);
+	if (err)
+		return err;
+
+	snprintf(buf, size, "Aux Func.%d", val);
+	return 0;
 }
 
 static const char *mtk_get_group_name(struct udevice *dev,
@@ -295,7 +309,7 @@ static const struct pinconf_param mtk_conf_params[] = {
 };
 
 
-int mtk_pinconf_bias_set_v0(struct udevice *dev, u32 pin, u32 arg)
+int mtk_pinconf_bias_set_v0(struct udevice *dev, u32 pin, u32 arg, u32 val)
 {
 	int err, disable, pullup;
 
@@ -322,12 +336,14 @@ int mtk_pinconf_bias_set_v0(struct udevice *dev, u32 pin, u32 arg)
 	return 0;
 }
 
-int mtk_pinconf_bias_set_v1(struct udevice *dev, u32 pin, u32 arg)
+int mtk_pinconf_bias_set_v1(struct udevice *dev, u32 pin, u32 arg, u32 val)
 {
-	int err, disable, pullup;
+	int err, disable, pullup, r0, r1;
 
 	disable = (arg == PIN_CONFIG_BIAS_DISABLE);
 	pullup = (arg == PIN_CONFIG_BIAS_PULL_UP);
+	r0 = !!(val & 1);
+	r1 = !!(val & 2);
 
 	if (disable) {
 		err = mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_PULLEN, 0);
@@ -341,6 +357,13 @@ int mtk_pinconf_bias_set_v1(struct udevice *dev, u32 pin, u32 arg)
 				       pullup);
 		if (err)
 			return err;
+	}
+
+	/* Also set PUPD/R0/R1 if the pin has them */
+	err = mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_PUPD, !pullup);
+	if (err != -EINVAL) {
+		mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_R0, r0);
+		mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_R1, r1);
 	}
 
 	return 0;
@@ -418,9 +441,9 @@ static int mtk_pinconf_set(struct udevice *dev, unsigned int pin,
 	case PIN_CONFIG_BIAS_PULL_UP:
 	case PIN_CONFIG_BIAS_PULL_DOWN:
 		if (rev == MTK_PINCTRL_V0)
-			err = mtk_pinconf_bias_set_v0(dev, pin, param);
+			err = mtk_pinconf_bias_set_v0(dev, pin, param, arg);
 		else
-			err = mtk_pinconf_bias_set_v1(dev, pin, param);
+			err = mtk_pinconf_bias_set_v1(dev, pin, param, arg);
 		if (err)
 			goto err;
 		break;
@@ -502,6 +525,7 @@ static int mtk_pinconf_group_set(struct udevice *dev,
 const struct pinctrl_ops mtk_pinctrl_ops = {
 	.get_pins_count = mtk_get_pins_count,
 	.get_pin_name = mtk_get_pin_name,
+	.get_pin_muxing = mtk_get_pin_muxing,
 	.get_groups_count = mtk_get_groups_count,
 	.get_group_name = mtk_get_group_name,
 	.get_functions_count = mtk_get_functions_count,
@@ -516,6 +540,8 @@ const struct pinctrl_ops mtk_pinctrl_ops = {
 	.set_state = pinctrl_generic_set_state,
 };
 
+#if CONFIG_IS_ENABLED(DM_GPIO) || \
+    (defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_GPIO))
 static int mtk_gpio_get(struct udevice *dev, unsigned int off)
 {
 	int val, err;
@@ -605,6 +631,7 @@ static int mtk_gpiochip_register(struct udevice *parent)
 	if (!drv)
 		return -ENOENT;
 
+	ret = -ENOENT;
 	dev_for_each_subnode(node, parent)
 		if (ofnode_read_bool(node, "gpio-controller")) {
 			ret = 0;
@@ -622,22 +649,24 @@ static int mtk_gpiochip_register(struct udevice *parent)
 
 	return 0;
 }
+#endif
 
 int mtk_pinctrl_common_probe(struct udevice *dev,
 			     struct mtk_pinctrl_soc *soc)
 {
 	struct mtk_pinctrl_priv *priv = dev_get_priv(dev);
-	int ret;
+	int ret = 0;
 
 	priv->base = dev_read_addr_ptr(dev);
-	if (priv->base == (void *)FDT_ADDR_T_NONE)
+	if (!priv->base)
 		return -EINVAL;
 
 	priv->soc = soc;
 
+#if CONFIG_IS_ENABLED(DM_GPIO) || \
+    (defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_GPIO))
 	ret = mtk_gpiochip_register(dev);
-	if (ret)
-		return ret;
+#endif
 
-	return 0;
+	return ret;
 }

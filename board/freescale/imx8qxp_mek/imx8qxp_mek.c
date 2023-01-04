@@ -8,6 +8,8 @@
 #include <env.h>
 #include <errno.h>
 #include <init.h>
+#include <asm/global_data.h>
+#include <linux/delay.h>
 #include <linux/libfdt.h>
 #include <fsl_esdhc_imx.h>
 #include <fdt_support.h>
@@ -61,14 +63,6 @@ int board_early_init_f(void)
 		return ret;
 
 	setup_iomux_uart();
-
-/* Dual bootloader feature will require CAAM access, but JR0 and JR1 will be
- * assigned to seco for imx8, use JR3 instead.
- */
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_DUAL_BOOTLOADER)
-	sc_pm_set_resource_power_mode(-1, SC_R_CAAM_JR3, SC_PM_PW_MODE_ON);
-	sc_pm_set_resource_power_mode(-1, SC_R_CAAM_JR3_OUT, SC_PM_PW_MODE_ON);
-#endif
 
 	return 0;
 }
@@ -198,10 +192,12 @@ int board_eth_init(bd_t *bis)
 
 	return ret;
 }
-#endif
 
 int board_phy_config(struct phy_device *phydev)
 {
+	if (phydev->drv->config)
+		phydev->drv->config(phydev);
+
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x1f);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x8);
 
@@ -210,11 +206,9 @@ int board_phy_config(struct phy_device *phydev)
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x100);
 
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
-
 	return 0;
 }
+#endif
 #endif
 
 int checkboard(void)
@@ -288,7 +282,11 @@ static void setup_typec(void)
 	/* Enable SS MUX */
 	dm_gpio_set_dir_flags(&typec_en_desc, GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
 
-	tcpc_init(&port, port_config, &ss_mux_select);
+	ret = tcpc_init(&port, port_config, &ss_mux_select);
+	if (ret) {
+		printf("%s: tcpc init failed, err=%d\n", __func__, ret);
+		return;
+	}
 }
 #endif
 
@@ -339,7 +337,7 @@ int board_init(void)
 	setup_typec();
 #endif
 
-#ifdef CONFIG_SNVS_SEC_SC_AUTO
+#ifdef CONFIG_IMX_SNVS_SEC_SC_AUTO
 	{
 		int ret = snvs_security_sc_init();
 
@@ -361,13 +359,13 @@ void board_quiesce_devices(void)
 		"audio_ocram",
 	};
 
-	power_off_pd_devices(power_on_devices, ARRAY_SIZE(power_on_devices));
+	imx8_power_off_pd_devices(power_on_devices, ARRAY_SIZE(power_on_devices));
 }
 
 /*
  * Board specific reset that is system reset.
  */
-void reset_cpu(ulong addr)
+void reset_cpu(void)
 {
 	sc_pm_reboot(-1, SC_PM_RESET_TYPE_COLD);
 	while(1);
@@ -375,7 +373,7 @@ void reset_cpu(ulong addr)
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
-int ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	return 0;
 }
@@ -384,11 +382,9 @@ int ft_board_setup(void *blob, bd_t *bd)
 int board_late_init(void)
 {
 	char *fdt_file;
-	bool m4_boot;
+	bool m4_booted;
 
-#ifndef CONFIG_ANDROID_AUTO_SUPPORT
 	build_info();
-#endif
 
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 	env_set("board_name", "MEK");
@@ -405,16 +401,16 @@ int board_late_init(void)
 #endif
 
 	fdt_file = env_get("fdt_file");
-	m4_boot = check_m4_parts_boot();
+	m4_booted = m4_parts_booted();
 
 	if (fdt_file && !strcmp(fdt_file, "undefined")) {
 #ifdef CONFIG_TARGET_IMX8DX_MEK
-		if (m4_boot)
+		if (m4_booted)
 			env_set("fdt_file", "imx8dx-mek-rpmsg.dtb");
 		else
 			env_set("fdt_file", "imx8dx-mek.dtb");
 #else
-		if (m4_boot)
+		if (m4_booted)
 			env_set("fdt_file", "imx8qxp-mek-rpmsg.dtb");
 		else
 			env_set("fdt_file", "imx8qxp-mek.dtb");
@@ -428,15 +424,6 @@ int board_late_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_FSL_FASTBOOT
-#ifdef CONFIG_ANDROID_RECOVERY
-int is_recovery_key_pressing(void)
-{
-	return 0; /*TODO*/
-}
-#endif /*CONFIG_ANDROID_RECOVERY*/
-#endif /*CONFIG_FSL_FASTBOOT*/
-
 #ifdef CONFIG_ANDROID_SUPPORT
 bool is_power_key_pressed(void) {
 	sc_bool_t status = SC_FALSE;
@@ -445,3 +432,12 @@ bool is_power_key_pressed(void) {
 	return (bool)status;
 }
 #endif
+
+#ifdef CONFIG_FSL_FASTBOOT
+#ifdef CONFIG_ANDROID_RECOVERY
+int is_recovery_key_pressing(void)
+{
+	return 0; /* TODO */
+}
+#endif /* CONFIG_ANDROID_RECOVERY */
+#endif /* CONFIG_FSL_FASTBOOT */

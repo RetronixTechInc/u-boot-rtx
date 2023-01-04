@@ -5,6 +5,8 @@
  */
 
 #include <common.h>
+#include <log.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm.h>
 #include <dm/lists.h>
@@ -194,7 +196,7 @@ static int imx_m4_mu_probe(struct udevice *dev)
 
 	debug("%s(dev=%p) (priv=%p)\n", __func__, dev, priv);
 
-	addr = devfdt_get_addr(dev);
+	addr = dev_read_addr(dev);
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 
@@ -237,5 +239,5 @@ U_BOOT_DRIVER(imx_m4_mu) = {
 	.bind		= imx_m4_mu_bind,
 	.remove		= imx_m4_mu_remove,
 	.ops		= &imx_m4_mu_ops,
-	.priv_auto_alloc_size = sizeof(struct imx_m4_mu),
+	.priv_auto = sizeof(struct imx_m4_mu),
 };

@@ -6,6 +6,7 @@
  */
 
 #include <hang.h>
+#include <image.h>
 #include <asm/unaligned.h>
 #include <common.h>
 #include <command.h>
@@ -102,7 +103,8 @@ static int k2_hs_bm_auth(int cmd, void *arg1)
 	return  result;
 }
 
-void board_fit_image_post_process(void **p_image, size_t *p_size)
+void board_fit_image_post_process(const void *fit, int node, void **p_image,
+				  size_t *p_size)
 {
 	int result = 0;
 	void *image = *p_image;

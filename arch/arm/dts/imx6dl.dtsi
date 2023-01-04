@@ -89,6 +89,18 @@
 			fsl,max_ddr_freq = <400000000>;
 		};
 
+		ocram: sram@905000 {
+			compatible = "mmio-sram";
+			reg = <0x905000 0x1B000>;
+			clocks = <&clks IMX6QDL_CLK_OCRAM>;
+		};
+
+		ocram_optee: sram@918000 {
+			compatible = "fsl,optee-lpm-sram";
+			reg = <0x918000 0x8000>;
+			overw_reg = <&ocram 0x905000 0x13000>;
+		};
+
 		gpu: gpu@00130000 {
 			compatible = "fsl,imx6dl-gpu", "fsl,imx6q-gpu";
 			reg = <0x00130000 0x4000>, <0x00134000 0x4000>,
@@ -109,64 +121,42 @@
 			power-domains = <&pd_pu>;
 		};
 
-		ocram: sram@00905000 {
-			compatible = "mmio-sram";
-			reg = <0x00905000 0x1B000>;
-			clocks = <&clks IMX6QDL_CLK_OCRAM>;
-		};
-
-		ocram_optee: sram@00918000 {
-			compatible = "fsl,optee-lpm-sram";
-			reg = <0x00918000 0x8000>;
-			overw_reg = <&ocram 0x00905000 0x13000>;
-		};
-
-		aips1: aips-bus@02000000 {
-			iomuxc: iomuxc@020e0000 {
-				compatible = "fsl,imx6dl-iomuxc";
-			};
-
-			dcic2: dcic@020e8000 {
-				clocks = <&clks IMX6QDL_CLK_DCIC1 >,
-						<&clks IMX6QDL_CLK_DCIC2>; /* DCIC2 depend on DCIC1 clock in imx6dl*/
-				clock-names = "dcic", "disp-axi";
-			};
-
-			pxp: pxp@020f0000 {
+		aips1: bus@2000000 {
+			pxp: pxp@20f0000 {
 				compatible = "fsl,imx6dl-pxp-dma";
-				reg = <0x020f0000 0x4000>;
+				reg = <0x20f0000 0x4000>;
 				interrupts = <0 98 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_IPU2>, <&clks IMX6QDL_CLK_DUMMY>;
 				clock-names = "pxp-axi", "disp-axi";
 				status = "disabled";
 			};
 
-			epdc: epdc@020f4000 {
+			epdc: epdc@20f4000 {
 				compatible = "fsl,imx6dl-epdc";
-				reg = <0x020f4000 0x4000>;
+				reg = <0x20f4000 0x4000>;
 				interrupts = <0 97 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&clks IMX6QDL_CLK_IPU2>, <&clks IMX6QDL_CLK_IPU2_DI1>;
 				clock-names = "epdc_axi", "epdc_pix";
 			};
 
-			lcdif: lcdif@020f8000 {
-				reg = <0x020f8000 0x4000>;
+			lcdif: lcdif@20f8000 {
+				reg = <0x20f8000 0x4000>;
 				interrupts = <0 39 IRQ_TYPE_LEVEL_HIGH>;
 			};
 		};
 
-		aips2: aips-bus@02100000 {
-			mipi_dsi: mipi@021e0000 {
+		aips2: bus@2100000 {
+			mipi_dsi: mipi@21e0000 {
 				compatible = "fsl,imx6dl-mipi-dsi";
-				reg = <0x021e0000 0x4000>;
-				interrupts = <0 102 0x04>;
+				reg = <0x21e0000 0x4000>;
+				interrupts = <0 102 0x4>;
 				gpr = <&gpr>;
 				clocks = <&clks IMX6QDL_CLK_HSI_TX>, <&clks IMX6QDL_CLK_VIDEO_27M>;
 				clock-names = "mipi_pllref_clk", "mipi_cfg_clk";
 				status = "disabled";
 			};
 
-			i2c4: i2c@021f8000 {
+			i2c4: i2c@21f8000 {
 				#address-cells = <1>;
 				#size-cells = <0>;
 				compatible = "fsl,imx6q-i2c", "fsl,imx21-i2c";
@@ -192,6 +182,12 @@
 		compatible = "fsl,imx-gpu-subsystem";
 		cores = <&gpu_2d>, <&gpu_3d>;
 	};
+};
+
+&dcic2 {
+	clocks = <&clks IMX6QDL_CLK_DCIC1 >,
+		<&clks IMX6QDL_CLK_DCIC2>; /* DCIC2 depend on DCIC1 clock in imx6dl*/
+	clock-names = "dcic", "disp-axi";
 };
 
 &gpio1 {
@@ -248,7 +244,7 @@
 };
 
 &gpr {
-	ipu1_csi0_mux: ipu1_csi0_mux@34 {
+	ipu1_csi0_mux {
 		compatible = "video-mux";
 		mux-controls = <&mux 0>;
 		#address-cells = <1>;
@@ -302,7 +298,7 @@
 		};
 	};
 
-	ipu1_csi1_mux: ipu1_csi1_mux@34 {
+	ipu1_csi1_mux {
 		compatible = "video-mux";
 		mux-controls = <&mux 1>;
 		#address-cells = <1>;
@@ -365,6 +361,10 @@
 	compatible = "fsl,imx6dl-hdmi";
 };
 
+&iomuxc {
+	compatible = "fsl,imx6dl-iomuxc";
+};
+
 &ipu1_csi1 {
 	ipu1_csi1_from_ipu1_csi1_mux: endpoint {
 		remote-endpoint = <&ipu1_csi1_mux_to_ipu1_csi1>;
@@ -394,10 +394,12 @@
 		#size-cells = <0>;
 
 		mipi_vc0_to_ipu1_csi0_mux: endpoint@0 {
+			reg = <0>;
 			remote-endpoint = <&ipu1_csi0_mux_from_mipi_vc0>;
 		};
 
 		mipi_vc0_to_ipu1_csi1_mux: endpoint@1 {
+			reg = <1>;
 			remote-endpoint = <&ipu1_csi1_mux_from_mipi_vc0>;
 		};
 	};
@@ -408,10 +410,12 @@
 		#size-cells = <0>;
 
 		mipi_vc1_to_ipu1_csi0_mux: endpoint@0 {
+			reg = <0>;
 			remote-endpoint = <&ipu1_csi0_mux_from_mipi_vc1>;
 		};
 
 		mipi_vc1_to_ipu1_csi1_mux: endpoint@1 {
+			reg = <1>;
 			remote-endpoint = <&ipu1_csi1_mux_from_mipi_vc1>;
 		};
 	};
@@ -422,10 +426,12 @@
 		#size-cells = <0>;
 
 		mipi_vc2_to_ipu1_csi0_mux: endpoint@0 {
+			reg = <0>;
 			remote-endpoint = <&ipu1_csi0_mux_from_mipi_vc2>;
 		};
 
 		mipi_vc2_to_ipu1_csi1_mux: endpoint@1 {
+			reg = <1>;
 			remote-endpoint = <&ipu1_csi1_mux_from_mipi_vc2>;
 		};
 	};
@@ -436,10 +442,12 @@
 		#size-cells = <0>;
 
 		mipi_vc3_to_ipu1_csi0_mux: endpoint@0 {
+			reg = <0>;
 			remote-endpoint = <&ipu1_csi0_mux_from_mipi_vc3>;
 		};
 
 		mipi_vc3_to_ipu1_csi1_mux: endpoint@1 {
+			reg = <1>;
 			remote-endpoint = <&ipu1_csi1_mux_from_mipi_vc3>;
 		};
 	};

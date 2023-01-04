@@ -4,6 +4,8 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
+#include <init.h>
+#include <net.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/mx7-pins.h>
@@ -23,6 +25,7 @@
 #include "../common/pfuze.h"
 #include <asm/arch/crm_regs.h>
 #include <asm/mach-imx/video.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_VIDEO_MXS
 #include <linux/fb.h>
@@ -219,7 +222,7 @@ int board_qspi_init(void)
 #endif
 
 #ifdef CONFIG_FEC_MXC
-int board_eth_init(bd_t *bis)
+int board_eth_init(struct bd_info *bis)
 {
 	int ret;
 

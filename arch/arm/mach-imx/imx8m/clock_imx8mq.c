@@ -6,11 +6,13 @@
  */
 
 #include <common.h>
+#include <command.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include <errno.h>
+#include <linux/delay.h>
 #include <linux/iopoll.h>
 
 static struct anamix_pll *ana_pll = (struct anamix_pll *)ANATOP_BASE_ADDR;
@@ -350,7 +352,7 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 {
 	u32 val;
 
-	switch(clk) {
+	switch (clk) {
 	case MXC_ARM_CLK:
 		return get_arm_core_clk();
 	case MXC_IPG_CLK:
@@ -819,11 +821,11 @@ int clock_init(void)
 	 * We set ARM clock to 1Ghz for consumer, 800Mhz for industrial
 	 */
 	grade = get_cpu_temp_grade(NULL, NULL);
-	if (!grade) {
+	if (!grade)
 		frac_pll_init(ANATOP_ARM_PLL, FRAC_PLL_OUT_1000M);
-	} else {
+	else
 		frac_pll_init(ANATOP_ARM_PLL, FRAC_PLL_OUT_800M);
-	}
+
 	/* Bypass CCM A53 ROOT, Switch to ARM PLL -> MUX-> CPU */
 	clock_set_target_val(CORE_SEL_CFG, CLK_ROOT_SOURCE_SEL(1));
 
@@ -880,8 +882,8 @@ int imx8m_dcss_clock_init(u32 pixclk)
  * Dump some clockes.
  */
 #ifndef CONFIG_SPL_BUILD
-static int do_imx8m_showclocks(cmd_tbl_t *cmdtp, int flag, int argc,
-		       char * const argv[])
+static int do_imx8m_showclocks(struct cmd_tbl *cmdtp, int flag, int argc,
+			       char *const argv[])
 {
 	u32 freq;
 

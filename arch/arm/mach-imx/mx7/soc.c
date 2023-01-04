@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2015-2016 Freescale Semiconductor, Inc.
- * Copyright 2017-2018 NXP
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.
+ * Copyright 2021 NXP
  */
 
 #include <common.h>
+#include <init.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -13,12 +14,15 @@
 #include <asm/mach-imx/hab.h>
 #include <asm/mach-imx/rdc-sema.h>
 #include <asm/arch/imx-rdc.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/sys_proto.h>
 #include <asm/arch/crm_regs.h>
+#include <asm/bootm.h>
 #include <dm.h>
 #include <env.h>
 #include <imx_thermal.h>
-#include <fsl_sec.h>
 #include <asm/setup.h>
+#include <linux/delay.h>
 #include <fsl_wdog.h>
 
 #define IOMUXC_GPR1		0x4
@@ -51,9 +55,6 @@
 #define BM_GPC_PGC_ACK_SEL_A7_DUMMY_PDN_ACK	0x8000
 
 #define BM_GPC_PGC_CORE_PUPSCR			0x7fff80
-#ifdef CONFIG_IMX_SEC_INIT
-#include <fsl_caam.h>
-#endif
 
 #if defined(CONFIG_IMX_THERMAL)
 static const struct imx_thermal_plat imx7_thermal_plat = {
@@ -62,9 +63,9 @@ static const struct imx_thermal_plat imx7_thermal_plat = {
 	.fuse_word = 3,
 };
 
-U_BOOT_DEVICE(imx7_thermal) = {
+U_BOOT_DRVINFO(imx7_thermal) = {
 	.name = "imx_thermal",
-	.platdata = &imx7_thermal_plat,
+	.plat = &imx7_thermal_plat,
 };
 #endif
 
@@ -221,12 +222,12 @@ const struct rproc_att hostmap[] = {
 	{ 0x00940000, 0x00940000, 0x20000 }, /* OCRAM_PXP */
 	{ 0x20240000, 0x00940000, 0x20000 }, /* OCRAM_PXP */
 	{ 0x10000000, 0x80000000, 0x0fff0000 }, /* DDR Code alias */
-	{ 0x80000000, 0x80000000, 0xe0000000 }, /* DDRC */
+	{ 0x80000000, 0x80000000, 0x60000000 }, /* DDRC */
 	{ /* sentinel */ }
 };
 #endif
 
-#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+#if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT)
 /* enable all periherial can be accessed in nosec mode */
 static void init_csu(void)
 {
@@ -360,11 +361,9 @@ int arch_cpu_init(void)
 	init_snvs();
 
 	imx_gpcv2_init();
-#ifdef CONFIG_IMX_SEC_INIT
-	/* Secure init function such RNG */
-	imx_sec_init();
-#endif
 	configure_tzc380();
+
+	enable_ca7_smp();
 
 	return 0;
 }
@@ -380,22 +379,35 @@ int arch_cpu_init(void)
 #ifdef CONFIG_ARCH_MISC_INIT
 int arch_misc_init(void)
 {
-#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+#if defined(CONFIG_SERIAL_TAG) || defined(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)
+	struct tag_serialnr serialnr;
+	char serial_string[0x20];
+
 	if (is_mx7d())
 		env_set("soc", "imx7d");
 	else
 		env_set("soc", "imx7s");
+
+	/* Set serial# standard environment variable based on OTP settings */
+	get_board_serial(&serialnr);
+	snprintf(serial_string, sizeof(serial_string), "0x%08x%08x",
+		 serialnr.low, serialnr.high);
+	env_set("serial#", serial_string);
 #endif
 
-#ifdef CONFIG_FSL_CAAM
-	sec_init();
-#endif
+	if (IS_ENABLED(CONFIG_FSL_CAAM)) {
+		struct udevice *dev;
+		int ret;
+		ret = uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(caam_jr), &dev);
+		if (ret)
+			printf("Failed to initialize caam_jr: %d\n", ret);
+	}
 
 	return 0;
 }
 #endif
 
-#ifdef CONFIG_SERIAL_TAG
+#if defined(CONFIG_SERIAL_TAG) || defined(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)
 /*
  * OCOTP_TESTER
  * i.MX 7Solo Applications Processor Reference Manual, Rev. 0.1, 08/2016
@@ -458,6 +470,22 @@ void s_init(void)
 #endif
 	return;
 }
+
+#ifndef CONFIG_SPL_BUILD
+const struct boot_mode soc_boot_modes[] = {
+	{"normal",	MAKE_CFGVAL(0x00, 0x00, 0x00, 0x00)},
+	{"primary",	MAKE_CFGVAL_PRIMARY_BOOT},
+	{"secondary",	MAKE_CFGVAL_SECONDARY_BOOT},
+	{NULL,		0},
+};
+
+int boot_mode_getprisec(void)
+{
+	struct src *psrc = (struct src *)SRC_BASE_ADDR;
+
+	return !!(readl(&psrc->gpr10) & IMX7_SRC_GPR10_PERSIST_SECONDARY_BOOT);
+}
+#endif
 
 void reset_misc(void)
 {

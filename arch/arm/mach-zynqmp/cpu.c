@@ -5,12 +5,17 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <time.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/armv8/mmu.h>
+#include <asm/cache.h>
+#include <asm/global_data.h>
 #include <asm/io.h>
 #include <zynqmp_firmware.h>
+#include <asm/cache.h>
+#include <dm/platdata.h>
 
 #define ZYNQ_SILICON_VER_MASK	0xF000
 #define ZYNQ_SILICON_VER_SHIFT	12
@@ -116,7 +121,7 @@ void tcm_init(u8 mode)
 #endif
 
 #ifdef CONFIG_SYS_MEM_RSVD_FOR_MMU
-int reserve_mmu(void)
+int arm_reserve_mmu(void)
 {
 	tcm_init(TCM_LOCK);
 	gd->arch.tlb_size = PGTABLE_SIZE;
@@ -214,3 +219,7 @@ int zynqmp_mmio_read(const u32 address, u32 *value)
 
 	return ret;
 }
+
+U_BOOT_DRVINFO(soc_xilinx_zynqmp) = {
+	.name = "soc_xilinx_zynqmp",
+};

@@ -444,15 +444,17 @@
 &flexspi0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexspi0>;
+	nxp,fspi-dll-slvdly = <4>;
 	status = "okay";
 
 	flash0: mt35xu512aba@0 {
 		reg = <0>;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "spi-flash";
-		spi-max-frequency = <29000000>;
-		spi-nor,ddr-quad-read-dummy = <8>;
+		compatible = "jedec,spi-nor";
+		spi-max-frequency = <133000000>;
+		spi-tx-bus-width = <8>;
+		spi-rx-bus-width = <8>;
 	};
 };
 
@@ -487,10 +489,6 @@
 	fsl,ar8031-phy-fixup;
 	fsl,magic-packet;
 	status = "okay";
-
-	phy-reset-gpios = <&pca6416_a 2 GPIO_ACTIVE_LOW>;
-	phy-reset-duration = <10>;
-	phy-reset-post-delay = <150>;
 
 	mdio {
 		#address-cells = <1>;
@@ -546,6 +544,7 @@
 
 &usbotg1 {
 	vbus-supply = <&reg_usb_otg1_vbus>;
+	dr_mode = "otg";
 	srp-disable;
 	hnp-disable;
 	adp-disable;
@@ -556,6 +555,7 @@
 
 &usbotg2 {
 	vbus-supply = <&reg_usb_otg2_vbus>;
+	dr_mode = "otg";
 	srp-disable;
 	hnp-disable;
 	adp-disable;

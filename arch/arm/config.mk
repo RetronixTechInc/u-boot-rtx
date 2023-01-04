@@ -11,13 +11,21 @@ CONFIG_STANDALONE_LOAD_ADDR = 0xc100000
 endif
 endif
 
-CFLAGS_NON_EFI := -fno-pic -ffixed-r9 -ffunction-sections -fdata-sections
+CFLAGS_NON_EFI := -fno-pic -ffixed-r9 -ffunction-sections -fdata-sections \
+		  -fstack-protector-strong
 CFLAGS_EFI := -fpic -fshort-wchar
 
+ifneq ($(CONFIG_LTO)$(CONFIG_USE_PRIVATE_LIBGCC),yy)
 LDFLAGS_FINAL += --gc-sections
-PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections \
-		     -fno-common -ffixed-r9
+endif
+
+ifndef CONFIG_LTO
+PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections
+endif
+
+PLATFORM_RELFLAGS += -fno-common -ffixed-r9
 PLATFORM_RELFLAGS += $(call cc-option, -msoft-float) \
+		     $(call cc-option,-mgeneral-regs-only) \
       $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
 
 # LLVM support
@@ -65,7 +73,8 @@ endif
 checkgcc6:
 	@if test "$(call cc-name)" = "gcc" -a \
 			"$(call cc-version)" -lt "0600"; then \
-		echo '*** Your GCC is older than 6.0 and will not be supported'; \
+		echo '*** Your GCC is older than 6.0 and is not supported'; \
+		false; \
 	fi
 
 
@@ -121,7 +130,7 @@ endif
 
 ifneq ($(CONFIG_SPL_BUILD),y)
 # Check that only R_ARM_RELATIVE relocations are generated.
-ALL-y += checkarmreloc
+INPUTS-y += checkarmreloc
 # The movt / movw can hardcode 16 bit parts of the addresses in the
 # instruction. Relocation is not supported for that case, so disable
 # such usage by requiring word relocations.
@@ -150,24 +159,26 @@ ifdef CONFIG_EFI_LOADER
 OBJCOPYFLAGS += -j .efi_runtime -j .efi_runtime_rel
 endif
 
+ifdef CONFIG_MACH_IMX
 ifdef CONFIG_IMX_M4_BIND
 OBJCOPYFLAGS += -j .firmware_image
 endif
 
-ifneq ($(CONFIG_IMX_CONFIG),)
+ifneq ($(CONFIG_IMX_CONFIG),"")
 ifdef CONFIG_SPL
 ifndef CONFIG_SPL_BUILD
-ALL-y += SPL
+INPUTS-y += SPL
 endif
 else
 ifeq ($(CONFIG_OF_SEPARATE),y)
-ALL-y += u-boot-dtb.imx
+INPUTS-y += u-boot-dtb.imx
 else
-ALL-y += u-boot.imx
+INPUTS-y += u-boot.imx
 endif
 endif
 ifneq ($(CONFIG_VF610),)
-ALL-y += u-boot.vyb
+INPUTS-y += u-boot.vyb
+endif
 endif
 endif
 

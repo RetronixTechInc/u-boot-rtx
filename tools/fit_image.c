@@ -17,6 +17,7 @@
 #include "fit_common.h"
 #include "mkimage.h"
 #include <image.h>
+#include <string.h>
 #include <stdarg.h>
 #include <version.h>
 #include <u-boot/crc.h>
@@ -52,7 +53,7 @@ static int fit_add_file_data(struct image_tool_params *params, size_t size_inc,
 	}
 
 	/* for first image creation, add a timestamp at offset 0 i.e., root  */
-	if (params->datafile) {
+	if (params->datafile || params->reset_timestamp) {
 		time_t time = imagetool_get_source_date(params->cmdname,
 							sbuf.st_mtime);
 		ret = fit_set_timestamp(ptr, 0, time);
@@ -67,11 +68,14 @@ static int fit_add_file_data(struct image_tool_params *params, size_t size_inc,
 	}
 
 	if (!ret) {
-		ret = fit_add_verification_data(params->keydir, dest_blob, ptr,
+		ret = fit_add_verification_data(params->keydir,
+						params->keyfile, dest_blob, ptr,
 						params->comment,
 						params->require_keys,
 						params->engine_id,
-						params->cmdname);
+						params->cmdname,
+						params->algo_name,
+						&params->summary);
 	}
 
 	if (dest_blob) {
@@ -110,7 +114,7 @@ static int fit_calc_size(struct image_tool_params *params)
 		if (size < 0)
 			return -1;
 
-		/* Add space for properties */
+		/* Add space for properties and hash node */
 		total_size += size + 300;
 	}
 
@@ -192,6 +196,18 @@ static void get_basename(char *str, int size, const char *fname)
 }
 
 /**
+ * add_crc_node() - Add a hash node to request a CRC checksum for an image
+ *
+ * @fdt: Device tree to add to (in sequential-write mode)
+ */
+static void add_crc_node(void *fdt)
+{
+	fdt_begin_node(fdt, "hash-1");
+	fdt_property_string(fdt, FIT_ALGO_PROP, "crc32");
+	fdt_end_node(fdt);
+}
+
+/**
  * fit_write_images() - Write out a list of images to the FIT
  *
  * We always include the main image (params->datafile). If there are device
@@ -229,6 +245,7 @@ static int fit_write_images(struct image_tool_params *params, char *fdt)
 	ret = fdt_property_file(params, fdt, FIT_DATA_PROP, params->datafile);
 	if (ret)
 		return ret;
+	add_crc_node(fdt);
 	fdt_end_node(fdt);
 
 	/* Now the device tree files if available */
@@ -251,6 +268,7 @@ static int fit_write_images(struct image_tool_params *params, char *fdt)
 				    genimg_get_arch_short_name(params->arch));
 		fdt_property_string(fdt, FIT_COMP_PROP,
 				    genimg_get_comp_short_name(IH_COMP_NONE));
+		add_crc_node(fdt);
 		fdt_end_node(fdt);
 	}
 
@@ -268,7 +286,7 @@ static int fit_write_images(struct image_tool_params *params, char *fdt)
 					params->fit_ramdisk);
 		if (ret)
 			return ret;
-
+		add_crc_node(fdt);
 		fdt_end_node(fdt);
 	}
 
@@ -373,7 +391,7 @@ static int fit_build(struct image_tool_params *params, const char *fname)
 	size = fit_calc_size(params);
 	if (size < 0)
 		return -1;
-	buf = malloc(size);
+	buf = calloc(1, size);
 	if (!buf) {
 		fprintf(stderr, "%s: Out of memory (%d bytes)\n",
 			params->cmdname, size);
@@ -422,7 +440,7 @@ err_buf:
  */
 static int fit_extract_data(struct image_tool_params *params, const char *fname)
 {
-	void *buf;
+	void *buf = NULL;
 	int buf_ptr;
 	int fit_size, new_size;
 	int fd;
@@ -431,19 +449,14 @@ static int fit_extract_data(struct image_tool_params *params, const char *fname)
 	int ret;
 	int images;
 	int node;
+	int image_number;
+	int align_size;
 
+	align_size = params->bl_len ? params->bl_len : 4;
 	fd = mmap_fdt(params->cmdname, fname, 0, &fdt, &sbuf, false, false);
 	if (fd < 0)
 		return -EIO;
 	fit_size = fdt_totalsize(fdt);
-
-	/* Allocate space to hold the image data we will extract */
-	buf = malloc(fit_size);
-	if (!buf) {
-		ret = -ENOMEM;
-		goto err_munmap;
-	}
-	buf_ptr = 0;
 
 	images = fdt_path_offset(fdt, FIT_IMAGES_PATH);
 	if (images < 0) {
@@ -451,6 +464,18 @@ static int fit_extract_data(struct image_tool_params *params, const char *fname)
 		ret = -EINVAL;
 		goto err_munmap;
 	}
+	image_number = fdtdec_get_child_count(fdt, images);
+
+	/*
+	 * Allocate space to hold the image data we will extract,
+	 * extral space allocate for image alignment to prevent overflow.
+	 */
+	buf = calloc(1, fit_size + (align_size * image_number));
+	if (!buf) {
+		ret = -ENOMEM;
+		goto err_munmap;
+	}
+	buf_ptr = 0;
 
 	for (node = fdt_first_subnode(fdt, images);
 	     node >= 0;
@@ -478,17 +503,17 @@ static int fit_extract_data(struct image_tool_params *params, const char *fname)
 					buf_ptr);
 		}
 		fdt_setprop_u32(fdt, node, FIT_DATA_SIZE_PROP, len);
-
-		buf_ptr += (len + 3) & ~3;
+		buf_ptr += ALIGN(len, align_size);
 	}
 
 	/* Pack the FDT and place the data after it */
 	fdt_pack(fdt);
 
+	new_size = fdt_totalsize(fdt);
+	new_size = ALIGN(new_size, align_size);
+	fdt_set_totalsize(fdt, new_size);
 	debug("Size reduced from %x to %x\n", fit_size, fdt_totalsize(fdt));
 	debug("External data size %x\n", buf_ptr);
-	new_size = fdt_totalsize(fdt);
-	new_size = (new_size + 3) & ~3;
 	munmap(fdt, sbuf.st_size);
 
 	if (ftruncate(fd, new_size)) {
@@ -501,8 +526,9 @@ static int fit_extract_data(struct image_tool_params *params, const char *fname)
 	/* Check if an offset for the external data was set. */
 	if (params->external_offset > 0) {
 		if (params->external_offset < new_size) {
-			debug("External offset %x overlaps FIT length %x",
-			      params->external_offset, new_size);
+			fprintf(stderr,
+				"External offset %x overlaps FIT length %x\n",
+				params->external_offset, new_size);
 			ret = -EINVAL;
 			goto err;
 		}
@@ -527,8 +553,7 @@ static int fit_extract_data(struct image_tool_params *params, const char *fname)
 err_munmap:
 	munmap(fdt, sbuf.st_size);
 err:
-	if (buf)
-		free(buf);
+	free(buf);
 	close(fd);
 	return ret;
 }
@@ -547,30 +572,30 @@ static int fit_import_data(struct image_tool_params *params, const char *fname)
 	if (fd < 0)
 		return -EIO;
 	fit_size = fdt_totalsize(old_fdt);
-	data_base = (fit_size + 3) & ~3;
+	data_base = ALIGN(fit_size, 4);
 
 	/* Allocate space to hold the new FIT */
 	size = sbuf.st_size + 16384;
-	fdt = malloc(size);
+	fdt = calloc(1, size);
 	if (!fdt) {
 		fprintf(stderr, "%s: Failed to allocate memory (%d bytes)\n",
 			__func__, size);
 		ret = -ENOMEM;
-		goto err_has_fd;
+		goto err_munmap;
 	}
 	ret = fdt_open_into(old_fdt, fdt, size);
 	if (ret) {
 		debug("%s: Failed to expand FIT: %s\n", __func__,
 		      fdt_strerror(errno));
 		ret = -EINVAL;
-		goto err_has_fd;
+		goto err_munmap;
 	}
 
 	images = fdt_path_offset(fdt, FIT_IMAGES_PATH);
 	if (images < 0) {
 		debug("%s: Cannot find /images node: %d\n", __func__, images);
 		ret = -EINVAL;
-		goto err_has_fd;
+		goto err_munmap;
 	}
 
 	for (node = fdt_first_subnode(fdt, images);
@@ -585,15 +610,17 @@ static int fit_import_data(struct image_tool_params *params, const char *fname)
 			continue;
 		debug("Importing data size %x\n", len);
 
-		ret = fdt_setprop(fdt, node, "data", fdt + data_base + buf_ptr,
-				  len);
+		ret = fdt_setprop(fdt, node, "data",
+				  old_fdt + data_base + buf_ptr, len);
 		if (ret) {
 			debug("%s: Failed to write property: %s\n", __func__,
 			      fdt_strerror(ret));
 			ret = -EINVAL;
-			goto err_has_fd;
+			goto err_munmap;
 		}
 	}
+
+	munmap(old_fdt, sbuf.st_size);
 
 	/* Close the old fd so we can re-use it. */
 	close(fd);
@@ -609,78 +636,24 @@ static int fit_import_data(struct image_tool_params *params, const char *fname)
 		fprintf(stderr, "%s: Can't open %s: %s\n",
 			params->cmdname, fname, strerror(errno));
 		ret = -EIO;
-		goto err_no_fd;
+		goto err;
 	}
 	if (write(fd, fdt, new_size) != new_size) {
 		debug("%s: Failed to write external data to file %s\n",
 		      __func__, strerror(errno));
 		ret = -EIO;
-		goto err_has_fd;
+		goto err;
 	}
 
-	ret = 0;
-
-err_has_fd:
-	close(fd);
-err_no_fd:
-	munmap(old_fdt, sbuf.st_size);
 	free(fdt);
-	return ret;
-}
+	close(fd);
+	return 0;
 
-static int copyfile(const char *src, const char *dst)
-{
-	int fd_src = -1, fd_dst = -1;
-	void *buf = NULL;
-	ssize_t size;
-	size_t count;
-	int ret = -1;
-
-	fd_src = open(src, O_RDONLY);
-	if (fd_src < 0) {
-		printf("Can't open file %s (%s)\n", src, strerror(errno));
-		goto out;
-	}
-
-	fd_dst = open(dst, O_WRONLY | O_CREAT, 0700);
-	if (fd_dst < 0) {
-		printf("Can't open file %s (%s)\n", dst, strerror(errno));
-		goto out;
-	}
-
-	buf = malloc(512);
-	if (!buf) {
-		printf("Can't allocate buffer to copy file\n");
-		goto out;
-	}
-
-	while (1) {
-		size = read(fd_src, buf, 512);
-		if (size < 0) {
-			printf("Can't read file %s\n", src);
-			goto out;
-		}
-		if (!size)
-			break;
-
-		count = size;
-		size = write(fd_dst, buf, count);
-		if (size < 0) {
-			printf("Can't write file %s\n", dst);
-			goto out;
-		}
-	}
-
-	ret = 0;
-
- out:
-	if (fd_src >= 0)
-		close(fd_src);
-	if (fd_dst >= 0)
-		close(fd_dst);
-	if (buf)
-		free(buf);
-
+err_munmap:
+	munmap(old_fdt, sbuf.st_size);
+err:
+	free(fdt);
+	close(fd);
 	return ret;
 }
 
@@ -711,7 +684,7 @@ static int fit_handle_file(struct image_tool_params *params)
 	if (strlen (params->imagefile) +
 		strlen (MKIMAGE_TMPFILE_SUFFIX) + 1 > sizeof (tmpfile)) {
 		fprintf (stderr, "%s: Image file name (%s) too long, "
-				"can't create tmpfile",
+				"can't create tmpfile.\n",
 				params->imagefile, params->cmdname);
 		return (EXIT_FAILURE);
 	}
@@ -733,6 +706,9 @@ static int fit_handle_file(struct image_tool_params *params)
 	} else {
 		snprintf(cmd, sizeof(cmd), "cp \"%s\" \"%s\"",
 			 params->imagefile, tmpfile);
+	}
+	if (strlen(cmd) >= MKIMAGE_MAX_DTC_CMDLINE_LEN - 1) {
+		fprintf(stderr, "WARNING: command-line for FIT creation might be truncated and will probably fail.\n");
 	}
 
 	if (*cmd && system(cmd) == -1) {
@@ -854,11 +830,6 @@ static int fit_extract_contents(void *ptr, struct image_tool_params *params)
 
 	/* Indent string is defined in header image.h */
 	p = IMAGE_INDENT_STRING;
-
-	if (!fit_check_format(fit)) {
-		printf("Bad FIT image format\n");
-		return -1;
-	}
 
 	/* Find images parent node offset */
 	images_noffset = fdt_path_offset(fit, FIT_IMAGES_PATH);

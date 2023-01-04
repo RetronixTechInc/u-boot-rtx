@@ -4,11 +4,13 @@
  * Copyright 2018 NXP
  */
 #include <common.h>
+#include <command.h>
 #include <asm/arch/sys_proto.h>
 #include <linux/errno.h>
 #include <asm/io.h>
 #include <stdbool.h>
 #include <mmc.h>
+#include <env.h>
 
 static int check_mmc_autodetect(void)
 {

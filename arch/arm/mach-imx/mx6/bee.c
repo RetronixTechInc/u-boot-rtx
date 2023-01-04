@@ -14,6 +14,7 @@
 #include <fuse.h>
 #include <asm/arch/sys_proto.h>
 #include <cpu_func.h>
+#include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -267,7 +268,7 @@ static int region_valid(u32 start, u32 size)
 	return 0;
 }
 
-static int do_bee_init(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_bee_init(struct cmd_tbl *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	u32 start, size;
@@ -283,12 +284,12 @@ static int do_bee_init(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc > 5)
 		return CMD_RET_USAGE;
 
-#ifdef CONFIG_MX6
-	if (check_module_fused(MX6_MODULE_BEE)) {
-		printf("BEE is fused, disable it!\n");
-		return CMD_RET_FAILURE;
+	if (CONFIG_IS_ENABLED(IMX_MODULE_FUSE)) {
+		if (check_module_fused(MODULE_BEE)) {
+			printf("BEE is fused, disable it!\n");
+			return CMD_RET_FAILURE;
+		}
 	}
-#endif
 
 	/* Cache enabled? */
 	if ((get_cr() & (CR_I | CR_C)) != (CR_I | CR_C)) {
@@ -374,7 +375,7 @@ static int do_bee_init(cmd_tbl_t *cmdtp, int flag, int argc,
 	return CMD_RET_SUCCESS;
 }
 
-static int do_bee_test(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_bee_test(struct cmd_tbl *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
 	int ret;
@@ -401,14 +402,14 @@ static int do_bee_test(cmd_tbl_t *cmdtp, int flag, int argc,
 	return CMD_RET_SUCCESS;
 }
 
-static cmd_tbl_t cmd_bmp_sub[] = {
+static struct cmd_tbl cmd_bmp_sub[] = {
 	U_BOOT_CMD_MKENT(init, 5, 0, do_bee_init, "", ""),
 	U_BOOT_CMD_MKENT(test, 2, 0, do_bee_test, "", ""),
 };
 
-static int do_bee_ops(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_bee_ops(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
 {
-	cmd_tbl_t *c;
+	struct cmd_tbl *c;
 
 	c = find_cmd_tbl(argv[1], &cmd_bmp_sub[0], ARRAY_SIZE(cmd_bmp_sub));
 
