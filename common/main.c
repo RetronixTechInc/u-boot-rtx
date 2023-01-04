@@ -18,6 +18,13 @@
 #include <version_string.h>
 #include <efi_loader.h>
 
+#if defined(CONFIG_BOOT_SYSTEM)
+#include <rtx/bootsel.h>
+#endif
+#if defined(CONFIG_RTX_EFM32)
+#include <rtx/efm32.h>
+#endif
+
 static void run_preboot_environment_command(void)
 {
 	char *p;
@@ -63,6 +70,12 @@ void main_loop(void)
 
 	autoboot_command(s);
 
+#if defined(CONFIG_BOOT_SYSTEM)
+	bootsel_password();
+#endif
+#if defined(CONFIG_RTX_EFM32)
+	vSet_efm32_watchdog( 0 ) ;
+#endif
 	cli_loop();
 	panic("No CLI available");
 }

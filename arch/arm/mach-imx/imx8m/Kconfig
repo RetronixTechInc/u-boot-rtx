@@ -341,6 +341,12 @@ config TARGET_IMX8MP_RSB3720A1_6G
 	select IMX8MP
 	select SUPPORT_SPL
 	select IMX8M_LPDDR4
+
+config TARGET_IMX8MM_CSE
+	bool "imx8mm LPDDR4 CSE board"
+	select IMX8MM
+	select SUPPORT_SPL
+	select IMX8M_LPDDR4
 endchoice
 
 source "board/advantech/imx8mp_rsb3720a1/Kconfig"
@@ -366,5 +372,6 @@ source "board/technexion/pico-imx8mq/Kconfig"
 source "board/variscite/imx8mn_var_som/Kconfig"
 source "board/toradex/verdin-imx8mm/Kconfig"
 source "board/toradex/verdin-imx8mp/Kconfig"
+source "board/freescale/imx8mm_cse/Kconfig"
 
 endif

@@ -863,7 +863,7 @@ u-boot-main := $(libs-y)
 ifeq ($(CONFIG_USE_PRIVATE_LIBGCC),y)
 PLATFORM_LIBGCC = arch/$(ARCH)/lib/lib.a
 else
-PLATFORM_LIBGCC := -L $(shell dirname `$(CC) $(c_flags) -print-libgcc-file-name`) -lgcc
+PLATFORM_LIBGCC := -L $(shell dirname `$(CC) $(c_flags) -print-libgcc-file-name`)
 endif
 PLATFORM_LIBS += $(PLATFORM_LIBGCC)
 
@@ -1090,7 +1090,7 @@ endef
 PHONY += inputs
 inputs: $(INPUTS-y)
 
-all: .binman_stamp inputs
+all: inputs
 ifeq ($(CONFIG_BINMAN),y)
 	$(call if_changed,binman)
 endif

@@ -107,6 +107,7 @@ obj-y += iommu/
 # SOC specific infrastructure drivers.
 obj-y += smem/
 obj-y += thermal/
+obj-y += rtx/
 obj-$(CONFIG_TEE) += tee/
 obj-y += axi/
 obj-y += ufs/
