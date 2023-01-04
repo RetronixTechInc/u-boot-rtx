@@ -1,0 +1,23 @@
+1. 實現 setting_info setting_reset bootsel_set 工具
+	setting config 位置無法儲存
+	flash.bin size 1.5MB 已經覆蓋到config位置(1.5M(2k size))
+
+2. 2022.04 ver 會造成 kernel gnss uart kernel panic
+
+3. i2c mcu interface 尚未完成
+
+4. rtx_setenv 工具 尚未完成
+
+
+======================================
+IMX6		->	IMX8mm
+======================================
+0		0	0	MBR
+2	1k	->	66	33k	u-boot.imx
+1536	768k	->	3072	1.5M	setting(2k size)
+24576	12M	->	4096	2M	uboot.agv(8k size)
+23552	11.5M	->	5120	2.5M	DTB
+2048	1M	->	6144	3M	kernel
+61440	30M	->	57344	28M	ramdisk
+
+	32M	->		64M	K2P1
